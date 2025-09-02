@@ -56,6 +56,24 @@ def route_after_validation_local(state: GraphState) -> str:
 def route_after_user(state: GraphState) -> str:
     return "doc_extraction" if state.get("doc") else "analyze_intent"
 
+def route_after_apply_sandbox(state: GraphState) -> str:
+    """Route after sandbox operations with COMPLETE RESTART support."""
+    ctx = state.get("context", {})
+    
+    # ENHANCED: Check if we need complete restart
+    if ctx.get("force_complete_restart") or ctx.get("restart_from_schema"):
+        print("🔄 COMPLETE RESTART MODE: Returning to Schema Extraction Node")
+        print("🔄 Will regenerate entire design from scratch")
+        
+        # Clear restart flags
+        ctx.pop("force_complete_restart", None)
+        ctx.pop("restart_from_schema", None)
+        
+        return "schema_extraction"  # Go back to start
+    
+    # Normal flow - continue to validation
+    return "validation"
+
 def build_graph():
     g = StateGraph(GraphState)
 

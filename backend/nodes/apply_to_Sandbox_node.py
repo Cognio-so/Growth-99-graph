@@ -447,44 +447,101 @@ def _kill_existing_sandbox():
             _global_sandbox = None
             _global_sandbox_info = None
 
+def _create_fresh_sandbox(sandbox_timeout: int):
+    """Create a fresh sandbox for complete restart."""
+    print("🔄 Creating a fresh sandbox for complete restart...")
+    try:
+        new_sandbox = _create_sandbox_with_timeout(sandbox_timeout)
+        sandbox_id = getattr(new_sandbox, "id", "unknown")
+        _global_sandbox_info = {
+            "id": sandbox_id,
+            "created_at": time.time(),
+            "project_setup": False,
+            "session_id": "default" # Reset session for fresh start
+        }
+        print(f"✅ Fresh sandbox created for restart: {sandbox_id}")
+        return new_sandbox
+    except Exception as e:
+        print(f"❌ Failed to create fresh sandbox for restart: {e}")
+        raise
+
 def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int):
-    """Get or create sandbox with AUTOMATIC ERROR RECOVERY."""
+    """Get or create sandbox with ENHANCED SESSION-BASED freshness."""
     global _global_sandbox, _global_sandbox_info, _current_session_id
     
-    # Get current session ID
+    # Get current session ID with debug logging
     current_session = ctx.get("session_id") or "default"
     
     print(f"🔍 Session check - Current: '{current_session}', Previous: '{_current_session_id}'")
     
-    # AUTOMATIC ERROR RECOVERY: Check if we're stuck in error loops
-    validation_result = ctx.get("validation_result", {})
-    correction_attempts = ctx.get("correction_attempts", 0)
-    total_attempts = ctx.get("total_attempts", 0)
+    # Check if we need to force fresh sandbox due to errors
+    force_fresh = ctx.get("force_fresh_sandbox", False)
+    validation_attempts = int(ctx.get("validation_attempts", 0))
+    correction_attempts = int(ctx.get("correction_attempts", 0))
+    total_attempts = int(ctx.get("total_attempts", 0))
     
-    # TRIGGER 0: Force fresh sandbox flag from validation node
+    print(f"🔍 Error recovery check - Validation: {validation_attempts}, Corrections: {correction_attempts}, Total: {total_attempts}")
+    print(f"🔍 DEBUG - Force flag: {force_fresh}")
+    print(f"🔍 DEBUG - Validation attempts: {validation_attempts}")
+    print(f"🔍 DEBUG - Correction attempts: {correction_attempts}")
+    print(f"🔍 DEBUG - Total attempts: {total_attempts}")
+    
+    # ENHANCED: Force fresh sandbox if error recovery triggered
+    if force_fresh or total_attempts >= 3 or correction_attempts >= 2:
+        print(f"🔄 AUTOMATIC RECOVERY: {'Force flag triggered' if force_fresh else 'Error loop detected'} ({correction_attempts} corrections, {total_attempts} total)")
+        print("🔥 FORCING FRESH SANDBOX to break correction cycle...")
+        
+        # Kill existing sandbox
+        _kill_existing_sandbox()
+        
+        # ENHANCED: Set flag to trigger complete restart
+        ctx["force_complete_restart"] = True
+        ctx["restart_from_schema"] = True
+        
+        # Reset all attempt counters
+        ctx["validation_attempts"] = 0
+        ctx["correction_attempts"] = 0
+        ctx["total_attempts"] = 0
+        ctx["force_fresh_sandbox"] = False
+        
+        print("✅ Error recovery: Fresh sandbox will be created")
+        print("🔄 Will restart from Schema Extraction Node for complete regeneration")
+        
+        # Create fresh sandbox
+        return _create_fresh_sandbox(sandbox_timeout)
+    
+    # TRIGGER 0: Force fresh sandbox flag from validation node (HIGHEST PRIORITY)
     if ctx.get("force_fresh_sandbox"):
         print("🔥 FORCE FRESH SANDBOX: Validation node requested reset")
         _kill_existing_sandbox()
         _current_session_id = current_session
         print("✅ Force reset: Fresh sandbox will be created")
     
-    # TRIGGER 1: Force fresh sandbox if stuck in error loops
-    elif (validation_result.get("errors") and 
-          (correction_attempts >= 2 or total_attempts >= 3)):
-        print(f" AUTOMATIC RECOVERY: Stuck in error loop ({correction_attempts} corrections, {total_attempts} total)")
-        print("🔥 FORCING FRESH SANDBOX to break error cycle...")
+    # TRIGGER 1: Force fresh sandbox if stuck in validation loops
+    elif validation_attempts >= 3:
+        print(f" AUTOMATIC RECOVERY: Validation stuck in loop ({validation_attempts} attempts)")
+        print("🔥 FORCING FRESH SANDBOX to break validation cycle...")
         _kill_existing_sandbox()
         _current_session_id = current_session
         print("✅ Error recovery: Fresh sandbox will be created")
     
-    # TRIGGER 2: New session detected
+    # TRIGGER 2: Force fresh sandbox if stuck in correction loops
+    elif (ctx.get("validation_result", {}).get("errors") and 
+          (correction_attempts >= 2 or total_attempts >= 3)):
+        print(f" AUTOMATIC RECOVERY: Correction stuck in loop ({correction_attempts} corrections, {total_attempts} total)")
+        print("🔥 FORCING FRESH SANDBOX to break correction cycle...")
+        _kill_existing_sandbox()
+        _current_session_id = current_session
+        print("✅ Error recovery: Fresh sandbox will be created")
+    
+    # TRIGGER 3: New session detected
     elif _current_session_id != current_session:
         print(f"🔄 New session detected: {current_session} (previous: {_current_session_id})")
         _kill_existing_sandbox()
         _current_session_id = current_session
     
-    # TRIGGER 3: Previous validation errors detected
-    elif validation_result.get("errors") and _global_sandbox is not None:
+    # TRIGGER 4: Previous validation errors detected
+    elif ctx.get("validation_result", {}).get("errors") and _global_sandbox is not None:
         print("🔥 Previous validation errors detected - creating fresh sandbox")
         _kill_existing_sandbox()
     
@@ -674,6 +731,32 @@ def _restart_dev_server_only(port: int = 5173) -> Optional[str]:
     except Exception as e:
         print(f"❌ Error restarting dev server: {e}")
         return None
+
+
+def _restart_dev_server(sandbox: Sandbox, host: str) -> bool:
+    """Restart dev server with ENHANCED process management."""
+    try:
+        print("🔄 Restarting dev server in existing sandbox...")
+        
+        # ENHANCED: Force kill any existing Vite processes
+        try:
+            sandbox.commands.run("pkill -f 'vite'", timeout=10)
+            time.sleep(2)  # Wait for processes to terminate
+        except:
+            pass  # Ignore if no processes to kill
+            
+        # ENHANCED: Clean up any lock files
+        try:
+            sandbox.commands.run("rm -f my-app/.vite/lock", timeout=5)
+        except:
+            pass
+            
+        # Now start fresh
+        return _start_dev_server(sandbox, host)
+        
+    except Exception as e:
+        print(f"❌ Error restarting dev server: {e}")
+        return False
 
 
 def _install_package(sandbox: Sandbox, package_name: str) -> bool:

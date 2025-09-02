@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Ensure LangSmith tracing is enabled BEFORE importing anything else
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "lovable-orchestrator")
 
 # Now import LangChain/LangGraph components
@@ -94,7 +94,7 @@ async def accept_query(
         config = RunnableConfig(
             configurable={
                 "thread_id": thread_id,
-                "recursion_limit": 50  # ADD THIS LINE
+                "recursion_limit": 50  # INCREASED from 25 to 50
             },
             tags=["api_request", "frontend", f"model:{llm_model or 'default'}"],
             metadata={

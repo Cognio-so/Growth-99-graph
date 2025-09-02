@@ -680,13 +680,13 @@ def validate_code(state: Dict[str, Any]) -> Dict[str, Any]:
     
     ctx = state.get("context", {}) or {}
     
-    # AUTOMATIC ERROR RECOVERY: Check if we're stuck in validation loops
+    # FIXED: Proper validation attempts tracking
     validation_attempts = ctx.get("validation_attempts", 0) + 1
     ctx["validation_attempts"] = validation_attempts
     
     print(f"🔍 Starting comprehensive code validation (attempt #{validation_attempts})...")
     
-    # If we've failed validation multiple times, force sandbox reset
+    # AUTOMATIC ERROR RECOVERY: Check if we're stuck in validation loops
     if validation_attempts >= 3:
         print(" AUTOMATIC RECOVERY: Multiple validation failures detected")
         print("🔥 Will force fresh sandbox on next sandbox node execution")
@@ -694,7 +694,8 @@ def validate_code(state: Dict[str, Any]) -> Dict[str, Any]:
         ctx["validation_result"] = {
             "success": False,
             "errors": ["Multiple validation failures - forcing sandbox reset"],
-            "recovery_action": "force_fresh_sandbox"
+            "recovery_action": "force_fresh_sandbox",
+            "validation_attempts": validation_attempts
         }
         state["context"] = ctx
         return state
@@ -818,7 +819,7 @@ def validate_code(state: Dict[str, Any]) -> Dict[str, Any]:
         ctx["validation_result"] = {
             "success": False,
             "errors": validation_errors,
-            "validation_attempts": validation_attempts,
+            "validation_attempts": validation_attempts,  # FIXED: Always include attempts
             "correction_data": correction_data
         }
     

@@ -6,7 +6,7 @@ from langsmith import traceable
 from langchain_core.tracers.context import tracing_v2_enabled
 
 # Ensure LangSmith tracing is enabled
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
 # Make sure you have these environment variables set:
 # LANGCHAIN_API_KEY = "your-api-key"
 # LANGCHAIN_PROJECT = "your-project-name" (optional, defaults to "default")

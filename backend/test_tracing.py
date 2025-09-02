@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Set up tracing
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
 
 print("🔍 Checking LangSmith configuration...")
 print(f"LANGCHAIN_TRACING_V2: {os.getenv('LANGCHAIN_TRACING_V2')}")
