@@ -297,13 +297,15 @@ def route_after_analysis(state: Dict[str, Any]) -> str:
     ctx = state.get("context", {})
     attempts = ctx.get("correction_attempts", 0)
     
-    # After 4 failed correction attempts, force full regeneration
-    if attempts >= 4:
-        print(f"🔄 Too many correction attempts ({attempts}) - forcing full regeneration")
-        # Reset correction attempts and trigger full regeneration
+    # After 3 failed attempts, switch to REGENERATE via schema_extraction
+    if attempts >= 3:
+        print(f"🔄 Too many correction attempts ({attempts}) - switching to REGENERATE via schema_extraction")
+        meta = state.get("metadata") or {}
+        meta["regenerate"] = True
+        state["metadata"] = meta
+        ctx["force_regeneration"] = False
         ctx["correction_attempts"] = 0
-        ctx["force_regeneration"] = True
-        return "generator"
+        return "schema_extraction"
     
     print(f"🔄 Sending to generator for correction (attempt #{attempts})")
     return "generator"

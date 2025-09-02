@@ -10,10 +10,35 @@ from nodes.url_extraction import url_extraction
 from nodes.edit_analyzer_node import edit_analyzer
 from nodes.code_genrator_node import generator
 from nodes.apply_to_Sandbox_node import apply_sandbox
-from nodes.validation_node import validate_generated_code, route_after_validation
+from nodes.validation_node import validate_generated_code  # removed route_after_validation
 from nodes.code_analysis_node import analyze_and_fix_code, route_after_analysis
 from nodes.output_node import output_result
 from observability import trace_node
+
+# from nodes.validation_node import validate_generated_code  # removed route_after_validation
+
+def route_after_validation_local(state: GraphState) -> str:
+    ctx = state.get("context", {})
+    vr = ctx.get("validation_result", {})
+    if vr.get("success"):
+        ctx["correction_attempts"] = 0
+        return "output"
+
+    attempts = int(ctx.get("correction_attempts", 0)) + 1
+    ctx["correction_attempts"] = attempts
+
+    # After 3 failed validations, go to schema_extraction (Regenerate behavior)
+    if attempts >= 3:
+        print(f"🔄 Validation failed {attempts} times - switching to REGENERATE via schema_extraction")
+        meta = state.get("metadata") or {}
+        meta["regenerate"] = True   # schema_extraction will pick a random schema
+        state["metadata"] = meta
+        ctx["force_regeneration"] = False
+        ctx["correction_attempts"] = 0
+        return "schema_extraction"
+
+    print(f"❌ Validation failed - sending to code analysis (attempt #{attempts})")
+    return "code_analysis"
 
 def route_after_user(state: GraphState) -> str:
     return "doc_extraction" if state.get("doc") else "analyze_intent"
@@ -65,14 +90,21 @@ def build_graph():
     g.add_edge("apply_sandbox", "validation")
     
     # Validation routing: success -> output, failure -> code_analysis
-    g.add_conditional_edges("validation", route_after_validation, {
+       # Validation routing: success -> output, failure -> code_analysis
+    # Validation routing: success -> output, failure -> code_analysis, or schema_extraction after 3 fails
+    g.add_conditional_edges("validation", route_after_validation_local, {
         "output": "output",
-        "code_analysis": "code_analysis"
+        "code_analysis": "code_analysis",
+        "schema_extraction": "schema_extraction"
     })
     
     # Code analysis routing: back to generator for correction or output if max attempts
         # Code analysis routing: back to generator for correction
-    g.add_edge("code_analysis", "generator")
+    # Code analysis routing: conditional to either generator or schema_extraction
+    g.add_conditional_edges("code_analysis", route_after_analysis, {
+        "generator": "generator",
+        "schema_extraction": "schema_extraction"
+    })
     
     # Final end point
     g.add_edge("output", END)

@@ -683,19 +683,23 @@ def _capture_generated_files_for_correction(ctx: Dict[str, Any]) -> Dict[str, An
         print(f"⚠️ Could not capture files for correction: {e}")
         return {}
 
-def route_after_validation(state: Dict[str, Any]) -> str:
-    """Route based on validation results."""
+def route_after_analysis(state: Dict[str, Any]) -> str:
+    """Route after code analysis - check if we need full regeneration after repeated failures."""
     ctx = state.get("context", {})
-    validation_result = ctx.get("validation_result", {})
+    attempts = ctx.get("correction_attempts", 0)
     
-    if validation_result.get("success"):
-        print("✅ Validation passed - proceeding to output")
-        # Reset correction attempts on success
+    # After 3 failed validation attempts, switch to regenerate mode
+    if attempts >= 3:
+        print(f"🔄 Too many correction attempts ({attempts}) - switching to REGENERATE mode")
+        # Force full regeneration on next generator run
+        ctx["force_regeneration"] = True
+        # Emulate "Regenerate" button -> make schema_extraction pick a random schema
+        meta = state.get("metadata") or {}
+        meta["regenerate"] = True
+        state["metadata"] = meta
+        # Reset attempts to avoid immediate re-trigger loops
         ctx["correction_attempts"] = 0
-        return "output"
-    else:
-        # Increment correction attempts
-        current_attempts = ctx.get("correction_attempts", 0)
-        ctx["correction_attempts"] = current_attempts + 1
-        print(f"❌ Validation failed - sending to code analysis (attempt #{ctx['correction_attempts']})")
-        return "code_analysis"
+        return "generator"
+    
+    print(f"🔄 Sending to generator for correction (attempt #{attempts})")
+    return "generator"
