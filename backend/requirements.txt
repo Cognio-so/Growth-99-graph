@@ -1,31 +1,38 @@
 # --- Web server & API ---
+# Web server & API
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
-python-multipart>=0.0.9   # needed for file uploads (Form/File in FastAPI)
-httpx>=0.27.0             # Firecrawl HTTP client
+python-multipart>=0.0.9
+httpx>=0.27.0
 
-# --- Data & DB ---
+# Data & DB
 SQLAlchemy>=2.0.29
+# If you switch to Postgres, add one of:
+# psycopg[binary]>=3.1
+# psycopg2-binary>=2.9
 
-# --- Pydantic (FastAPI uses v2) ---
+# Pydantic (FastAPI v2)
 pydantic>=2.6.0
 
-# --- File parsing (PDF/DOCX) ---
+# File parsing (PDF/DOCX)
 pypdf>=4.2.0
 python-docx>=1.1.0
 
-# --- LangGraph / LLM glue ---
+# LLM / LangGraph
 langgraph>=0.2.27
 langchain-core>=0.2.38
 langchain-openai>=0.1.7
-langchain-groq>=0.1.5    # Added for Groq support
-openai>=1.30.0            # backend client used under langchain-openai
-
-# (optional but handy)
-python-dotenv>=1.0.1      # if you want to load env vars from .env in backend
+langchain-groq>=0.1.5
+langchain-anthropic>=0.1.0
+openai>=1.30.0
 langsmith>=0.1.35
 langgraph-cli[inmem]>=0.1.46
-langserve>=0.2.2
+langserve>=0.3.1
 sse-starlette>=1.6.5
-langchain_anthropic
-e2b
+
+# Env
+python-dotenv>=1.0.1
+
+# E2B sandbox
+
+e2b-code-interpreter
