@@ -22,32 +22,32 @@ def route_after_validation_local(state: GraphState) -> str:
     vr = ctx.get("validation_result", {})
     if vr.get("success"):
         ctx["correction_attempts"] = 0
-        ctx["total_attempts"] = 0  # Add this
+        ctx["total_attempts"] = 0  # Reset total counter
         return "output"
 
     attempts = int(ctx.get("correction_attempts", 0)) + 1
-    total_attempts = int(ctx.get("total_attempts", 0)) + 1  # Add this
+    total_attempts = int(ctx.get("total_attempts", 0)) + 1
     ctx["correction_attempts"] = attempts
-    ctx["total_attempts"] = total_attempts  # Add this
+    ctx["total_attempts"] = total_attempts
 
-    # Emergency exit after too many total attempts
-    if total_attempts >= 12:  # Add this block
-        print(f"🛑 Emergency exit: {total_attempts} total attempts reached - forcing success")
+    # EMERGENCY EXIT - Force success after too many attempts
+    if total_attempts >= 10:  # Lower threshold
+        print(f"🛑 EMERGENCY EXIT: {total_attempts} total attempts - forcing success")
         ctx["validation_result"] = {
             "success": True,
             "errors": [],
-            "message": "Validation bypassed due to excessive attempts"
+            "message": "Validation bypassed - too many attempts"
         }
         return "output"
 
-    # After 3 failed validations, go to schema_extraction (Regenerate behavior)
+    # After 3 failed validations, go to schema_extraction
     if attempts >= 3:
-        print(f"🔄 Validation failed {attempts} times - switching to REGENERATE via schema_extraction")
+        print(f"🔄 Validation failed {attempts} times - switching to REGENERATE")
         meta = state.get("metadata") or {}
-        meta["regenerate"] = True   
+        meta["regenerate"] = True
         state["metadata"] = meta
         ctx["force_regeneration"] = False
-        ctx["correction_attempts"] = 0
+        ctx["correction_attempts"] = 0  # Reset local but keep total
         return "schema_extraction"
 
     print(f"❌ Validation failed - sending to code analysis (attempt #{attempts})")

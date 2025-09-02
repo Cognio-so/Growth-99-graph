@@ -160,36 +160,13 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _validate_jsx_content(content: str) -> List[Dict[str, str]]:
-    """Validate JSX content from actual file. Fixed false positive detection."""
+    """Validate JSX content from actual file. SIMPLIFIED - removed problematic checks."""
     errors: List[Dict[str, str]] = []
     
-    # More accurate check for unescaped quotes in className - FIXED
-    # Only flag actual problematic patterns, not normal JSX
-    problematic_patterns = [
-        r'className="[^"]*\\"[^"]*"',  # className="text-\"red\"-500"
-        r'className="[^"]*""[^"]*"',  # className="text-xl""extra"
-    ]
+    # REMOVED ALL JSX QUOTES VALIDATION - it was causing false positives
+    # Only keep critical validation
     
-    has_unescaped_quotes = False
-    for pattern in problematic_patterns:
-        if re.search(pattern, content):
-            has_unescaped_quotes = True
-            break
-    
-    # Additional check: look for common problematic patterns
-    if 'className="' in content and '""' in content:
-        has_unescaped_quotes = True
-    
-    if has_unescaped_quotes:
-        errors.append({
-            "type": "jsx_quotes",
-            "message": "Unescaped quotes in JSX className attribute",
-            "fix": "Escape quotes in className values or use single quotes",
-            "file": "src/App.jsx",
-            "severity": "high"
-        })
-    
-    # Check for proper JSX syntax - brace matching
+    # Check for proper JSX syntax - brace matching only
     if content.count("{") != content.count("}"):
         errors.append({
             "type": "jsx_braces",

@@ -25,7 +25,12 @@ const MODEL_DISPLAY_NAMES = {
 };
 
 function IntentForm() {
-  const [sessionId, setSessionId] = React.useState(() => localStorage.getItem("session_id") || "");
+  // Generate a new session ID on every page refresh
+  const [sessionId, setSessionId] = React.useState(() => {
+    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log("🆕 Generated fresh session ID:", newSessionId);
+    return newSessionId;
+  });
   const [model, setModel] = React.useState("groq-default"); // Default to Groq
   const [text, setText] = React.useState("");
   const [file, setFile] = React.useState(null);
@@ -36,13 +41,23 @@ function IntentForm() {
   const onFile = (e) => setFile(e.target.files?.[0] || null);
   const clearSession = () => { setSessionId(""); localStorage.removeItem("session_id"); };
 
+  // ADD: Clear localStorage on component mount (page refresh)
+  React.useEffect(() => {
+    localStorage.removeItem("session_id");
+    console.log("🔄 Page refreshed - session ID cleared");
+  }, []);
+
   async function onSubmit(e) {
     e.preventDefault();
     setSending(true); setError(""); setResp(null);
     try {
       const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file });
       setResp(json);
-      if (json?.session_id) { setSessionId(json.session_id); localStorage.setItem("session_id", json.session_id); }
+      // DON'T persist session ID anymore - let each request be fresh
+      if (json?.session_id) { 
+        setSessionId(json.session_id); 
+        // REMOVED: localStorage.setItem("session_id", json.session_id); 
+      }
     } catch (err) {
       setError(err?.message || String(err));
     } finally { setSending(false); }

@@ -61,7 +61,7 @@ def _startup():
 # Create checkpointer for state persistence
 memory = MemorySaver()
 
-# Compile the graph with checkpointer (REMOVE recursion_limit from here)
+# Compile the graph with checkpointer (REMOVE any recursion_limit here)
 compiled_graph = graph.compile(checkpointer=memory)
 
 @app.post("/api/query", response_model=UserQueryOut)
@@ -94,7 +94,7 @@ async def accept_query(
         config = RunnableConfig(
             configurable={
                 "thread_id": thread_id,
-                "recursion_limit": 50  # ADD this line here instead
+                "recursion_limit": 50  # ADD THIS LINE
             },
             tags=["api_request", "frontend", f"model:{llm_model or 'default'}"],
             metadata={

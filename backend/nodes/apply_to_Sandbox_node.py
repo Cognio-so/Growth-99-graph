@@ -7,9 +7,10 @@ from typing import Dict, Any, Optional, List
 # E2B v2.x SDK
 from e2b_code_interpreter import Sandbox
 
-# Global storage for the persistent sandbox
+# Global sandbox state - ENHANCED with session tracking
 _global_sandbox = None
-_global_sandbox_info = {}
+_global_sandbox_info = None
+_current_session_id = None
 
 # -----------------------------
 # Utility: normalize generator script to current E2B API - FIXED
@@ -426,25 +427,81 @@ def _validate_react_components(sandbox) -> None:
         print(f"⚠️ Component validation failed: {e}")
 
 
-# Persistent sandbox management
-def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int):
-    """Get or create THE SINGLE persistent sandbox for the entire session."""
+## **Enhanced Session Management**
+
+
+# ```python:backend/nodes/apply_to_Sandbox_node.py
+def _kill_existing_sandbox():
+    """Kill the existing sandbox to start fresh."""
     global _global_sandbox, _global_sandbox_info
     
     if _global_sandbox is not None:
         try:
+            print("🔥 Killing existing sandbox to start fresh...")
+            # Try to terminate the sandbox gracefully - FIX: use terminate() not close()
+            _global_sandbox.kill()  # Changed from close() to kill()
+            print("✅ Sandbox terminated successfully")
+        except Exception as e:
+            print(f"⚠️ Error terminating sandbox: {e}")
+        finally:
+            _global_sandbox = None
+            _global_sandbox_info = None
+
+def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int):
+    """Get or create sandbox with SESSION-BASED freshness."""
+    global _global_sandbox, _global_sandbox_info, _current_session_id
+    
+    # Get current session ID with debug info
+    current_session = ctx.get("session_id") or "default"
+    
+    # TRIGGER 1: New session detected
+    if _current_session_id != current_session:
+        print(f"🔄 New session detected: {current_session} (previous: {_current_session_id})")
+        _kill_existing_sandbox()
+        _current_session_id = current_session
+    
+    # TRIGGER 2: Previous validation errors detected
+    validation_result = ctx.get("validation_result", {})
+    if validation_result.get("errors") and _global_sandbox is not None:
+        print("🔥 Previous validation errors detected - creating fresh sandbox")
+        _kill_existing_sandbox()
+    
+    # TRIGGER 3: Too many correction attempts
+    correction_attempts = ctx.get("correction_attempts", 0)
+    total_attempts = ctx.get("total_attempts", 0)
+    if (correction_attempts >= 2 or total_attempts >= 5) and _global_sandbox is not None:
+        print(f"🔥 Too many attempts ({correction_attempts} corrections, {total_attempts} total) - fresh sandbox")
+        _kill_existing_sandbox()
+    
+    if _global_sandbox is not None:
+        try:
+            # Enhanced sandbox health check
             test_result = _global_sandbox.commands.run("echo 'test'", timeout=10)
             if test_result and test_result.stdout:
+                # Additional health checks
+                try:
+                    # Check if Vite project exists
+                    project_check = _global_sandbox.commands.run("ls my-app/package.json", timeout=5)
+                    if project_check.exit_code != 0:
+                        print("🔥 Project structure missing - creating fresh sandbox")
+                        _kill_existing_sandbox()
+                        return _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
+                        
+                except Exception as health_error:
+                    print(f"🔥 Sandbox health check failed: {health_error} - creating fresh sandbox")
+                    _kill_existing_sandbox()
+                    return _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
+                
                 sandbox_id = getattr(_global_sandbox, "id", "unknown")
-                print(f"✅ Reusing existing persistent sandbox: {sandbox_id}")
+                print(f"✅ Reusing existing sandbox: {sandbox_id}")
                 ctx["existing_sandbox_id"] = sandbox_id
                 return _global_sandbox, False
         except Exception as e:
-            print(f"⚠️ Persistent sandbox is no longer alive: {e}")
+            print(f"⚠️ Sandbox is no longer alive: {e}")
             _global_sandbox = None
             _global_sandbox_info = {}
     
-    print("🆕 Creating new persistent sandbox...")
+    print("🆕 Creating NEW persistent sandbox...")
     new_sandbox = _create_sandbox_with_timeout(sandbox_timeout)
     
     _global_sandbox = new_sandbox
@@ -452,11 +509,12 @@ def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int)
     _global_sandbox_info = {
         "id": sandbox_id,
         "created_at": time.time(),
-        "project_setup": False
+        "project_setup": False,
+        "session_id": current_session
     }
     
     ctx["existing_sandbox_id"] = sandbox_id
-    print(f"✅ Created persistent sandbox: {sandbox_id}")
+    print(f"✅ Created fresh sandbox: {sandbox_id}")
     return new_sandbox, True
 
 
@@ -633,6 +691,12 @@ def _install_package(sandbox: Sandbox, package_name: str) -> bool:
 def _detect_and_install_dependencies(sandbox: Sandbox, script_content: str) -> List[str]:
     print("🔍 Analyzing generated React code for dependencies...")
     
+    # WHITELIST of allowed packages - ONLY these will be installed
+    ALLOWED_PACKAGES = {
+        'react-dom', 'lucide-react', 'react-icons', '@heroicons/react'
+        # REMOVED: framer-motion, play-button, and other problematic packages
+    }
+    
     # Simplified dependency extraction
     potential_packages = set()
     patterns = [
@@ -645,8 +709,12 @@ def _detect_and_install_dependencies(sandbox: Sandbox, script_content: str) -> L
         matches = re.findall(pattern, script_content)
         for match in matches:
             # Filter out relative paths and built-ins
-            if not match.startswith('.') and not match.startswith('/') and match not in ['react', 'react-dom']:
-                potential_packages.add(match.split('/')[0])  # Get root package name
+            if not match.startswith('.') and not match.startswith('/') and match not in ['react']:
+                package_name = match.split('/')[0]  # Get root package name
+                if package_name in ALLOWED_PACKAGES:  # ONLY ALLOWED PACKAGES
+                    potential_packages.add(package_name)
+                else:
+                    print(f"⚠️ Skipping blocked package: {package_name} (not in whitelist)")
     
     # Filter out built-in modules
     builtin_packages = {'path', 'fs', 'os', 'child_process'}
@@ -675,7 +743,7 @@ def _extract_code_files_from_script(script: str) -> Dict[str, str]:
     
     for file_path, content_var in matches:
         # Try to find the content variable definition
-        content_pattern = rf'{re.escape(content_var)}\s*=\s*["\'\`]([^"\'`]*)["\'\`]'
+        content_pattern = rf'{re.escape(content_var)}\s*=\s*["\'\`]([^"\'\`]*)["\'\`]'
         content_match = re.search(content_pattern, script, re.DOTALL)
         if content_match:
             files[file_path] = content_match.group(1)
@@ -781,13 +849,17 @@ def _verify_css_content(sandbox: Sandbox) -> bool:
 
 # Main function
 def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Apply Sandbox Node with PROPER correction support."""
+    """Apply Sandbox Node with SESSION-BASED sandbox management."""
     print("--- Running Apply Sandbox Node (Optimized) ---")
 
     ctx = state.get("context", {}) or {}
     gen_result = ctx.get("generation_result", {}) or {}
     script_to_run = gen_result.get("e2b_script")
     is_correction = gen_result.get("is_correction", False)
+    
+    # ADD SESSION ID TO CONTEXT
+    session_id = state.get("session_id") or state.get("metadata", {}).get("session_id", "default")
+    ctx["session_id"] = session_id
 
     if not script_to_run:
         msg = "No E2B script found from generator; cannot proceed."
@@ -807,8 +879,9 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
     sandbox_timeout = _get_sandbox_timeout()
 
     try:
-        sandbox, is_new_sandbox = _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
-
+        sandbox_timeout = int(os.getenv("E2B_SANDBOX_TIMEOUT", "3600"))
+        sandbox, newly_created = _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
+        
         if is_correction:
             print("🔄 CORRECTION MODE - Using existing sandbox and applying targeted fixes...")
             
