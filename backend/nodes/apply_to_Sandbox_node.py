@@ -448,60 +448,81 @@ def _kill_existing_sandbox():
             _global_sandbox_info = None
 
 def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int):
-    """Get or create sandbox with SESSION-BASED freshness."""
+    """Get or create sandbox with AUTOMATIC ERROR RECOVERY."""
     global _global_sandbox, _global_sandbox_info, _current_session_id
     
-    # Get current session ID with debug info
+    # Get current session ID
     current_session = ctx.get("session_id") or "default"
     
-    # TRIGGER 1: New session detected
-    if _current_session_id != current_session:
+    print(f"🔍 Session check - Current: '{current_session}', Previous: '{_current_session_id}'")
+    
+    # AUTOMATIC ERROR RECOVERY: Check if we're stuck in error loops
+    validation_result = ctx.get("validation_result", {})
+    correction_attempts = ctx.get("correction_attempts", 0)
+    total_attempts = ctx.get("total_attempts", 0)
+    
+    # TRIGGER 0: Force fresh sandbox flag from validation node
+    if ctx.get("force_fresh_sandbox"):
+        print("🔥 FORCE FRESH SANDBOX: Validation node requested reset")
+        _kill_existing_sandbox()
+        _current_session_id = current_session
+        print("✅ Force reset: Fresh sandbox will be created")
+    
+    # TRIGGER 1: Force fresh sandbox if stuck in error loops
+    elif (validation_result.get("errors") and 
+          (correction_attempts >= 2 or total_attempts >= 3)):
+        print(f" AUTOMATIC RECOVERY: Stuck in error loop ({correction_attempts} corrections, {total_attempts} total)")
+        print("🔥 FORCING FRESH SANDBOX to break error cycle...")
+        _kill_existing_sandbox()
+        _current_session_id = current_session
+        print("✅ Error recovery: Fresh sandbox will be created")
+    
+    # TRIGGER 2: New session detected
+    elif _current_session_id != current_session:
         print(f"🔄 New session detected: {current_session} (previous: {_current_session_id})")
         _kill_existing_sandbox()
         _current_session_id = current_session
     
-    # TRIGGER 2: Previous validation errors detected
-    validation_result = ctx.get("validation_result", {})
-    if validation_result.get("errors") and _global_sandbox is not None:
+    # TRIGGER 3: Previous validation errors detected
+    elif validation_result.get("errors") and _global_sandbox is not None:
         print("🔥 Previous validation errors detected - creating fresh sandbox")
         _kill_existing_sandbox()
     
-    # TRIGGER 3: Too many correction attempts
-    correction_attempts = ctx.get("correction_attempts", 0)
-    total_attempts = ctx.get("total_attempts", 0)
-    if (correction_attempts >= 2 or total_attempts >= 5) and _global_sandbox is not None:
-        print(f"🔥 Too many attempts ({correction_attempts} corrections, {total_attempts} total) - fresh sandbox")
-        _kill_existing_sandbox()
-    
+    # Check if existing sandbox is healthy (only if we haven't forced a reset)
     if _global_sandbox is not None:
         try:
-            # Enhanced sandbox health check
-            test_result = _global_sandbox.commands.run("echo 'test'", timeout=10)
+            # FAST health check (only 2 seconds)
+            print("🔍 Quick sandbox health check...")
+            test_result = _global_sandbox.commands.run("echo 'test'", timeout=2)
+            
             if test_result and test_result.stdout:
-                # Additional health checks
+                # FAST project structure check (only 3 seconds)
                 try:
-                    # Check if Vite project exists
-                    project_check = _global_sandbox.commands.run("ls my-app/package.json", timeout=5)
-                    if project_check.exit_code != 0:
+                    project_check = _global_sandbox.commands.run("ls my-app/package.json", timeout=3)
+                    if project_check.exit_code == 0:
+                        # ✅ FAST PATH: Reuse existing healthy sandbox
+                        sandbox_id = getattr(_global_sandbox, "id", "unknown")
+                        print(f"✅ FAST: Reusing healthy sandbox: {sandbox_id}")
+                        ctx["existing_sandbox_id"] = sandbox_id
+                        return _global_sandbox, False
+                    else:
                         print("🔥 Project structure missing - creating fresh sandbox")
                         _kill_existing_sandbox()
-                        return _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
                         
                 except Exception as health_error:
-                    print(f"🔥 Sandbox health check failed: {health_error} - creating fresh sandbox")
+                    print(f" Quick health check failed: {health_error} - creating fresh sandbox")
                     _kill_existing_sandbox()
-                    return _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
+            else:
+                print("🔥 Sandbox not responding - creating fresh sandbox")
+                _kill_existing_sandbox()
                 
-                sandbox_id = getattr(_global_sandbox, "id", "unknown")
-                print(f"✅ Reusing existing sandbox: {sandbox_id}")
-                ctx["existing_sandbox_id"] = sandbox_id
-                return _global_sandbox, False
         except Exception as e:
-            print(f"⚠️ Sandbox is no longer alive: {e}")
+            print(f"⚠️ Sandbox health check failed: {e} - creating fresh sandbox")
             _global_sandbox = None
             _global_sandbox_info = {}
     
-    print("🆕 Creating NEW persistent sandbox...")
+    # Create new sandbox
+    print("🆕 Creating NEW sandbox (error recovery mode)...")
     new_sandbox = _create_sandbox_with_timeout(sandbox_timeout)
     
     _global_sandbox = new_sandbox
