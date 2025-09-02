@@ -276,15 +276,8 @@ def _validate_jsx_patterns(script: str) -> List[Dict[str, str]]:
             "severity": "high"
         })
     
-    # Check for unescaped quotes in JSX
-    if re.search(r'className="[^"]*"[^"]*"', script):
-        errors.append({
-            "type": "jsx_quotes",
-            "message": "Unescaped quotes in JSX className attribute",
-            "pattern": 'className="value"extra"',
-            "file": "src/App.jsx",
-            "severity": "high"
-        })
+    # REMOVED THE BAD REGEX - this was causing false positives
+    # The _validate_jsx_content() function already handles this correctly
     
     # Check for missing closing braces
     open_braces = script.count('{')
