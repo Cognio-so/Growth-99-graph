@@ -221,7 +221,7 @@ export default defineConfig({{
         print(f"⚠️ Could not write vite config: {e}")
 
 
-def _wait_for_http(sandbox, port: int, max_attempts: int = 30) -> bool:
+def _wait_for_http(sandbox, port: int, max_attempts: int = 5) -> bool:  # Reduced from 30 to 5
     """Wait for HTTP server to be ready - FIXED VERSION."""
     print(f"Checking if server is ready (attempt 1/{max_attempts})...")
     
@@ -235,7 +235,7 @@ def _wait_for_http(sandbox, port: int, max_attempts: int = 30) -> bool:
                 # Accept any successful HTTP response
                 if response_code and response_code != "000" and response_code != "":
                     print(f"ℹ️ HTTP on :{port} responded with {response_code} - server is ready")
-            return True
+                    return True
         except Exception as e:
             print(f"   Attempt {attempt}: Error checking server: {e}")
         
@@ -640,8 +640,8 @@ def _restart_dev_server_only(port: int = 5173) -> Optional[str]:
             timeout=30,
         )
 
-        # Wait for readiness
-        if not _wait_for_http(_global_sandbox, port):
+        # REDUCE WAIT ATTEMPTS: Wait only 5 times instead of 30
+        if not _wait_for_http(_global_sandbox, port, max_attempts=5):  # Reduced from 30 to 5
             print("   ⚠️ Dev server did not become ready after restart")
             return None
 
@@ -653,7 +653,6 @@ def _restart_dev_server_only(port: int = 5173) -> Optional[str]:
     except Exception as e:
         print(f"❌ Error restarting dev server: {e}")
         return None
-
 
 def _install_package(sandbox: Sandbox, package_name: str) -> bool:
     """Install a single package with enhanced verification"""
@@ -848,6 +847,7 @@ def _verify_css_content(sandbox: Sandbox) -> bool:
 
 
 # Main function
+# Main function
 def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
     """Apply Sandbox Node with SESSION-BASED sandbox management."""
     print("--- Running Apply Sandbox Node (Optimized) ---")
@@ -898,11 +898,20 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 final_url = _start_dev_server(sandbox, port=port)
                 if not final_url:
                     final_url = _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
+            
+            # CRITICAL: If all restart attempts fail, stop the process
             if not final_url:
-                raise RuntimeError("Failed to restart dev server after correction")
+                print("❌ All restart attempts failed - stopping correction process")
+                ctx["sandbox_result"] = {
+                    "success": False,
+                    "error": "Failed to restart dev server after correction",
+                    "details": "Correction process stopped due to server restart failures"
+                }
+                state["context"] = ctx
+                return state
         
         else:
-            print("🆕 INITIAL DEPLOYMENT MODE...")
+            print("�� INITIAL DEPLOYMENT MODE...")
             
             try:
                 sandbox.set_timeout(sandbox_timeout)

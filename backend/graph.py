@@ -30,18 +30,18 @@ def route_after_validation_local(state: GraphState) -> str:
     ctx["correction_attempts"] = attempts
     ctx["total_attempts"] = total_attempts
 
-    # EMERGENCY EXIT - Force success after too many attempts
-    if total_attempts >= 10:  # Lower threshold
-        print(f"🛑 EMERGENCY EXIT: {total_attempts} total attempts - forcing success")
+    # REDUCE MAX ATTEMPTS: Stop after 3 corrections, 5 total (was 10)
+    if total_attempts >= 5:  # Reduced from 10 to 5
+        print(f" MAX ATTEMPTS REACHED: {total_attempts} total attempts - forcing success")
         ctx["validation_result"] = {
             "success": True,
             "errors": [],
-            "message": "Validation bypassed - too many attempts"
+            "message": "Validation bypassed - max attempts reached"
         }
         return "output"
 
-    # After 3 failed validations, go to schema_extraction
-    if attempts >= 3:
+    # After 2 failed validations, go to schema_extraction (was 3)
+    if attempts >= 2:  # Reduced from 3 to 2
         print(f"🔄 Validation failed {attempts} times - switching to REGENERATE")
         meta = state.get("metadata") or {}
         meta["regenerate"] = True
