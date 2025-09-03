@@ -30,9 +30,16 @@ from langserve import add_routes
 
 app = FastAPI(title="Lovable-like Orchestrator", version="0.5.0")
 
+# Update CORS to allow your Vercel domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # Local development
+        "http://localhost:5173",  # Local Vite
+        "https://growth-99-graph.vercel.app",  # Your Vercel domain
+        "https://*.vercel.app",  # All Vercel subdomains
+        "*"  # Allow all origins (for testing, remove in production)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
