@@ -448,7 +448,7 @@ def _kill_existing_sandbox():
             _global_sandbox_info = None
 
 def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int):
-    """Get or create sandbox with SESSION-BASED freshness."""
+    """Get or create sandbox with SMART management based on correction attempts."""
     global _global_sandbox, _global_sandbox_info, _current_session_id
     
     # Get current session ID with debug info
@@ -460,19 +460,46 @@ def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int)
         _kill_existing_sandbox()
         _current_session_id = current_session
     
-    # TRIGGER 2: Previous validation errors detected
+    # TRIGGER 2: Check if we should create new sandbox based on correction attempts
+    correction_attempts = ctx.get("correction_attempts", 0)
+    total_attempts = ctx.get("total_attempts", 0)
+    is_correction = ctx.get("is_correction", False)
+    
+    # FIX: Add regenerate mode detection
+    is_regenerate_mode = ctx.get("force_regenerate", False) or ctx.get("regenerate", False) or ctx.get("force_new_sandbox", False)
+    
+    # FIX: Force new sandbox when switching to regenerate mode
+    should_create_new_sandbox = False
+    
+    if is_regenerate_mode:
+        print(f"🔄 REGENERATE MODE DETECTED - FORCING NEW SANDBOX")
+        should_create_new_sandbox = True
+    elif correction_attempts >= 2:
+        print(f"🔄 Correction attempts ({correction_attempts}) reached limit - FORCING NEW SANDBOX")
+        should_create_new_sandbox = True
+    elif total_attempts >= 5:
+        print(f"🔄 Total attempts ({total_attempts}) reached limit - FORCING NEW SANDBOX")
+        should_create_new_sandbox = True
+    
+    # If we need new sandbox, kill the old one
+    if should_create_new_sandbox and _global_sandbox is not None:
+        print(" FORCING fresh sandbox due to regenerate mode or too many failed attempts")
+        _kill_existing_sandbox()
+        _global_sandbox = None  # Ensure it's completely cleared
+        _global_sandbox_info = {}
+    
+    # TRIGGER 3: Previous validation errors detected - BUT only if not in correction mode
     validation_result = ctx.get("validation_result", {})
-    if validation_result.get("errors") and _global_sandbox is not None:
+    
+    # FIX: Only kill sandbox if NOT in correction mode and we haven't already decided to create new one
+    if (validation_result.get("errors") and 
+        _global_sandbox is not None and 
+        not is_correction and 
+        not should_create_new_sandbox):
         print("🔥 Previous validation errors detected - creating fresh sandbox")
         _kill_existing_sandbox()
     
-    # TRIGGER 3: Too many correction attempts
-    correction_attempts = ctx.get("correction_attempts", 0)
-    total_attempts = ctx.get("total_attempts", 0)
-    if (correction_attempts >= 2 or total_attempts >= 5) and _global_sandbox is not None:
-        print(f"🔥 Too many attempts ({correction_attempts} corrections, {total_attempts} total) - fresh sandbox")
-        _kill_existing_sandbox()
-    
+    # Now check if we have a working sandbox
     if _global_sandbox is not None:
         try:
             # Enhanced sandbox health check
@@ -501,6 +528,7 @@ def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int)
             _global_sandbox = None
             _global_sandbox_info = {}
     
+    # Create new sandbox if needed
     print("🆕 Creating NEW persistent sandbox...")
     new_sandbox = _create_sandbox_with_timeout(sandbox_timeout)
     
@@ -558,7 +586,7 @@ def _is_project_setup() -> bool:
 
 
 def _apply_file_corrections_only(correction_data: Dict[str, Any]) -> bool:
-    """Apply ONLY file corrections to the existing sandbox."""
+    """Apply ONLY file corrections to the existing sandbox with robust validation."""
     global _global_sandbox
     
     if not _global_sandbox:
@@ -568,6 +596,17 @@ def _apply_file_corrections_only(correction_data: Dict[str, Any]) -> bool:
     try:
         print("🔧 Applying file corrections to existing sandbox...")
         
+        # STEP 1: VALIDATE PROJECT STRUCTURE BEFORE CORRECTIONS
+        if not _validate_project_structure(_global_sandbox):
+            print("❌ Project structure invalid before corrections - cannot proceed")
+            return False
+        
+        # STEP 2: BACKUP CRITICAL FILES
+        backup_files = _backup_critical_files(_global_sandbox)
+        if not backup_files:
+            print("⚠️ Could not backup critical files, proceeding with caution")
+        
+        # STEP 3: APPLY CORRECTIONS WITH VALIDATION
         files_to_correct = correction_data.get("files_to_correct", [])
         for file_correction in files_to_correct:
             file_path = file_correction.get("path", "")
@@ -575,14 +614,28 @@ def _apply_file_corrections_only(correction_data: Dict[str, Any]) -> bool:
             
             if file_path and corrected_content:
                 print(f"   📝 Correcting file: {file_path}")
+                
+                # Ensure proper file path
                 full_path = f"my-app/{file_path}" if not file_path.startswith("my-app/") else file_path
+                
                 try:
+                    # Validate content before writing
+                    if not _validate_file_content(file_path, corrected_content):
+                        print(f"   ⚠️ Content validation failed for {file_path}, skipping")
+                        continue
+                    
                     _global_sandbox.files.write(full_path, corrected_content)
                     print(f"   ✅ Updated: {file_path}")
+                    
                 except Exception as e:
                     print(f"   ❌ Failed to update {file_path}: {e}")
+                    # Restore from backup if available
+                    if backup_files and file_path in backup_files:
+                        _global_sandbox.files.write(full_path, backup_files[file_path])
+                        print(f"   🔄 Restored {file_path} from backup")
                     return False
         
+        # STEP 4: CREATE NEW FILES
         new_files = correction_data.get("new_files", [])
         for file_info in new_files:
             file_path = file_info.get("path", "")
@@ -591,27 +644,61 @@ def _apply_file_corrections_only(correction_data: Dict[str, Any]) -> bool:
             if file_path and content:
                 print(f"   📄 Creating new file: {file_path}")
                 full_path = f"my-app/{file_path}" if not file_path.startswith("my-app/") else file_path
-                _global_sandbox.files.write(full_path, content)
-                print(f"   ✅ Created: {file_path}")
+                
+                try:
+                    _global_sandbox.files.write(full_path, content)
+                    print(f"   ✅ Created: {file_path}")
+                except Exception as e:
+                    print(f"   ❌ Failed to create {file_path}: {e}")
+                    return False
         
-        print("✅ All file corrections applied successfully")
+        # STEP 5: VALIDATE PROJECT STRUCTURE AFTER CORRECTIONS
+        if not _validate_project_structure(_global_sandbox):
+            print("❌ Project structure corrupted after corrections - restoring from backup")
+            if backup_files:
+                _restore_from_backup(_global_sandbox, backup_files)
+                print("🔄 Project restored from backup")
+                return False
+            else:
+                print("❌ No backup available - project corrupted")
+                return False
+        
+        # STEP 6: VALIDATE CRITICAL FILES
+        if not _validate_critical_files(_global_sandbox):
+            print("❌ Critical files corrupted after corrections")
+            return False
+        
+        print("✅ All file corrections applied successfully with validation")
         return True
         
     except Exception as e:
         print(f"❌ Error applying file corrections: {e}")
+        # Restore from backup if available
+        if 'backup_files' in locals() and backup_files:
+            _restore_from_backup(_global_sandbox, backup_files)
+            print("🔄 Project restored from backup after error")
         return False
 
 
-def _restart_dev_server_only(port: int = 5173) -> Optional[str]:
+def _restart_dev_server_only(sandbox: Sandbox) -> Optional[str]:
     """Restart ONLY the dev server in the persistent sandbox, robustly."""
     global _global_sandbox
+    
+    # Add port definition
+    port = int(os.getenv("E2B_VITE_PORT", "5173"))
+    
     if not _global_sandbox:
         print("❌ No persistent sandbox available for dev server restart")
         return None
-
+    
     print("🔄 Restarting dev server in existing sandbox...")
     try:
-        # Validate corrected files (keep existing safety check)
+        # STEP 1: Validate project structure before restart
+        if not _validate_project_structure(_global_sandbox):
+            print("   ❌ Project structure invalid - cannot restart")
+            return None
+        
+        # STEP 2: Validate corrected files
         print("   🔍 Validating corrected files before restart...")
         try:
             app_content = _global_sandbox.files.read("my-app/src/App.jsx")
@@ -622,7 +709,7 @@ def _restart_dev_server_only(port: int = 5173) -> Optional[str]:
             print("   ⚠️ Error reading App.jsx, creating fallback")
             _create_fallback_react_app(_global_sandbox)
 
-        # Stop any existing servers (use bash -lc)
+        # STEP 3: Stop existing servers
         print("   🛑 Stopping existing dev server...")
         _global_sandbox.commands.run("bash -lc \"pkill -f 'npm run dev' || true\"", timeout=10)
         _global_sandbox.commands.run("bash -lc \"pkill -f 'vite' || true\"", timeout=10)
@@ -630,18 +717,18 @@ def _restart_dev_server_only(port: int = 5173) -> Optional[str]:
         import time as _t
         _t.sleep(2)
 
-        # Clear caches/logs
+        # STEP 4: Clear caches
         _global_sandbox.commands.run("bash -lc \"cd my-app && rm -rf .vite node_modules/.vite dev.log || true\"", timeout=10)
 
-        # Start dev server (same way as initial start)
+        # STEP 5: Start dev server
         print("   🚀 Starting dev server...")
         _global_sandbox.commands.run(
             f"bash -lc \"cd my-app && nohup npm run dev -- --host 0.0.0.0 --port {port} > dev.log 2>&1 &\"",
             timeout=30,
         )
 
-        # REDUCE WAIT ATTEMPTS: Wait only 5 times instead of 30
-        if not _wait_for_http(_global_sandbox, port, max_attempts=5):  # Reduced from 30 to 5
+        # STEP 6: Wait for server with reduced attempts
+        if not _wait_for_http(_global_sandbox, port, max_attempts=5):
             print("   ⚠️ Dev server did not become ready after restart")
             return None
 
@@ -850,6 +937,9 @@ def _verify_css_content(sandbox: Sandbox) -> bool:
 # Main function
 def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
     """Apply Sandbox Node with SESSION-BASED sandbox management."""
+    # FIX: Correct global declarations (no duplicates)
+    global _global_sandbox, _global_sandbox_info, _current_session_id
+    
     print("--- Running Apply Sandbox Node (Optimized) ---")
 
     ctx = state.get("context", {}) or {}
@@ -862,11 +952,48 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
     ctx["session_id"] = session_id
 
     if not script_to_run:
-        msg = "No E2B script found from generator; cannot proceed."
+        msg = "No script to run in generation result"
         print(f"❌ {msg}")
-        ctx["sandbox_result"] = {"success": False, "error": msg}
-        state["context"] = ctx
-        return state
+        return {"error": msg}
+
+    # FIX: Check if we're in REGENERATE mode (after schema extraction)
+    is_regenerate_mode = ctx.get("force_regenerate", False) or ctx.get("regenerate", False)
+    
+    if is_regenerate_mode:
+        print("🔄 REGENERATE MODE - FORCING NEW SANDBOX for fresh start...")
+        
+        # Force kill existing sandbox
+        if _global_sandbox is not None:
+            print("🔥 Killing old sandbox for regenerate mode")
+            _kill_existing_sandbox()
+            _global_sandbox = None
+            _global_sandbox_info = {}
+        
+        # This will force new sandbox creation
+        ctx["force_new_sandbox"] = True
+    
+    # FIX: For corrections, we need to restart the server, not apply file corrections
+    if is_correction and not is_regenerate_mode:
+        print("🔄 CORRECTION MODE - Restarting Vite server with corrections...")
+        
+        # Get existing sandbox WITHOUT creating new one
+        sandbox = _get_existing_sandbox_only(ctx)
+        if not sandbox:
+            print("❌ No existing sandbox found during correction - cannot proceed")
+            return {"error": "Correction failed - no existing sandbox"}
+        
+        # FIX: Call with correct number of arguments
+        try:
+            restart_result = _restart_dev_server_only(sandbox)  # ✅ Only 1 argument
+            if restart_result:
+                print("✅ Vite server restarted successfully with corrections")
+                return {"success": True, "message": "Corrections applied and server restarted"}
+            else:
+                print("❌ Failed to restart Vite server with corrections")
+                return {"error": "Failed to restart server with corrections"}
+        except Exception as e:
+            print(f"❌ Error restarting Vite server: {e}")
+            return {"error": f"Server restart failed: {e}"}
 
     if not os.getenv("E2B_API_KEY"):
         msg = "E2B_API_KEY is not set; please configure your environment."
@@ -880,17 +1007,22 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         sandbox_timeout = int(os.getenv("E2B_SANDBOX_TIMEOUT", "3600"))
+        
+        # FIX: Mark context as correction mode BEFORE getting sandbox
+        if is_correction:
+            print("🔄 CORRECTION MODE - Using existing sandbox for targeted fixes...")
+            ctx["is_correction"] = True  # MARK AS CORRECTION MODE
+        
+        # Get sandbox (will reuse existing if in correction mode)
         sandbox, newly_created = _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
         
         if is_correction:
-            print("🔄 CORRECTION MODE - Using existing sandbox and applying targeted fixes...")
-            
             correction_data = ctx.get("correction_data", {})
             if correction_data:
                 if not _apply_file_corrections_only(correction_data):
                     raise RuntimeError("Failed to apply file corrections")
                 
-            final_url = _restart_dev_server_only(port)
+            final_url = _restart_dev_server_only(sandbox)  # ✅ Only 1 argument (port)
             if not final_url:
                 print("   ⚠️ Restart failed, trying full start...")
                 public_host = sandbox.get_host(port)
@@ -911,7 +1043,8 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 return state
         
         else:
-            print("�� INITIAL DEPLOYMENT MODE...")
+            # INITIAL DEPLOYMENT MODE - normal flow
+            print(" INITIAL DEPLOYMENT MODE...")
             
             try:
                 sandbox.set_timeout(sandbox_timeout)
@@ -925,7 +1058,7 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 if not _create_fast_vite_project(sandbox):
                     raise RuntimeError("Failed to create the base Vite project.")
                 
-                global _global_sandbox_info
+                
                 if _global_sandbox_info:
                     _global_sandbox_info["project_setup"] = True
             else:
@@ -934,7 +1067,7 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
             # Execute LLM script - ENHANCED ERROR HANDLING
             normalized = _normalize_e2b_api(script_to_run)
             print("Executing generated script to add UI components...")
-            print(f"🔍 Generated script preview (first 1000 chars):\n{normalized[:1000]}...")
+            
             
             # 🚀 NEW: DETECT AND INSTALL DEPENDENCIES BEFORE SCRIPT EXECUTION
             print("🔍 Analyzing script for dependencies...")
@@ -966,22 +1099,22 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     print("❌ No create_react_app function found in generated script")
                     print(f"Available keys in namespace: {list(ns.keys())}")
-                    print("Script content (first 2000 chars):")
-                    print(normalized[:2000])
+                    # print("Script content (first 2000 chars):")
+                    # print(normalized[:2000])
                     
             except SyntaxError as syntax_error:
                 print(f"❌ Script has syntax errors: {syntax_error}")
                 print(f"Error on line {syntax_error.lineno}: {syntax_error.text}")
-                print("Full script content:")
-                print(normalized)
+                # print("Full script content:")
+                # print(normalized)
                 
             except Exception as script_error:
                 print(f"❌ Script execution failed with error: {script_error}")
                 print(f"Error type: {type(script_error).__name__}")
                 import traceback
                 print(f"Traceback: {traceback.format_exc()}")
-                print("Full script content:")
-                print(normalized)
+                # print("Full script content:")
+                # print(normalized)
             
             # Only create fallback if script execution actually failed
             if not script_execution_success:
@@ -1025,7 +1158,7 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
             public_host = sandbox.get_host(port)
             _write_vite_config(sandbox, public_host, port)
 
-            final_url = _start_dev_server(sandbox, port=port)
+            final_url = _start_dev_server(sandbox)
             if final_url is None:
                 final_url = _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
 
@@ -1129,3 +1262,156 @@ export default defineConfig({
     except Exception as e:
         print(f"❌ Error fixing Vite CSS processing: {e}")
         return False
+
+def _validate_project_structure(sandbox: Sandbox) -> bool:
+    """Validate that the project structure is intact."""
+    print("🔍 Validating project structure...")
+    
+    critical_files = [
+        "my-app/package.json",
+        "my-app/src/main.jsx", 
+        "my-app/src/App.jsx",
+        "my-app/src/index.css"
+    ]
+    
+    for file_path in critical_files:
+        try:
+            content = sandbox.files.read(file_path)
+            if not content:
+                print(f"❌ Critical file empty: {file_path}")
+                return False
+        except Exception as e:
+            print(f"❌ Critical file missing: {file_path} - {e}")
+            return False
+    
+    # Check if npm commands work
+    try:
+        result = sandbox.commands.run("cd my-app && npm --version", timeout=10)
+        if result.exit_code != 0:
+            print("❌ npm not working in project directory")
+            return False
+    except Exception as e:
+        print(f"❌ Cannot verify npm: {e}")
+        return False
+    
+    print("✅ Project structure validation passed")
+    return True
+
+def _validate_critical_files(sandbox: Sandbox) -> bool:
+    """Validate that critical files contain valid content."""
+    print("🔍 Validating critical file contents...")
+    
+    try:
+        # Check App.jsx has valid React component
+        app_content = sandbox.files.read("my-app/src/App.jsx")
+        if not app_content or "function " not in app_content or "export default" not in app_content:
+            print("❌ App.jsx is not a valid React component")
+            return False
+        
+        # Check main.jsx has proper imports
+        main_content = sandbox.files.read("my-app/src/main.jsx")
+        if not main_content or "import App" not in main_content:
+            print("❌ main.jsx missing App import")
+            return False
+        
+        # Check package.json has required fields
+        package_content = sandbox.files.read("my-app/package.json")
+        if not package_content or "dependencies" not in package_content:
+            print("❌ package.json missing dependencies")
+            return False
+        
+        print("✅ Critical file validation passed")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error validating critical files: {e}")
+        return False
+
+def _backup_critical_files(sandbox: Sandbox) -> Dict[str, str]:
+    """Backup critical files before making corrections."""
+    print("🔄 Creating backup of critical files...")
+    
+    backup_files = {}
+    critical_files = [
+        "my-app/src/App.jsx",
+        "my-app/src/main.jsx",
+        "my-app/src/index.css",
+        "my-app/package.json"
+    ]
+    
+    for file_path in critical_files:
+        try:
+            content = sandbox.files.read(file_path)
+            if content:
+                backup_files[file_path] = content
+                print(f"   ✅ Backed up: {file_path}")
+        except Exception as e:
+            print(f"   ⚠️ Could not backup {file_path}: {e}")
+    
+    print(f"🔄 Backup created for {len(backup_files)} files")
+    return backup_files
+
+def _restore_from_backup(sandbox: Sandbox, backup_files: Dict[str, str]) -> bool:
+    """Restore project from backup files."""
+    print("🔄 Restoring project from backup...")
+    
+    try:
+        for file_path, content in backup_files.items():
+            try:
+                sandbox.files.write(file_path, content)
+                print(f"   ✅ Restored: {file_path}")
+            except Exception as e:
+                print(f"   ❌ Failed to restore {file_path}: {e}")
+                return False
+        
+        print("✅ Project restored from backup successfully")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error restoring from backup: {e}")
+        return False
+
+def _validate_file_content(file_path: str, content: str) -> bool:
+    """Validate file content before writing."""
+    
+    # Basic content validation
+    if not content or len(content.strip()) < 10:
+        print(f"   ⚠️ Content too short for {file_path}")
+        return False
+    
+    # File-specific validation
+    if file_path.endswith('.jsx') or file_path.endswith('.js'):
+        if "import React" not in content and "React" in content:
+            print(f"   ⚠️ {file_path} missing React import")
+            return False
+        
+        if "export default" not in content and "function " in content:
+            print(f"   ⚠️ {file_path} missing export default")
+            return False
+    
+    elif file_path.endswith('.css'):
+        if "@tailwind" not in content:
+            print(f"   ⚠️ {file_path} missing Tailwind directives")
+            return False
+    
+    return True
+
+def _get_existing_sandbox_only(ctx: Dict[str, Any]):
+    """Get existing sandbox ONLY - never create new one during corrections."""
+    global _global_sandbox, _global_sandbox_info
+    
+    if _global_sandbox is None:
+        return None
+    
+    try:
+        # Quick health check
+        test_result = _global_sandbox.commands.run("echo 'test'", timeout=5)
+        if test_result and test_result.stdout:
+            sandbox_id = getattr(_global_sandbox, "id", "unknown")
+            print(f"✅ Using existing sandbox for corrections: {sandbox_id}")
+            return _global_sandbox
+    except Exception as e:
+        print(f"⚠️ Existing sandbox is not healthy: {e}")
+        return None
+    
+    return None

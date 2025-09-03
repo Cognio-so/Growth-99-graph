@@ -586,90 +586,117 @@ def _parse_build_errors_from_devlog(sandbox) -> List[Dict[str, Any]]:
     return errors
 
 def _capture_generated_files_for_correction(ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """Capture the actual generated files for targeted correction."""
+    """Capture ALL generated files for comprehensive correction."""
     try:
-        # Import the global sandbox reference
         from nodes.apply_to_Sandbox_node import _global_sandbox
         
-        # Collect target files from validation errors
-        val = ctx.get("validation_result", {}) or {}
-        err_list = val.get("errors", []) or []
-        dynamic_targets = set()
-        missing_components = set()
-
-        for e in err_list:
-            if isinstance(e, dict):
-                fp = e.get("file")
-                if isinstance(fp, str) and fp.startswith("src/"):
-                    dynamic_targets.add(fp)
-                mp = e.get("missing_component_path") or e.get("missing_file")
-                if isinstance(mp, str) and mp.startswith("src/"):
-                    missing_components.add(mp)
-
-        # Default core files
-        default_targets = {"src/App.jsx", "src/index.css"}
-        target_files = sorted(default_targets.union(dynamic_targets).union(missing_components))
-
         if _global_sandbox:
-            print("📁 Capturing files from persistent sandbox for correction...")
+            print("📁 Capturing ALL generated files from persistent sandbox for correction...")
             
             files_content: Dict[str, str] = {}
-            for file_path in target_files:
+            
+            # CAPTURE ALL CRITICAL FILES
+            critical_files = [
+                "src/App.jsx", "src/main.jsx", "src/index.css"
+            ]
+            
+            for file_path in critical_files:
                 try:
-                    full_path = f"my-app/{file_path}" if not file_path.startswith("my-app/") else file_path
+                    full_path = f"my-app/{file_path}"
                     content = _global_sandbox.files.read(full_path)
                     if content:
                         files_content[file_path] = content
-                        print(f"   ✅ Captured: {file_path}")
-                    else:
-                        # Mark missing files explicitly (to be created by correction)
-                        if file_path not in files_content:
-                            files_content[file_path] = ""
-                            print(f"   ❓ Will create missing file: {file_path}")
+                        print(f"   ✅ Captured critical: {file_path}")
                 except Exception:
-                    # If read fails, mark as missing to be created
                     files_content[file_path] = ""
-                    print(f"   ❓ Will create missing file: {file_path}")
+                    print(f"   ❓ Will create missing: {file_path}")
             
+            # CAPTURE ALL COMPONENT FILES
+            try:
+                ls_result = _global_sandbox.commands.run("find my-app/src/components -name '*.jsx' -o -name '*.js'", timeout=10)
+                if ls_result.stdout:
+                    component_files = ls_result.stdout.strip().split('\n')
+                    for file_path in component_files:
+                        if file_path and "my-app/" in file_path:
+                            relative_path = file_path.replace("my-app/", "")
+                            try:
+                                content = _global_sandbox.files.read(file_path)
+                                if content:
+                                    files_content[relative_path] = content
+                                    print(f"   ✅ Captured component: {relative_path}")
+                            except Exception:
+                                print(f"   ⚠️ Could not capture: {relative_path}")
+            except Exception:
+                print("   ⚠️ Could not scan components directory")
+            
+            # CAPTURE CONFIGURATION FILES
+            config_files = [
+                "vite.config.js", "tailwind.config.js", "postcss.config.js", "index.html"
+            ]
+            
+            for file_path in config_files:
+                try:
+                    full_path = f"my-app/{file_path}"
+                    content = _global_sandbox.files.read(full_path)
+                    if content:
+                        files_content[file_path] = content
+                        print(f"   ✅ Captured config: {file_path}")
+                except Exception:
+                    print(f"   ⚠️ Could not capture config: {file_path}")
+            
+            # CAPTURE PACKAGE.JSON (CRITICAL)
+            try:
+                package_content = _global_sandbox.files.read("my-app/package.json")
+                if package_content:
+                    files_content["package.json"] = package_content
+                    print(f"   ✅ Captured: package.json")
+                else:
+                    files_content["package.json"] = ""
+                    print(f"   ❓ Will recreate: package.json")
+            except Exception:
+                files_content["package.json"] = ""
+                print(f"   ❓ Will recreate: package.json")
+            
+            print(f"📁 Comprehensive capture complete: {len(files_content)} files")
             return {
                 "files_content": files_content,
                 "target_files": list(files_content.keys()),
-                "missing_components": list(missing_components),
                 "sandbox_available": True
             }
         
-        # Fallback: use the generated script
-        generation_result = ctx.get("generation_result", {})
-        generated_script = generation_result.get("e2b_script", "")
-        
-        return {
-            "generated_script": generated_script,
-            "target_files": list(target_files) or ["src/App.jsx"],
-            "missing_components": list(missing_components),
-            "sandbox_available": False
-        }
+        # Fallback logic remains the same...
         
     except Exception as e:
         print(f"⚠️ Could not capture files for correction: {e}")
         return {}
 
-def route_after_analysis(state: Dict[str, Any]) -> str:
-    """Route after code analysis - check if we need full regeneration after repeated failures."""
+def route_after_validation_local(state: Dict[str, Any]) -> str:
     ctx = state.get("context", {})
-    attempts = ctx.get("correction_attempts", 0)
+    vr = ctx.get("validation_result", {})
     
-    # After 3 failed validation attempts, switch to regenerate mode
-    if attempts >= 3:
-        print(f"🔄 Too many correction attempts ({attempts}) - switching to REGENERATE mode")
-        # Force full regeneration on next generator run
-        ctx["force_regeneration"] = True
-        # Emulate "Regenerate" button -> make schema_extraction pick a random schema
-        meta = state.get("metadata") or {}
-        meta["regenerate"] = True
-        state["metadata"] = meta
-        # Reset attempts to avoid immediate re-trigger loops
+    if vr.get("success"):
         ctx["correction_attempts"] = 0
-        return "generator"
+        ctx["total_attempts"] = 0  # Reset total counter
+        return "output"
+
+    attempts = int(ctx.get("correction_attempts", 0)) + 1
+    total_attempts = int(ctx.get("total_attempts", 0)) + 1
+    ctx["correction_attempts"] = attempts
+    ctx["total_attempts"] = total_attempts
+
+    # FIX: Check if we should switch to schema extraction
+    if vr.get("switch_to_schema"):
+        print(f"🔄 Switching to SCHEMA EXTRACTION after {attempts} failed corrections")
+        ctx["correction_attempts"] = 0  # Reset for fresh start
+        return "schema_extraction"  # Go to schema extraction instead of code analysis
     
-    print(f"🔄 Sending to generator for correction (attempt #{attempts})")
-    return "generator"
+    # Normal correction flow
+    if attempts <= 2:
+        print(f"❌ Validation failed - sending to code analysis (attempt #{attempts})")
+        return "code_analysis"
+    elif total_attempts >= 5:
+        print(f" MAX ATTEMPTS REACHED: {total_attempts} total attempts - forcing success")
+        return "output"
+    else:
+        print(f"🔄 Validation failed {attempts} times - switching to REGENERATE")
+        return "schema_extraction"

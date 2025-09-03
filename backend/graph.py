@@ -20,6 +20,7 @@ from observability import trace_node
 def route_after_validation_local(state: GraphState) -> str:
     ctx = state.get("context", {})
     vr = ctx.get("validation_result", {})
+    
     if vr.get("success"):
         ctx["correction_attempts"] = 0
         ctx["total_attempts"] = 0  # Reset total counter
@@ -30,28 +31,22 @@ def route_after_validation_local(state: GraphState) -> str:
     ctx["correction_attempts"] = attempts
     ctx["total_attempts"] = total_attempts
 
-    # REDUCE MAX ATTEMPTS: Stop after 3 corrections, 5 total (was 10)
-    if total_attempts >= 5:  # Reduced from 10 to 5
+    # FIX: Check if we should switch to schema extraction
+    if vr.get("switch_to_schema"):
+        print(f"🔄 Switching to SCHEMA EXTRACTION after {attempts} failed corrections")
+        ctx["correction_attempts"] = 0  # Reset for fresh start
+        return "schema_extraction"  # Go to schema extraction instead of code analysis
+    
+    # Normal correction flow
+    if attempts <= 2:
+        print(f"❌ Validation failed - sending to code analysis (attempt #{attempts})")
+        return "code_analysis"
+    elif total_attempts >= 5:
         print(f" MAX ATTEMPTS REACHED: {total_attempts} total attempts - forcing success")
-        ctx["validation_result"] = {
-            "success": True,
-            "errors": [],
-            "message": "Validation bypassed - max attempts reached"
-        }
         return "output"
-
-    # After 2 failed validations, go to schema_extraction (was 3)
-    if attempts >= 2:  # Reduced from 3 to 2
+    else:
         print(f"🔄 Validation failed {attempts} times - switching to REGENERATE")
-        meta = state.get("metadata") or {}
-        meta["regenerate"] = True
-        state["metadata"] = meta
-        ctx["force_regeneration"] = False
-        ctx["correction_attempts"] = 0  # Reset local but keep total
         return "schema_extraction"
-
-    print(f"❌ Validation failed - sending to code analysis (attempt #{attempts})")
-    return "code_analysis"
 
 def route_after_user(state: GraphState) -> str:
     return "doc_extraction" if state.get("doc") else "analyze_intent"
@@ -114,11 +109,7 @@ def build_graph():
     # Code analysis routing: back to generator for correction or output if max attempts
         # Code analysis routing: back to generator for correction
     # Code analysis routing: conditional to either generator or schema_extraction
-    g.add_conditional_edges("code_analysis", route_after_analysis, {
-        "generator": "generator",
-        "schema_extraction": "schema_extraction"
-    })
-    
+    g.add_edge("code_analysis", "generator")
     # Final end point
     g.add_edge("output", END)
     
