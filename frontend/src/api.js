@@ -2,7 +2,7 @@
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) ||
-  "http://localhost:8000";
+  "https://your-railway-url.railway.app"; // Update this line
 
 export async function sendQuery({ session_id, text, llm_model, file, regenerate }) {
   const form = new FormData();
@@ -12,7 +12,10 @@ export async function sendQuery({ session_id, text, llm_model, file, regenerate 
   if (file) form.append("file", file, file.name);
   if (typeof regenerate !== "undefined") form.append("regenerate", String(!!regenerate));
 
-  const res = await fetch(`${API_BASE}/api/query`, { method: "POST", body: form });
+  // FIX: Ensure no double slashes
+  const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/query`;
+  const res = await fetch(apiUrl, { method: "POST", body: form });
+  
   if (!res.ok) {
     const msg = await res.text().catch(() => res.statusText);
     throw new Error(msg || "Request failed");
