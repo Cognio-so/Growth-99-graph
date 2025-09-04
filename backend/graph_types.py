@@ -10,3 +10,6 @@ class GraphState(TypedDict, total=False):
     messages: List[Dict[str, Any]]
     metadata: Dict[str, Any]
     context: Dict[str, Any]
+    # Enhanced context for editing support
+    existing_code: Optional[str]          # Existing code context for edits
+    edit_history: Optional[List[Dict[str, Any]]]  # History of edits made

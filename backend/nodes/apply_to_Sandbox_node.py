@@ -465,16 +465,10 @@ def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int)
     total_attempts = ctx.get("total_attempts", 0)
     is_correction = ctx.get("is_correction", False)
     
-    # FIX: Add regenerate mode detection
-    is_regenerate_mode = ctx.get("force_regenerate", False) or ctx.get("regenerate", False) or ctx.get("force_new_sandbox", False)
-    
     # FIX: Force new sandbox when switching to regenerate mode
     should_create_new_sandbox = False
     
-    if is_regenerate_mode:
-        print(f"🔄 REGENERATE MODE DETECTED - FORCING NEW SANDBOX")
-        should_create_new_sandbox = True
-    elif correction_attempts >= 2:
+    if correction_attempts >= 2:
         print(f"🔄 Correction attempts ({correction_attempts}) reached limit - FORCING NEW SANDBOX")
         should_create_new_sandbox = True
     elif total_attempts >= 5:
@@ -483,7 +477,7 @@ def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int)
     
     # If we need new sandbox, kill the old one
     if should_create_new_sandbox and _global_sandbox is not None:
-        print(" FORCING fresh sandbox due to regenerate mode or too many failed attempts")
+        print("�� FORCING fresh sandbox due to too many failed attempts")
         _kill_existing_sandbox()
         _global_sandbox = None  # Ensure it's completely cleared
         _global_sandbox_info = {}
@@ -936,16 +930,14 @@ def _verify_css_content(sandbox: Sandbox) -> bool:
 # Main function
 # Main function
 def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Apply Sandbox Node with SESSION-BASED sandbox management."""
-    # FIX: Correct global declarations (no duplicates)
-    global _global_sandbox, _global_sandbox_info, _current_session_id
-    
-    print("--- Running Apply Sandbox Node (Optimized) ---")
+    """Apply Sandbox Node with SESSION-BASED sandbox management and EDIT support."""
+    print("--- Running Apply Sandbox Node (Enhanced with Edit Support) ---")
 
     ctx = state.get("context", {}) or {}
     gen_result = ctx.get("generation_result", {}) or {}
     script_to_run = gen_result.get("e2b_script")
     is_correction = gen_result.get("is_correction", False)
+    is_edit = gen_result.get("is_edit", False)
     
     # ADD SESSION ID TO CONTEXT
     session_id = state.get("session_id") or state.get("metadata", {}).get("session_id", "default")
@@ -956,24 +948,61 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"❌ {msg}")
         return {"error": msg}
 
-    # FIX: Check if we're in REGENERATE mode (after schema extraction)
-    is_regenerate_mode = ctx.get("force_regenerate", False) or ctx.get("regenerate", False)
-    
-    if is_regenerate_mode:
-        print("🔄 REGENERATE MODE - FORCING NEW SANDBOX for fresh start...")
+    # HANDLE EDIT MODE - FIX: Check is_edit first
+    if is_edit:
+        print("🔄 EDIT MODE - Applying targeted changes to existing application...")
         
-        # Force kill existing sandbox
-        if _global_sandbox is not None:
-            print("🔥 Killing old sandbox for regenerate mode")
-            _kill_existing_sandbox()
-            _global_sandbox = None
-            _global_sandbox_info = {}
+        # Get existing sandbox WITHOUT creating new one
+        sandbox = _get_existing_sandbox_only(ctx)
+        if not sandbox:
+            print("❌ No existing sandbox found during edit - cannot proceed")
+            print("   This usually means the initial generation didn't complete successfully")
+            return {"error": "Edit failed - no existing sandbox. Please generate the initial design first."}
         
-        # This will force new sandbox creation
-        ctx["force_new_sandbox"] = True
+        # Apply edit changes
+        correction_data = ctx.get("correction_data", {})
+        if correction_data:
+            if not _apply_edit_changes(correction_data):
+                raise RuntimeError("Failed to apply edit changes")
+            
+            # Restart dev server with edits
+            final_url = _restart_dev_server_only(sandbox)
+            if not final_url:
+                print("   ⚠️ Restart failed, trying full start...")
+                port = int(os.getenv("E2B_VITE_PORT", "5173"))
+                public_host = sandbox.get_host(port)
+                _write_vite_config(sandbox, public_host, port)
+                final_url = _start_dev_server(sandbox, port=port)
+                if not final_url:
+                    final_url = _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
+            
+            if not final_url:
+                print("❌ All restart attempts failed - stopping edit process")
+                ctx["sandbox_result"] = {
+                    "success": False,
+                    "error": "Failed to restart dev server after edits",
+                    "details": "Edit process stopped due to server restart failures"
+                }
+                state["context"] = ctx
+                return state
+            
+            # Success
+            sandbox_id = getattr(sandbox, "id", "unknown")
+            ctx["sandbox_result"] = {
+                "success": True,
+                "url": final_url,
+                "port": int(os.getenv("E2B_VITE_PORT", "5173")),
+                "sandbox_id": sandbox_id,
+                "message": "Edit changes applied successfully and server restarted"
+            }
+            state["context"] = ctx
+            return state
+        else:
+            print("❌ No correction data found for edit mode")
+            return {"error": "Edit failed - no correction data available"}
     
-    # FIX: For corrections, we need to restart the server, not apply file corrections
-    if is_correction and not is_regenerate_mode:
+    # HANDLE CORRECTION MODE (existing logic)
+    elif is_correction:
         print("🔄 CORRECTION MODE - Restarting Vite server with corrections...")
         
         # Get existing sandbox WITHOUT creating new one
@@ -982,9 +1011,8 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
             print("❌ No existing sandbox found during correction - cannot proceed")
             return {"error": "Correction failed - no existing sandbox"}
         
-        # FIX: Call with correct number of arguments
         try:
-            restart_result = _restart_dev_server_only(sandbox)  # ✅ Only 1 argument
+            restart_result = _restart_dev_server_only(sandbox)
             if restart_result:
                 print("✅ Vite server restarted successfully with corrections")
                 return {"success": True, "message": "Corrections applied and server restarted"}
@@ -1058,7 +1086,7 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 if not _create_fast_vite_project(sandbox):
                     raise RuntimeError("Failed to create the base Vite project.")
                 
-                
+                global _global_sandbox_info
                 if _global_sandbox_info:
                     _global_sandbox_info["project_setup"] = True
             else:
@@ -1415,3 +1443,107 @@ def _get_existing_sandbox_only(ctx: Dict[str, Any]):
         return None
     
     return None
+
+def _apply_edit_changes(correction_data: Dict[str, Any]) -> bool:
+    """Apply edit changes to the existing sandbox with robust validation."""
+    global _global_sandbox
+    
+    if not _global_sandbox:
+        print("❌ No persistent sandbox available for edits")
+        return False
+    
+    try:
+        print("🔧 Applying edit changes to existing sandbox...")
+        
+        # STEP 1: VALIDATE PROJECT STRUCTURE BEFORE EDITS
+        if not _validate_project_structure(_global_sandbox):
+            print("❌ Project structure invalid before edits - cannot proceed")
+            return False
+        
+        # STEP 2: BACKUP CRITICAL FILES
+        backup_files = _backup_critical_files(_global_sandbox)
+        if not backup_files:
+            print("⚠️ Could not backup critical files, proceeding with caution")
+        
+        # STEP 3: APPLY EDITS WITH VALIDATION
+        files_to_correct = correction_data.get("files_to_correct", [])
+        print(f"📝 Applying edits to {len(files_to_correct)} files...")
+        
+        for file_correction in files_to_correct:
+            file_path = file_correction.get("path", "")
+            corrected_content = file_correction.get("corrected_content", "")
+            
+            if file_path and corrected_content:
+                print(f"   📝 Editing file: {file_path}")
+                
+                # Ensure proper file path
+                full_path = f"my-app/{file_path}" if not file_path.startswith("my-app/") else file_path
+                
+                try:
+                    # Validate content before writing
+                    if not _validate_file_content(file_path, corrected_content):
+                        print(f"   ⚠️ Content validation failed for {file_path}, skipping")
+                        continue
+                    
+                    # CRITICAL: Write the modified content
+                    _global_sandbox.files.write(full_path, corrected_content)
+                    print(f"   ✅ Updated: {file_path}")
+                    
+                    # Verify the change was applied
+                    verify_content = _global_sandbox.files.read(full_path)
+                    if verify_content == corrected_content:
+                        print(f"   ✅ Verified: {file_path} updated successfully")
+                    else:
+                        print(f"   ⚠️ Warning: {file_path} content may not have updated correctly")
+                    
+                except Exception as e:
+                    print(f"   ❌ Failed to update {file_path}: {e}")
+                    # Restore from backup if available
+                    if backup_files and file_path in backup_files:
+                        _global_sandbox.files.write(full_path, backup_files[file_path])
+                        print(f"   🔄 Restored {file_path} from backup")
+                    return False
+        
+        # STEP 4: CREATE NEW FILES (if any)
+        new_files = correction_data.get("new_files", [])
+        for file_info in new_files:
+            file_path = file_info.get("path", "")
+            content = file_info.get("content", "")
+            
+            if file_path and content:
+                print(f"   📄 Creating new file: {file_path}")
+                full_path = f"my-app/{file_path}" if not file_path.startswith("my-app/") else file_path
+                
+                try:
+                    _global_sandbox.files.write(full_path, content)
+                    print(f"   ✅ Created: {file_path}")
+                except Exception as e:
+                    print(f"   ❌ Failed to create {file_path}: {e}")
+                    return False
+        
+        # STEP 5: VALIDATE PROJECT STRUCTURE AFTER EDITS
+        if not _validate_project_structure(_global_sandbox):
+            print("❌ Project structure corrupted after edits - restoring from backup")
+            if backup_files:
+                _restore_from_backup(_global_sandbox, backup_files)
+                print("🔄 Project restored from backup")
+                return False
+            else:
+                print("❌ No backup available - project corrupted")
+                return False
+        
+        # STEP 6: VALIDATE CRITICAL FILES
+        if not _validate_critical_files(_global_sandbox):
+            print("❌ Critical files corrupted after edits")
+            return False
+        
+        print("✅ All edit changes applied successfully with validation")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error applying edit changes: {e}")
+        # Restore from backup if available
+        if 'backup_files' in locals() and backup_files:
+            _restore_from_backup(_global_sandbox, backup_files)
+            print("🔄 Project restored from backup after error")
+        return False

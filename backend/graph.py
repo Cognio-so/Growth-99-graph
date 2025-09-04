@@ -54,7 +54,7 @@ def route_after_user(state: GraphState) -> str:
 def build_graph():
     g = StateGraph(GraphState)
 
-    # Add all nodes including the new validation loop nodes
+    # Add all nodes including the enhanced edit analyzer
     g.add_node("user_node",          trace_node(user_node, "user_node"))
     g.add_node("doc_extraction",     trace_node(doc_extraction, "doc_extraction"))
     g.add_node("analyze_intent",     trace_node(analyze_intent, "analyze_intent"))
@@ -65,7 +65,7 @@ def build_graph():
     g.add_node("generator",          trace_node(generator, "generator"))
     g.add_node("apply_sandbox",      trace_node(apply_sandbox, "apply_sandbox"))
     
-    # NEW: Add validation loop nodes
+    # Validation loop nodes
     g.add_node("validation",         trace_node(validate_generated_code, "validation"))
     g.add_node("code_analysis",      trace_node(analyze_and_fix_code, "code_analysis"))
     g.add_node("output",             trace_node(output_result, "output"))
@@ -91,25 +91,24 @@ def build_graph():
 
     g.add_edge("schema_extraction", "generator")
     g.add_edge("url_extraction", "generator")
+    
+    # ENHANCED: Edit analyzer now goes to generator for targeted changes
     g.add_edge("edit_analyzer", "generator")
     
-    # NEW: Validation loop implementation
+    # Validation loop implementation
     g.add_edge("generator", "apply_sandbox")
     g.add_edge("apply_sandbox", "validation")
     
     # Validation routing: success -> output, failure -> code_analysis
-       # Validation routing: success -> output, failure -> code_analysis
-    # Validation routing: success -> output, failure -> code_analysis, or schema_extraction after 3 fails
     g.add_conditional_edges("validation", route_after_validation_local, {
         "output": "output",
         "code_analysis": "code_analysis",
         "schema_extraction": "schema_extraction"
     })
     
-    # Code analysis routing: back to generator for correction or output if max attempts
-        # Code analysis routing: back to generator for correction
-    # Code analysis routing: conditional to either generator or schema_extraction
+    # Code analysis routing: back to generator for correction
     g.add_edge("code_analysis", "generator")
+    
     # Final end point
     g.add_edge("output", END)
     

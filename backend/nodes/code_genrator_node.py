@@ -37,11 +37,51 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     user_text = gi.get("user_text", "No user text provided.")
     json_schema = gi.get("json_schema")
     
-    prompt_parts = [f"## USER REQUEST\n{user_text}"]
+    prompt_parts = [
+        "## USER PROMPT - YOUR DESIGN DIRECTION",
+        f"{user_text}",
+        "",
+        "## 🎨 THEME APPLICATION RULES:",
+        "**GLOBAL THEME**: When user mentions a theme, apply it to the ENTIRE application",
+        "**YOU CHOOSE COLORS**: Decide what colors work best for the requested theme",
+        "**THEME CONSISTENCY**: Use consistent colors from the same theme family throughout",
+        "**SECTION OVERRIDE**: Only change theme for specific sections if user explicitly requests it",
+        "**VISUAL COHESION**: Maintain consistent design by using the same theme palette",
+        "",
+        "## 🎨 THEME IMPLEMENTATION PROCESS:",
+        "1. **User mentions a theme** - interpret what they want",
+        "2. **YOU choose appropriate colors** - decide what works best",
+        "3. **Apply consistently** - use the same theme across all components",
+        "4. **Ensure accessibility** - maintain proper contrast ratios",
+        "5. **Maintain visual harmony** - create cohesive design",
+        "",
+        "**IMPORTANT**: You are the designer - choose colors that make sense for the theme!",
+        "",
+        "## JSON SCHEMA - COMPONENT STRUCTURE & DATA",
+        "**MANDATORY**: You MUST use this schema for component organization and data flow.",
+        ""
+    ]
     
     if json_schema and isinstance(json_schema, dict):
         schema_str = json.dumps(json_schema, indent=2)
-        prompt_parts.append(f"## JSON SCHEMA\nThis schema defines the data structure you must use:\n```json\n{schema_str}\n```")
+        prompt_parts.append(f"```json\n{schema_str}\n```")
+    else:
+        prompt_parts.append("No JSON schema provided - use standard component structure.")
+    
+    prompt_parts.extend([
+        "",
+        "## 🎨 UI GUIDELINES - DESIGN PRINCIPLES & POLISH",
+        "**MANDATORY**: You MUST use the UI guidelines for layout, spacing, typography, and design principles.",
+        "",
+        "## 🔄 MANDATORY THREE-INPUT SYNTHESIS",
+        "**CRITICAL**: You MUST combine ALL THREE inputs together:",
+        "1. 🎯 USER PROMPT - Implement specific requirements (themes, colors, features) GLOBALLY",
+        "2. 📋 JSON SCHEMA - Use for component structure and data organization",
+        "3. 🎨 UI GUIDELINES - Apply for design principles and professional polish",
+        "4. 🔄 SYNTHESIS - Combine all three for cohesive, beautiful design",
+        "",
+        "**THEME IMPLEMENTATION**: Apply user's theme to the ENTIRE application. YOU choose the specific colors!**"
+    ])
     
     return "\n\n".join(prompt_parts)
 
@@ -100,50 +140,179 @@ Generate ONLY the corrected file content for the problematic files.
     
     return correction_prompt
 
+def _build_edit_prompt(ctx: Dict[str, Any]) -> str:
+    """Build a targeted edit prompt when in editing mode."""
+    edit_analysis = ctx.get("edit_analysis", {})
+    user_text = ctx.get("user_text", "")
+    existing_code = ctx.get("existing_code", "")
+    
+    if not edit_analysis.get("analysis_success"):
+        return ""
+    
+    edit_prompt = f"""
+## EDIT MODE - TARGETED CHANGES REQUIRED
+
+You are in EDIT MODE. The user wants to make specific changes to an existing React application.
+DO NOT regenerate the entire application. Make ONLY the requested changes.
+
+### USER EDIT REQUEST:
+{user_text}
+
+### EDIT ANALYSIS:
+- **Edit Type**: {edit_analysis.get('edit_type', 'modify_existing')}
+- **Target Files**: {', '.join(edit_analysis.get('target_files', []))}
+- **Changes Description**: {edit_analysis.get('changes_description', '')}
+- **Specific Requirements**: {chr(10).join(f"- {req}" for req in edit_analysis.get('specific_requirements', []))}
+- **Preserve Existing**: {edit_analysis.get('preserve_existing', True)}
+- **Context Needed**: {edit_analysis.get('context_needed', '')}
+
+### 🚨 CRITICAL EDITING INSTRUCTIONS:
+1. **DO NOT regenerate the entire application**
+2. **Make ONLY the specific changes requested**
+3. **Preserve all existing functionality unless explicitly asked to change it**
+4. **Focus on the target files identified in the analysis**
+5. **Ensure the changes integrate seamlessly with existing code**
+6. **Maintain the same code style and structure**
+
+### EXISTING CODE CONTEXT (MODIFY THIS CODE):
+{existing_code}
+
+###  OUTPUT FORMAT - EXACT STRUCTURE REQUIRED:
+You MUST return ONLY a Python dictionary with this EXACT structure:
+
+```python
+{{
+    "files_to_correct": [
+        {{
+            "path": "src/App.jsx",
+            "corrected_content": "// COMPLETE modified file content here"
+        }},
+        {{
+            "path": "src/components/Component.jsx",
+            "corrected_content": "// COMPLETE modified file content here"
+        }}
+    ],
+    "new_files": [
+        {{
+            "path": "src/components/NewComponent.jsx",
+            "content": "// COMPLETE new file content here"
+        }}
+    ]
+}}
+```
+
+### 🔧 IMPORTANT EDITING RULES:
+- **MODIFY EXISTING FILES**: Take the existing code above and make ONLY the requested changes
+- **PRESERVE STRUCTURE**: Keep the same component structure, imports, and layout
+- **TARGETED CHANGES**: Only change what's needed for the requested modifications
+- **NO REGENERATION**: Do not create new components unless explicitly requested
+- **MAINTAIN FUNCTIONALITY**: Keep all existing features and interactions
+- **EXACT FORMAT**: Return ONLY the Python dictionary, no explanations or markdown
+
+### 📝 EXAMPLE:
+If user says "add a contact form", you should:
+1. Find the existing App.jsx in the code above
+2. Add the contact form component import and usage
+3. Create a new ContactForm.jsx component
+4. Return the modified App.jsx and new ContactForm.jsx in the exact format above
+
+###  CRITICAL:
+- Return ONLY the Python dictionary
+- No markdown formatting
+- No explanations
+- No additional text
+- Just the dictionary structure
+
+Generate ONLY the corrected file content for the files that need changes.
+"""
+    
+    return edit_prompt
+
 
 def generator(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Calls the LLM to generate a Python script compatible with the E2B Sandbox SDK.
-    Now handles both initial generation and targeted error corrections.
+    Calls the LLM to generate code or make targeted edits.
+    Now handles both initial generation and targeted editing with enhanced validation.
     """
     print("--- Running Generator Node ---")
     ctx = state.get("context", {})
     gi = ctx.get("generator_input", {})
     
-    # Check if we need to force full regeneration after repeated failures
-    if ctx.get("force_regeneration", False):
-        print(" FORCE REGENERATION MODE - Previous corrections failed repeatedly")
-        print("🆕 Running generator for full code regeneration...")
-        # Clear the flag and proceed with full generation
-        ctx["force_regeneration"] = False
-        ctx["correction_attempts"] = 0
-        return _generate_initial_code(state)
+    # Check if we're in edit mode
+    is_edit_mode = gi.get("is_edit_mode", False)
+    
+    if is_edit_mode:
+        print("🔄 EDIT MODE - Generating targeted changes...")
+        
+        # CRITICAL: Get existing code context for editing
+        existing_code = ctx.get("existing_code", "")
+        if not existing_code or existing_code == "No existing code files found" or existing_code.startswith("Error"):
+            print("❌ No valid existing code context available for editing")
+            print(f"   Context: {existing_code[:100]}...")
+            ctx["generation_result"] = {
+                "error": f"No valid existing code context available for editing: {existing_code}"
+            }
+            state["context"] = ctx
+            return state
+        
+        print(f"📁 Using existing code context: {len(existing_code.split('```')) // 2} files")
+        
+        system_prompt = _load_prompt_template_and_context()
+        edit_prompt = _build_edit_prompt(ctx)
+        user_prompt = f"{edit_prompt}"
+        
+        # Use lower temperature for precise edits
+        model = state.get("llm_model", "groq-default")
+        chat_model = get_chat_model(model, temperature=0.05)
+        
+        print(f"Calling generator LLM for targeted edits...")
+        response = chat_model.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ])
+        
+        # Extract edit data
+        edit_data = _extract_correction_data(response.content)
+        if edit_data:
+            ctx["correction_data"] = edit_data
+            ctx["generation_result"] = {
+                "e2b_script": response.content,
+                "is_correction": True,
+                "is_edit": True,
+                "edit_attempt": 1
+            }
+            print("✅ Targeted edit data generated successfully")
+        else:
+            print("⚠️ Failed to extract edit data, using fallback approach")
+            ctx["generation_result"] = {
+                "e2b_script": response.content,
+                "is_correction": True,
+                "is_edit": True,
+                "edit_attempt": 1
+            }
+        
+        # CRITICAL: Set state and return immediately for edit mode
+        state["context"] = ctx
+        return state
     
     # Check if this is a correction attempt
-    is_correction = ctx.get("code_analysis", {}).get("correction_needed", False)
-    
-    if is_correction:
+    elif ctx.get("code_analysis", {}).get("correction_needed", False):
         print("🔄 Running generator for targeted code correction...")
         system_prompt = _load_prompt_template_and_context()
         correction_prompt = _build_correction_prompt(ctx)
         user_prompt = f"{_build_generator_user_prompt(gi)}\n\n{correction_prompt}"
-    else:
-        print("🆕 Running generator for initial code generation...")
-        system_prompt = _load_prompt_template_and_context()
-        user_prompt = _build_generator_user_prompt(gi)
-
-    # Use Groq by default
-    model = state.get("llm_model", "groq-default") 
-    chat_model = get_chat_model(model, temperature=0.1)  # Lower temperature for corrections
-    
-    print(f"Calling generator LLM (Groq - moonshotai/kimi-k2-instruct)...")
-    response = chat_model.invoke([
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
-    ])
-    
-    if is_correction:
-        # For corrections, extract the correction data structure
+        
+        # Use lower temperature for corrections
+        model = state.get("llm_model", "groq-default")
+        chat_model = get_chat_model(model, temperature=0.1)
+        
+        print(f"Calling generator LLM for code correction...")
+        response = chat_model.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ])
+        
+        # Extract correction data
         correction_data = _extract_correction_data(response.content)
         if correction_data:
             ctx["correction_data"] = correction_data
@@ -160,13 +329,29 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
                 "is_correction": True,
                 "correction_attempt": ctx.get("correction_attempts", 0) + 1
             }
+    
     else:
-        # For initial generation
+        # Initial generation mode
+        print("🆕 Running generator for initial code generation...")
+        system_prompt = _load_prompt_template_and_context()
+        user_prompt = _build_generator_user_prompt(gi)
+        
+        # Use normal temperature for initial generation
+        model = state.get("llm_model", "groq-default")
+        chat_model = get_chat_model(model, temperature=0.1)
+        
+        print(f"Calling generator LLM for initial generation...")
+        response = chat_model.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ])
+        
         ctx["generation_result"] = {
             "e2b_script": response.content,
-            "is_correction": False
+            "is_correction": False,
+            "is_edit": False
         }
-        print("Generator successful. E2B script generated.")
+        print("✅ Initial code generation completed")
     
     state["context"] = ctx
     return state
@@ -175,30 +360,110 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
 def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
     """Extract correction data from LLM response."""
     try:
+        print(f"🔍 Extracting correction data from response...")
+        print(f"   Response length: {len(response_content)} characters")
+        print(f"   Response preview: {response_content[:200]}...")
+        
         # Look for Python dictionary in the response
         import re
         import ast
         
-        # Find Python dictionary pattern
+        # Method 1: Find Python dictionary pattern with ```python blocks
         dict_match = re.search(r'```python\s*(\{.*?\})\s*```', response_content, re.DOTALL)
         if dict_match:
             dict_str = dict_match.group(1)
-            # Parse the dictionary
-            correction_data = ast.literal_eval(dict_str)
-            return correction_data
-        
-        # Alternative: try to find JSON-like structure
-        json_match = re.search(r'\{.*?\}', response_content, re.DOTALL)
-        if json_match:
-            import json
+            print(f"   ✅ Found Python dictionary in code block")
             try:
-                correction_data = json.loads(json_match.group(0))
+                correction_data = ast.literal_eval(dict_str)
+                print(f"   ✅ Successfully parsed Python dictionary")
                 return correction_data
-            except:
-                pass
+            except Exception as parse_error:
+                print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
         
+        # Method 2: Find Python dictionary without code blocks
+        dict_match2 = re.search(r'(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})', response_content, re.DOTALL)
+        if dict_match2:
+            dict_str = dict_match2.group(1)
+            print(f"   ✅ Found Python dictionary without code blocks")
+            try:
+                correction_data = ast.literal_eval(dict_str)
+                print(f"   ✅ Successfully parsed Python dictionary")
+                return correction_data
+            except Exception as parse_error:
+                print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
+        
+        # Method 3: Try to find JSON-like structure
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_content, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            print(f"   ✅ Found JSON-like structure")
+            try:
+                import json
+                correction_data = json.loads(json_str)
+                print(f"   ✅ Successfully parsed JSON")
+                return correction_data
+            except Exception as json_error:
+                print(f"   ❌ Failed to parse JSON: {json_error}")
+        
+        # Method 4: Look for specific patterns in the response
+        if "files_to_correct" in response_content or "corrected_content" in response_content:
+            print(f"   ⚠️ Found edit-related keywords but couldn't extract structured data")
+            print(f"   🔧 Attempting manual extraction...")
+            
+            # Try to manually construct the data structure
+            manual_data = _manual_extract_edit_data(response_content)
+            if manual_data:
+                print(f"   ✅ Manual extraction successful")
+                return manual_data
+        
+        print(f"   ❌ No structured data found in response")
         return None
         
     except Exception as e:
         print(f"⚠️ Error extracting correction data: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def _manual_extract_edit_data(response_content: str) -> Optional[Dict[str, Any]]:
+    """Manually extract edit data when automatic extraction fails."""
+    try:
+        print(f"   🔧 Attempting manual extraction...")
+        
+        # Look for file paths and content patterns
+        import re
+        
+        # Pattern to find file paths and content
+        file_pattern = r'(?:src/[^:\s]+\.(?:jsx?|css))'
+        files_found = re.findall(file_pattern, response_content)
+        
+        if files_found:
+            print(f"   📁 Found potential files: {files_found}")
+            
+            # Try to extract content for each file
+            files_to_correct = []
+            for file_path in set(files_found):
+                # Look for content after the file path
+                content_pattern = rf'{re.escape(file_path)}[:\s]*\n(.*?)(?=\n(?:src/|$))'
+                content_match = re.search(content_pattern, response_content, re.DOTALL)
+                
+                if content_match:
+                    content = content_match.group(1).strip()
+                    if len(content) > 10:  # Minimum content length
+                        files_to_correct.append({
+                            "path": file_path,
+                            "corrected_content": content
+                        })
+                        print(f"   ✅ Extracted content for {file_path}")
+            
+            if files_to_correct:
+                return {
+                    "files_to_correct": files_to_correct,
+                    "new_files": []
+                }
+        
+        return None
+        
+    except Exception as e:
+        print(f"   ❌ Manual extraction failed: {e}")
         return None
