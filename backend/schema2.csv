@@ -1,0 +1,2778 @@
+S.No,URL ,JSON SCHEMA
+1,https://envaesthetics.com/,"```json
+{
+  ""components"": {
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Full-width hero with split background, left side muted gray portrait and right side soft beige background with two women in stylish clothing. Overlayed large serif headline text with accent cursive subheading."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, elegant, uppercase, white"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""subheading"": {
+          ""visual_description"": ""Cursive italic script, soft pink"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""button"": {
+          ""visual_description"": ""Small uppercase sans-serif, centered"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide top and bottom, text overlay with generous whitespace"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""split muted gray and soft beige"",
+        ""text"": ""white and soft pink"",
+        ""accent"": ""light mauve (button)""
+      },
+      ""image_style"": ""high-quality editorial photography, right-aligned subject"",
+      ""other_visual_notes"": ""Button has soft rounded corners""
+    },
+    ""about_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Two-column layout, left side descriptive text block with heading and paragraph, right side stacked portrait images of team members."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif headline with pink accent word, uppercase"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""tight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Sans-serif, soft gray text, left aligned"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""button"": {
+          ""visual_description"": ""Uppercase, mauve background, white text"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide inner spacing"",
+        ""margin"": ""balanced margins between columns""
+      },
+      ""colors"": {
+        ""background"": ""off-white"",
+        ""text"": ""dark charcoal and pink accent"",
+        ""accent"": ""light mauve""
+      },
+      ""image_style"": ""framed portraits, rectangular with spacing"",
+      ""other_visual_notes"": ""Minimalist with soft drop shadows""
+    },
+    ""services_preview"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Four horizontally aligned service cards with images on top, text labels underneath, subtle arrow indicators."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Cursive accent followed by serif uppercase headline"",
+          ""weight"": ""mixed light and bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""Sans-serif small caps for service names"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""spaced"",
+          ""text_transform"": ""capitalize""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""moderate inner padding on cards"",
+        ""margin"": ""even gaps between cards""
+      },
+      ""colors"": {
+        ""background"": ""off-white with subtle pink wash"",
+        ""text"": ""dark charcoal and muted pink"",
+        ""accent"": ""muted rose""
+      },
+      ""image_style"": ""high-resolution lifestyle/service imagery"",
+      ""other_visual_notes"": ""Hover effect implied by arrows""
+    },
+    ""services_list"": {
+      ""type"": ""text_block"",
+      ""description"": ""Full-width dark section with centered heading and two-column list of services with dividers."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif uppercase with pink accent word"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""list_item"": {
+          ""visual_description"": ""Sans-serif, white text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""capitalize""
+        },
+        ""button"": {
+          ""visual_description"": ""Uppercase button, mauve background, centered"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical spacing"",
+        ""margin"": ""balanced centered layout""
+      },
+      ""colors"": {
+        ""background"": ""dark charcoal"",
+        ""text"": ""white and muted pink"",
+        ""accent"": ""light mauve""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""Minimal with focus on text""
+    },
+    ""team_section"": {
+      ""type"": ""profile_card_grid"",
+      ""description"": ""Grid of four profile headshots with names and titles beneath, accented with Instagram icons."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Cursive script for intro, serif bold for main headline"",
+          ""weight"": ""light and bold mix"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""profile_name"": {
+          ""visual_description"": ""Sans-serif bold, black text"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""profile_title"": {
+          ""visual_description"": ""Sans-serif, muted gray, small text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""ample white space around profiles"",
+        ""margin"": ""even spacing between cards""
+      },
+      ""colors"": {
+        ""background"": ""off-white"",
+        ""text"": ""charcoal and muted gray"",
+        ""accent"": ""soft pink""
+      },
+      ""image_style"": ""circular cropped headshots"",
+      ""other_visual_notes"": ""Instagram icons in muted pink overlay""
+    },
+    ""reviews_section"": {
+      ""type"": ""testimonial"",
+      ""description"": ""Two-column layout, left side client portrait, right side review quote with large quotation mark style."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Cursive accent and serif uppercase headline"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""quote"": {
+          ""visual_description"": ""Sans-serif italic, dark gray text with pink highlights"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""author"": {
+          ""visual_description"": ""Small caps, muted gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""spaced"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide inner spacing"",
+        ""margin"": ""two-column balanced spacing""
+      },
+      ""colors"": {
+        ""background"": ""dark charcoal with soft beige overlay"",
+        ""text"": ""white, gray, and muted pink"",
+        ""accent"": ""light mauve""
+      },
+      ""image_style"": ""editorial portrait photography"",
+      ""other_visual_notes"": ""Large stylized quotation mark graphic""
+    },
+    ""cta_section"": {
+      ""type"": ""form_block"",
+      ""description"": ""Two-column split: left side form with fields for name, email, phone; right side large call to action with phone number and appointment button."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif uppercase, bold"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""form_label"": {
+          ""visual_description"": ""Sans-serif, small gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""button"": {
+          ""visual_description"": ""Uppercase mauve button, centered"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide spacing around form and CTA"",
+        ""margin"": ""two-column separation""
+      },
+      ""colors"": {
+        ""background"": ""off-white"",
+        ""text"": ""charcoal and muted gray"",
+        ""accent"": ""mauve button""
+      },
+      ""image_style"": ""small inset portrait"",
+      ""other_visual_notes"": ""Clean minimal form layout""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Full-width dark footer with four-column layout: branding, newsletter signup, navigation links, contact details. Bottom bar with credits and policy links."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Uppercase serif for section headers"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""links"": {
+          ""visual_description"": ""Sans-serif, muted gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""capitalize""
+        },
+        ""newsletter"": {
+          ""visual_description"": ""Sans-serif input text, uppercase button"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""generous vertical padding"",
+        ""margin"": ""columns evenly spaced""
+      },
+      ""colors"": {
+        ""background"": ""dark charcoal"",
+        ""text"": ""white and muted gray"",
+        ""accent"": ""soft pink (subscribe button)""
+      },
+      ""image_style"": ""logo in white"",
+      ""other_visual_notes"": ""Simple map above footer in muted green tones""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""hero_banner"", ""order"": 1},
+    {""component"": ""about_section"", ""order"": 2},
+    {""component"": ""services_preview"", ""order"": 3},
+    {""component"": ""services_list"", ""order"": 4},
+    {""component"": ""team_section"", ""order"": 5},
+    {""component"": ""reviews_section"", ""order"": 6},
+    {""component"": ""cta_section"", ""order"": 7},
+    {""component"": ""footer"", ""order"": 8}
+  ]
+}
+```"
+2,https://smaestheticsny.com/,"```json
+{
+  ""components"": {
+    ""top_navigation"": {
+      ""type"": ""nav"",
+      ""description"": ""Horizontal navigation bar at the top with logo on left, centered menu links, and appointment CTA on right."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""Small uppercase sans-serif"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""soft beige"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""muted rose""
+      },
+      ""image_style"": ""minimal logo mark"",
+      ""other_visual_notes"": ""Subtle underline hover on links""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Large banner with left-aligned heading and buttons, right-aligned portrait image."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, elegant, black"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""Small sans-serif, uppercase for buttons"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""slight wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""pale blush gradient"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""muted rose""
+      },
+      ""image_style"": ""full-height portrait with soft lighting"",
+      ""other_visual_notes"": ""Background has faint oversized monogram letters""
+    },
+    ""intro_section"": {
+      ""type"": ""layout"",
+      ""description"": ""Two-column section with image left, text and button right."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Medium serif, charcoal"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""Regular sans-serif paragraph, charcoal"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""wide horizontal gutter""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""soft rose""
+      },
+      ""image_style"": ""box photo with rounded corners"",
+      ""other_visual_notes"": ""Button styled as outlined rectangle""
+    },
+    ""services_grid"": {
+      ""type"": ""card grid"",
+      ""description"": ""Four-image grid showcasing treatments with overlay labels."",
+      ""typography"": {
+        ""card_label"": {
+          ""visual_description"": ""Small serif overlay text, white"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""tight grid spacing"",
+        ""margin"": ""medium vertical""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""white"",
+        ""accent"": ""soft rose""
+      },
+      ""image_style"": ""photographic with rounded corners"",
+      ""other_visual_notes"": ""Hover effect highlights text visibility""
+    },
+    ""reviews_slider"": {
+      ""type"": ""testimonial carousel"",
+      ""description"": ""Three-column client reviews with light card backgrounds and navigation dots."",
+      ""typography"": {
+        ""review_text"": {
+          ""visual_description"": ""Small serif italic, charcoal"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""author"": {
+          ""visual_description"": ""Small sans-serif uppercase"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium"",
+        ""margin"": ""large vertical""
+      },
+      ""colors"": {
+        ""background"": ""soft beige"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""muted rose""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""Carousel arrows on sides""
+    },
+    ""about_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Left-aligned text with right-aligned collage of images."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif subheading, charcoal"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""Regular sans-serif paragraph, charcoal"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""wide horizontal gutter""
+      },
+      ""colors"": {
+        ""background"": ""pale blush"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""soft rose""
+      },
+      ""image_style"": ""overlapping collage with drop shadows"",
+      ""other_visual_notes"": ""Soft oversized background monogram letters""
+    },
+    ""cta_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Bold call-to-action banner with centered phone number, button below."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, white text"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""Small sans-serif uppercase button text"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""earthy brown"",
+        ""text"": ""white"",
+        ""accent"": ""soft rose""
+      },
+      ""image_style"": ""background photo with overlay color wash"",
+      ""other_visual_notes"": ""Button is outlined""
+    },
+    ""consultation_section"": {
+      ""type"": ""split layout"",
+      ""description"": ""Left side background photo with 'Book a Consultation' overlay text, right side contact form."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Medium serif, white overlay text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""form"": {
+          ""visual_description"": ""Sans-serif input labels, charcoal"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""split: photo left, white right"",
+        ""text"": ""white (overlay), dark charcoal (form)"",
+        ""accent"": ""muted rose""
+      },
+      ""image_style"": ""photographic spa treatment image"",
+      ""other_visual_notes"": ""Form fields aligned in simple grid""
+    },
+    ""instagram_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Centered callout with Instagram button."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Small serif text, charcoal"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium"",
+        ""margin"": ""small vertical""
+      },
+      ""colors"": {
+        ""background"": ""soft beige"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""muted rose""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""Rounded Instagram button with icon""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Multi-column footer with logo left, navigation, newsletter signup."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""Small uppercase sans-serif"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""newsletter"": {
+          ""visual_description"": ""Sans-serif input field text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""pale blush"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""muted rose""
+      },
+      ""image_style"": ""minimal logo mark"",
+      ""other_visual_notes"": ""Simple layout with underlined hover links""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""top_navigation"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""intro_section"", ""order"": 3},
+    {""component"": ""services_grid"", ""order"": 4},
+    {""component"": ""reviews_slider"", ""order"": 5},
+    {""component"": ""about_section"", ""order"": 6},
+    {""component"": ""cta_banner"", ""order"": 7},
+    {""component"": ""consultation_section"", ""order"": 8},
+    {""component"": ""instagram_section"", ""order"": 9},
+    {""component"": ""footer"", ""order"": 10}
+  ]
+}
+```"
+3,https://clairdelunemedspa.com/,"```json
+{
+  ""components"": {
+    ""header_nav"": {
+      ""type"": ""nav"",
+      ""description"": ""Top navigation bar with logo centered, contact info and social icons left, call-to-action buttons right, horizontal menu links below logo."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""Small uppercase serif text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small vertical, medium horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""translucent light gray"",
+        ""text"": ""dark gray"",
+        ""accent"": ""teal""
+      },
+      ""image_style"": ""logo centered above nav links"",
+      ""other_visual_notes"": ""Icons small and minimal, buttons outlined with subtle color fill""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Large full-width background image of a woman with logo overlay and tagline text, plus primary call-to-action button."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large uppercase serif text in white"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Smaller serif text, centered, white"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large top and bottom"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""photo background"",
+        ""text"": ""white"",
+        ""accent"": ""soft gold button""
+      },
+      ""image_style"": ""full-screen hero image with logo watermark overlay"",
+      ""other_visual_notes"": ""Button rounded with gradient hover effect""
+    },
+    ""intro_text_image"": {
+      ""type"": ""layout"",
+      ""description"": ""Two-column section with text on left and photo of spa reception on right."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Medium uppercase serif heading in dark gray"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""tight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Serif paragraph text in dark gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""muted beige button""
+      },
+      ""image_style"": ""rounded rectangle photo"",
+      ""other_visual_notes"": ""Balanced column layout""
+    },
+    ""treatment_cards"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Three product-style treatment cards with product images, headings, short descriptions, and duration icons."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Small uppercase serif text, dark gray"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""tight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Small serif text, centered"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium within cards"",
+        ""margin"": ""medium between cards""
+      },
+      ""colors"": {
+        ""background"": ""teal section with white cards"",
+        ""text"": ""dark gray"",
+        ""accent"": ""gold button below cards""
+      },
+      ""image_style"": ""product photos centered within card"",
+      ""other_visual_notes"": ""Cards have rounded corners and soft shadow""
+    },
+    ""why_choose_us"": {
+      ""type"": ""icon_text_grid"",
+      ""description"": ""Section with icons above small headings and explanatory text, arranged in a horizontal row."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Uppercase serif text, medium size, dark gray"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Small serif text, centered, dark gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""teal icons""
+      },
+      ""image_style"": ""line icons with circular outlines"",
+      ""other_visual_notes"": ""Icons evenly spaced with hover highlight effect""
+    },
+    ""founder_section"": {
+      ""type"": ""profile_feature"",
+      ""description"": ""Left-aligned photo of founder with right-aligned text and button."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Uppercase serif heading in white, medium size"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Serif text in white, medium size"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""warm taupe brown"",
+        ""text"": ""white"",
+        ""accent"": ""teal button""
+      },
+      ""image_style"": ""rounded rectangle photo"",
+      ""other_visual_notes"": ""Photo caption in golden label overlay""
+    },
+    ""testimonials"": {
+      ""type"": ""testimonial_slider"",
+      ""description"": ""Two client testimonials in card format with headshot, star rating, text, and name."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Uppercase serif heading, centered"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Small serif text inside cards, dark gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""teal quotation marks""
+      },
+      ""image_style"": ""small circular profile photos"",
+      ""other_visual_notes"": ""Card style with light border and rounded corners""
+    },
+    ""contact_section"": {
+      ""type"": ""contact"",
+      ""description"": ""Phone number highlighted with icon, large teal text, followed by appointment booking form alongside map."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Uppercase serif text, centered, dark gray"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Serif text in dark gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""very light mint"",
+        ""text"": ""dark gray"",
+        ""accent"": ""teal phone number and submit button""
+      },
+      ""image_style"": ""map embed with rectangular border"",
+      ""other_visual_notes"": ""Form fields with rounded corners""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Bottom footer with logo, social icons, navigation links, contact info, and newsletter subscription field."",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""Small serif text, muted gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""off-white"",
+        ""text"": ""muted gray"",
+        ""accent"": ""teal button""
+      },
+      ""image_style"": ""flat logo in footer"",
+      ""other_visual_notes"": ""Minimal design with clean separation lines""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""header_nav"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""intro_text_image"", ""order"": 3},
+    {""component"": ""treatment_cards"", ""order"": 4},
+    {""component"": ""why_choose_us"", ""order"": 5},
+    {""component"": ""founder_section"", ""order"": 6},
+    {""component"": ""testimonials"", ""order"": 7},
+    {""component"": ""contact_section"", ""order"": 8},
+    {""component"": ""footer"", ""order"": 9}
+  ]
+}
+```"
+4,https://newbeautymedicalaesthetics.com/,"{
+  ""components"": {
+    ""header_nav"": {
+      ""type"": ""navigation"",
+      ""description"": ""Top navigation with logo on left, links centered, and call-to-action buttons on right"",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""small uppercase serif text"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small vertical, medium horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""soft pink"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""minimal logo"",
+      ""other_visual_notes"": ""menu links evenly spaced, right-aligned buttons outlined and filled styles""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Split hero section with large portrait image right and bold text left"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""large serif, all caps, elegant thin strokes"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans serif"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide vertical and horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""soft pink"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""black""
+      },
+      ""image_style"": ""full bleed portrait photo"",
+      ""other_visual_notes"": ""centered button in dark background, high contrast""
+    },
+    ""announcement_bar"": {
+      ""type"": ""text_block"",
+      ""description"": ""Scrolling marquee text bar with promotional offers"",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""small sans serif, uppercase"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""medium"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""black"",
+        ""text"": ""white"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""scrolling horizontal animation""
+    },
+    ""intro_section"": {
+      ""type"": ""layout"",
+      ""description"": ""Two-column section with friendly portrait on left and text intro on right"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""medium serif uppercase"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans serif"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium"",
+        ""margin"": ""medium""
+      },
+      ""colors"": {
+        ""background"": ""black"",
+        ""text"": ""light beige"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""rounded corner portrait"",
+      ""other_visual_notes"": ""aligned in grid, minimal white space""
+    },
+    ""service_grid"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Grid of service cards with image and text overlay"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase serif, bold"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium inside cards"",
+        ""margin"": ""large grid gaps""
+      },
+      ""colors"": {
+        ""background"": ""dark charcoal"",
+        ""text"": ""white"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""rectangular service photos"",
+      ""other_visual_notes"": ""hover effect on images with text appearing""
+    },
+    ""trust_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Dark background with text about trust and mission"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""serif uppercase large"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""sans serif paragraph text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""dark gray-black"",
+        ""text"": ""light beige"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""supporting inline photo right"",
+      ""other_visual_notes"": ""left aligned text block""
+    },
+    ""testimonial_slider"": {
+      ""type"": ""carousel"",
+      ""description"": ""Large testimonial text overlaying close-up background photo"",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""italic serif, large quotation style"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase for key lines""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""extra large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""dimmed photo"",
+        ""text"": ""white"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""background portrait close-up"",
+      ""other_visual_notes"": ""quote icon, star rating, slider dots""
+    },
+    ""cta_section"": {
+      ""type"": ""call_to_action"",
+      ""description"": ""Two-column layout with empty placeholder card and text scheduling appointment"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""large serif uppercase"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""gradient black to pink"",
+        ""text"": ""light beige"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""blank card placeholder"",
+      ""other_visual_notes"": ""clean minimal layout""
+    },
+    ""contact_cta"": {
+      ""type"": ""call_to_action"",
+      ""description"": ""Full-width strip with phone number prominently displayed"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase serif medium"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""photo background with overlay"",
+        ""text"": ""white"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""close-up face photo background"",
+      ""other_visual_notes"": ""centered contact info""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Dark footer with logo, quick links, and contact information"",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""small sans serif"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""black"",
+        ""text"": ""light gray"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""minimal logo"",
+      ""other_visual_notes"": ""structured columns with bottom legal text""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""header_nav"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""announcement_bar"", ""order"": 3},
+    {""component"": ""intro_section"", ""order"": 4},
+    {""component"": ""service_grid"", ""order"": 5},
+    {""component"": ""trust_section"", ""order"": 6},
+    {""component"": ""testimonial_slider"", ""order"": 7},
+    {""component"": ""cta_section"", ""order"": 8},
+    {""component"": ""contact_cta"", ""order"": 9},
+    {""component"": ""footer"", ""order"": 10}
+  ]
+}"
+5,https://transformationswellnessspa.com/,"```json
+{
+  ""components"": {
+    ""top_bar"": {
+      ""type"": ""layout"",
+      ""description"": ""Slim top header with contact email, phone number on the left and small utility links/buttons on the right."",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""small sans-serif, uppercase letters"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small vertical, none horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""dark green""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""Contains 'Self Assessment' button and small social icons.""
+    },
+    ""main_nav"": {
+      ""type"": ""nav"",
+      ""description"": ""Horizontal navigation bar with logo on left, links in the middle, and 'Book Now' button on right."",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""medium-sized sans-serif, simple, all caps for buttons"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical, large horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""golden yellow (button)""
+      },
+      ""image_style"": ""Logo is thin-lined, botanical-inspired."",
+      ""other_visual_notes"": ""Clean, flat navigation with hover emphasis.""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Large background image of a woman partially covered by a tropical leaf with overlaid text."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""large handwritten script, white color"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""loose"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""extra large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""photographic (woman with leaf)"",
+        ""text"": ""white"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""full-bleed photography background"",
+      ""other_visual_notes"": ""Overlay text positioned center-left.""
+    },
+    ""intro_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Section with dark green leaf-patterned background, handwritten gold heading, body paragraph in white, centered inside bordered box."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""handwritten script, golden yellow color"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""small serif, white"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical, medium horizontal"",
+        ""margin"": ""medium bottom""
+      },
+      ""colors"": {
+        ""background"": ""deep forest green with leaf pattern"",
+        ""text"": ""white"",
+        ""accent"": ""golden yellow""
+      },
+      ""image_style"": ""line-art icon illustration (female outline)."",
+      ""other_visual_notes"": ""Framed with thin golden border.""
+    },
+    ""services_grid"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Four equal image-based cards showing service categories, aligned horizontally."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""handwritten script in golden yellow for section heading"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif labels under each image, uppercase"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""medium vertical spacing between grid and surrounding sections""
+      },
+      ""colors"": {
+        ""background"": ""dark green leaf-pattern backdrop"",
+        ""text"": ""white and golden yellow"",
+        ""accent"": ""gold button""
+      },
+      ""image_style"": ""rectangular service images, full bleed inside each card."",
+      ""other_visual_notes"": ""Button below grid to view all services.""
+    },
+    ""team_section"": {
+      ""type"": ""text_image"",
+      ""description"": ""Split layout with left column text and line illustration, right column staff image."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""script font, green"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""small serif body text, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""medium vertical""
+      },
+      ""colors"": {
+        ""background"": ""light beige"",
+        ""text"": ""dark green and gray"",
+        ""accent"": ""gold button""
+      },
+      ""image_style"": ""professional portrait photo"",
+      ""other_visual_notes"": ""Minimal line art behind heading.""
+    },
+    ""cta_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Horizontal banner with half interior photo background and half textured golden yellow background with contact number and CTA button."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""script handwritten font, white or dark green depending on background"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""sans-serif, smaller, white text on gold"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""medium vertical""
+      },
+      ""colors"": {
+        ""background"": ""split: left light interior photo, right golden yellow"",
+        ""text"": ""white and dark green"",
+        ""accent"": ""dark green button""
+      },
+      ""image_style"": ""photo of spa interior on left side"",
+      ""other_visual_notes"": ""Centered phone number and CTA on gold background.""
+    },
+    ""testimonials_section"": {
+      ""type"": ""carousel"",
+      ""description"": ""Dark green background with white testimonial text and gold handwritten title."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""handwritten script, golden yellow"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""white serif italic text, centered"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""medium vertical""
+      },
+      ""colors"": {
+        ""background"": ""deep green"",
+        ""text"": ""white"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""Single testimonial displayed at a time.""
+    },
+    ""contact_section"": {
+      ""type"": ""form"",
+      ""description"": ""Two-column section with map on left and golden form block on right."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""bold sans-serif, uppercase, dark green"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""simple sans-serif for form labels and placeholders"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""medium vertical""
+      },
+      ""colors"": {
+        ""background"": ""split: white map with colored markers, golden yellow form background"",
+        ""text"": ""dark green"",
+        ""accent"": ""dark green submit button""
+      },
+      ""image_style"": ""interactive embedded Google map"",
+      ""other_visual_notes"": ""Form fields are rounded with white fill inside golden container.""
+    },
+    ""footer"": {
+      ""type"": ""layout"",
+      ""description"": ""Minimal footer with logo, contact info, social icons, and small legal links."",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""small sans-serif, muted gray-green"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""light beige"",
+        ""text"": ""dark gray-green"",
+        ""accent"": ""gold""
+      },
+      ""image_style"": ""logo in fine line botanical style"",
+      ""other_visual_notes"": ""Contains copyright and small links.""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""top_bar"", ""order"": 1},
+    {""component"": ""main_nav"", ""order"": 2},
+    {""component"": ""hero_banner"", ""order"": 3},
+    {""component"": ""intro_section"", ""order"": 4},
+    {""component"": ""services_grid"", ""order"": 5},
+    {""component"": ""team_section"", ""order"": 6},
+    {""component"": ""cta_banner"", ""order"": 7},
+    {""component"": ""testimonials_section"", ""order"": 8},
+    {""component"": ""contact_section"", ""order"": 9},
+    {""component"": ""footer"", ""order"": 10}
+  ]
+}
+```"
+6,https://verlaaesthetics.com/,"```json
+{
+  ""components"": {
+    ""top_bar"": {
+      ""type"": ""nav"",
+      ""description"": ""Thin top navigation bar with small text links aligned left and right"",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""tiny serif font, uppercase"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small vertical, wide horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""soft charcoal"",
+        ""accent"": ""copper brown""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""social icons aligned right""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Large interior photo of spa with logo on marble desk as main focal point"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""large elegant serif"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""capitalized""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""extra-large"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""bright spa interior image"",
+        ""text"": ""warm beige overlay"",
+        ""accent"": ""gold emblem""
+      },
+      ""image_style"": ""full-width, photographic background"",
+      ""other_visual_notes"": ""overlay text blends softly into background""
+    },
+    ""intro_text_block"": {
+      ""type"": ""text_block"",
+      ""description"": ""Two-column layout with heading, paragraph on left and team image on right"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""serif heading"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""regular sans-serif"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""wide horizontal""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""charcoal gray"",
+        ""accent"": ""soft brown button""
+      },
+      ""image_style"": ""rectangular staff group photo"",
+      ""other_visual_notes"": ""button styled in earthy tones""
+    },
+    ""treatment_section"": {
+      ""type"": ""layout"",
+      ""description"": ""Two-column section with text heading and supporting images on right"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""serif, centered"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""tight"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""sans-serif paragraph"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""wide""
+      },
+      ""colors"": {
+        ""background"": ""soft beige gradient"",
+        ""text"": ""charcoal"",
+        ""accent"": ""warm brown button""
+      },
+      ""image_style"": ""rounded edge photographs"",
+      ""other_visual_notes"": ""soft leaf-texture overlay in background""
+    },
+    ""image_grid"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Four small image blocks in two rows, showcasing close-up treatments and staff"",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""tiny caption text sans-serif"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small"",
+        ""margin"": ""wide horizontal""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""charcoal"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""square and rectangular, clean crop"",
+      ""other_visual_notes"": ""hover effect likely""
+    },
+    ""team_section"": {
+      ""type"": ""profile_cards"",
+      ""description"": ""Grid of staff profiles with name and title under portrait images"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""small serif name"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""tiny sans-serif subtitle"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""tight"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""wide""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""portrait headshots"",
+      ""other_visual_notes"": ""clean minimal presentation""
+    },
+    ""podcast_section"": {
+      ""type"": ""media_embed"",
+      ""description"": ""Video player thumbnail embedded with descriptive heading above"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""serif heading"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium"",
+        ""margin"": ""wide""
+      },
+      ""colors"": {
+        ""background"": ""beige overlay"",
+        ""text"": ""charcoal"",
+        ""accent"": ""red play button""
+      },
+      ""image_style"": ""video thumbnail screenshot"",
+      ""other_visual_notes"": ""play button overlay centered""
+    },
+    ""cta_section"": {
+      ""type"": ""call_to_action"",
+      ""description"": ""Minimal section with heading and button to schedule visit"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""serif, large"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""charcoal"",
+        ""accent"": ""soft brown button""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""split layout with empty right column""
+    },
+    ""newsletter_section"": {
+      ""type"": ""signup"",
+      ""description"": ""Centered text invitation to join newsletter with email form"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""serif heading"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""title case""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""light beige with leaf texture"",
+        ""text"": ""charcoal gray"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""subtle textured background""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Multi-column footer with logo, contact info, navigation links, and social icons"",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""small sans-serif"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""bronze icons""
+      },
+      ""image_style"": ""logo in serif text"",
+      ""other_visual_notes"": ""bottom legal line separated by thin border""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""top_bar"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""intro_text_block"", ""order"": 3},
+    {""component"": ""treatment_section"", ""order"": 4},
+    {""component"": ""image_grid"", ""order"": 5},
+    {""component"": ""team_section"", ""order"": 6},
+    {""component"": ""podcast_section"", ""order"": 7},
+    {""component"": ""cta_section"", ""order"": 8},
+    {""component"": ""newsletter_section"", ""order"": 9},
+    {""component"": ""footer"", ""order"": 10}
+  ]
+}
+```"
+7,https://skinfitmedicalspa.com/,"```json
+{
+  ""components"": {
+    ""navigation_bar"": {
+      ""type"": ""nav"",
+      ""description"": ""Horizontal navigation bar with logo on left, menu links centered, and contact/login buttons on right."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""Uppercase sans-serif, small size, evenly spaced"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small vertical, medium horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark brown"",
+        ""accent"": ""muted copper""
+      },
+      ""image_style"": ""simple flat logo on left"",
+      ""other_visual_notes"": ""Sticky alignment at top, minimalistic design""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Large background image with overlay text and CTA button."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Modern serif, large, with emphasized word in bold copper"",
+          ""weight"": ""bold for key word"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase for tagline""
+        },
+        ""body"": {
+          ""visual_description"": ""Light sans-serif, smaller"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large top and bottom"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""photographic (spa interior)"",
+        ""text"": ""white and copper"",
+        ""accent"": ""earthy copper button""
+      },
+      ""image_style"": ""full-width background image with blurred depth"",
+      ""other_visual_notes"": ""Primary CTA in solid copper button with white text""
+    },
+    ""intro_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Centered text introduction with dual buttons below."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""All caps sans-serif tagline with brand name in serif"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase for tagline""
+        },
+        ""body"": {
+          ""visual_description"": ""Simple sans-serif, centered paragraphs"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""auto centered""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""copper buttons""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""Two buttons side by side: solid copper and outlined copper""
+    },
+    ""featured_services"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Three service cards with images, overlay titles, and CTA button below."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif, medium size, copper"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""slight spacing"",
+          ""text_transform"": ""uppercase""
+        },
+        ""card_titles"": {
+          ""visual_description"": ""White text overlay on images"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""grid with even spacing""
+      },
+      ""colors"": {
+        ""background"": ""light beige"",
+        ""text"": ""dark brown and copper"",
+        ""accent"": ""white overlay on images""
+      },
+      ""image_style"": ""rounded rectangular service images"",
+      ""other_visual_notes"": ""CTA button centered beneath grid""
+    },
+    ""skincare_products"": {
+      ""type"": ""content_split"",
+      ""description"": ""Left-aligned text block with bullet highlights, right-aligned product images."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif copper headline"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Sans-serif, small, dark gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""bullets"": {
+          ""visual_description"": ""Sans-serif with small icons in copper circles"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""split layout with balanced spacing""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark charcoal and copper"",
+        ""accent"": ""copper icons""
+      },
+      ""image_style"": ""product packaging photos with soft shadow"",
+      ""other_visual_notes"": ""Circular image overlap with boxed product visuals""
+    },
+    ""membership_section"": {
+      ""type"": ""promo_banner"",
+      ""description"": ""Dark background promotional membership highlight with centered text."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, copper color"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Sans-serif, white, centered"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""black with copper accents"",
+        ""text"": ""white and copper"",
+        ""accent"": ""copper button outline""
+      },
+      ""image_style"": ""subtle copper decorative brush strokes"",
+      ""other_visual_notes"": ""Single centered CTA button""
+    },
+    ""testimonial_section"": {
+      ""type"": ""testimonial"",
+      ""description"": ""Client testimonial with portrait image on right."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif, copper, uppercase small headline"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""quote"": {
+          ""visual_description"": ""Italic serif, dark brown"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""split layout""
+      },
+      ""colors"": {
+        ""background"": ""light beige gradient"",
+        ""text"": ""dark brown and copper"",
+        ""accent"": ""soft highlight background""
+      },
+      ""image_style"": ""natural portrait photo on right side"",
+      ""other_visual_notes"": ""Star rating visual under heading""
+    },
+    ""map_contact_section"": {
+      ""type"": ""location"",
+      ""description"": ""Two map embeds with contact information and schedule form below."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Serif, copper, uppercase small"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""form_labels"": {
+          ""visual_description"": ""Sans-serif, small, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""side by side maps above form""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""copper highlights""
+      },
+      ""image_style"": ""Google Maps embeds"",
+      ""other_visual_notes"": ""Simple contact form with white input fields""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Dark footer with three columns: about, newsletter, and contact."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Sans-serif, uppercase small, white"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""Small sans-serif, muted gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""black"",
+        ""text"": ""white and muted gray"",
+        ""accent"": ""copper""
+      },
+      ""image_style"": ""white logo on dark background"",
+      ""other_visual_notes"": ""Minimalist design with centered bottom bar""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""navigation_bar"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""intro_section"", ""order"": 3},
+    {""component"": ""featured_services"", ""order"": 4},
+    {""component"": ""skincare_products"", ""order"": 5},
+    {""component"": ""membership_section"", ""order"": 6},
+    {""component"": ""testimonial_section"", ""order"": 7},
+    {""component"": ""map_contact_section"", ""order"": 8},
+    {""component"": ""footer"", ""order"": 9}
+  ]
+}
+```"
+8,https://grandvalleylaseraesthetics.com/,"{
+  ""components"": {
+    ""navigation_bar"": {
+      ""type"": ""nav"",
+      ""description"": ""Top navigation with logo on left and links aligned center, buttons on right"",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""uppercase, small size, sans-serif"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""buttons"": {
+          ""visual_description"": ""small caps, bold text"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical, wide horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""soft gold (for buttons)""
+      },
+      ""image_style"": ""circular logo emblem, monochrome"",
+      ""other_visual_notes"": ""buttons have rounded corners and subtle shadows""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Two-column layout with headline text on left and large portrait image on right"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""large uppercase serif, black"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""subheading"": {
+          ""visual_description"": ""smaller uppercase sans-serif, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""extra large top and bottom"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""black"",
+        ""accent"": ""soft gold (CTA button)""
+      },
+      ""image_style"": ""rounded corners, portrait photo"",
+      ""other_visual_notes"": ""book now button is highlighted in accent color""
+    },
+    ""intro_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Two-column layout with image on left and welcome text on right"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase serif, medium size, black"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""light marble texture beige"",
+        ""text"": ""dark gray"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""rounded corners, decorative"",
+      ""other_visual_notes"": ""subtle textured background""
+    },
+    ""services_section"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Three side-by-side cards with images above short descriptions"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""medium sans-serif, uppercase, black"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""wide horizontal spacing between cards""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""black"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""rectangular, soft edges"",
+      ""other_visual_notes"": ""hover effect with subtle shadow""
+    },
+    ""cta_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Full-width image background with central CTA and phone number"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""bold uppercase serif, large, white"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""medium sans-serif, white"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""extra large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""monochrome portrait photo"",
+        ""text"": ""white"",
+        ""accent"": ""soft gold (button)""
+      },
+      ""image_style"": ""high-contrast grayscale photo"",
+      ""other_visual_notes"": ""central alignment""
+    },
+    ""about_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Two-column layout with portrait on left and bio on right"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase serif, medium size, black"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""rounded photo with soft lighting"",
+      ""other_visual_notes"": ""button styled as outlined with black text""
+    },
+    ""testimonials_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Centered testimonial with star rating above text"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""medium sans-serif, black"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""light marble beige"",
+        ""text"": ""black"",
+        ""accent"": ""gold stars""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""italic text for testimonial name""
+    },
+    ""contact_section"": {
+      ""type"": ""form"",
+      ""description"": ""Two-column layout with map on left and form on right"",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase sans-serif, large, black"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""form_fields"": {
+          ""visual_description"": ""thin border, gray placeholder text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""black"",
+        ""accent"": ""soft gray for borders""
+      },
+      ""image_style"": ""map embed with rectangular shape"",
+      ""other_visual_notes"": ""submit button full-width with rounded corners""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Dark footer with logo, contact info, social media, and Instagram grid"",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""small sans-serif, light gray"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""links"": {
+          ""visual_description"": ""small sans-serif, uppercase, white"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""dark charcoal"",
+        ""text"": ""light gray"",
+        ""accent"": ""white""
+      },
+      ""image_style"": ""small square thumbnails for Instagram"",
+      ""other_visual_notes"": ""social icons inline, centered layout""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""navigation_bar"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""intro_section"", ""order"": 3},
+    {""component"": ""services_section"", ""order"": 4},
+    {""component"": ""cta_banner"", ""order"": 5},
+    {""component"": ""about_section"", ""order"": 6},
+    {""component"": ""testimonials_section"", ""order"": 7},
+    {""component"": ""contact_section"", ""order"": 8},
+    {""component"": ""footer"", ""order"": 9}
+  ]
+}"
+9,https://realresultsmedical.com/,"```json
+{
+  ""components"": {
+    ""navigation_bar"": {
+      ""type"": ""nav"",
+      ""description"": ""Top horizontal navigation bar with logo on the left, menu items centered, and appointment button on the right."",
+      ""typography"": {
+        ""menu_items"": {
+          ""visual_description"": ""uppercase sans-serif, small size, dark blue"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical, wide horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue"",
+        ""accent"": ""light blue highlight on hover""
+      },
+      ""image_style"": ""logo in monochrome dark gray"",
+      ""other_visual_notes"": ""appointment button styled as pill with light blue background""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Full-width hero image with diverse smiling people in background, large headline overlaid."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""large sans-serif, mix of italic script for 'experience the' and bold uppercase block for 'DIFFERENCE'"",
+          ""weight"": ""bold for block text, light cursive for script"",
+          ""letter_spacing"": ""tight for bold, natural for script"",
+          ""text_transform"": ""uppercase for block text""
+        },
+        ""button"": {
+          ""visual_description"": ""uppercase small sans-serif"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large top and bottom"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""full bleed photo"",
+        ""text"": ""white and light blue"",
+        ""accent"": ""light blue button""
+      },
+      ""image_style"": ""high contrast, professional photography"",
+      ""other_visual_notes"": ""CTA button styled as pill, positioned under text""
+    },
+    ""services_section"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Grid of service cards with square images, each labeled with service type."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase bold sans-serif, centered"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""card_label"": {
+          ""visual_description"": ""white sans-serif overlaid on image bottom"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""grid spacing medium""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue and white"",
+        ""accent"": ""light blue hover effect""
+      },
+      ""image_style"": ""rounded corner thumbnails"",
+      ""other_visual_notes"": ""cards have overlay gradient for text readability""
+    },
+    ""doctor_intro"": {
+      ""type"": ""profile"",
+      ""description"": ""Left-aligned profile photo of doctor with bio text on right."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase sans-serif"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""tight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""subheading"": {
+          ""visual_description"": ""italic serif"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, left aligned"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide horizontal"",
+        ""margin"": ""large vertical""
+      },
+      ""colors"": {
+        ""background"": ""soft light gray"",
+        ""text"": ""dark blue"",
+        ""accent"": ""light blue highlights""
+      },
+      ""image_style"": ""professional portrait with border frame"",
+      ""other_visual_notes"": ""button styled as outlined pill""
+    },
+    ""testimonial_slider"": {
+      ""type"": ""carousel"",
+      ""description"": ""Horizontal testimonial section with quote text and portrait image, with navigation arrows."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""uppercase bold sans-serif"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""serif italic for reviewer name, sans-serif for quote"",
+          ""weight"": ""light for serif, regular for sans-serif"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white with subtle speckle texture"",
+        ""text"": ""dark gray and blue"",
+        ""accent"": ""gold star icons""
+      },
+      ""image_style"": ""black and white portrait photo"",
+      ""other_visual_notes"": ""carousel navigation circles at bottom""
+    },
+    ""video_testimonials"": {
+      ""type"": ""video_gallery"",
+      ""description"": ""Row of embedded video testimonial thumbnails with play buttons."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""mix of italic light blue 'Video' and bold black 'TESTIMONIAL'"",
+          ""weight"": ""light italic and bold sans-serif"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase for 'TESTIMONIAL'""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""grid spacing medium""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue and light blue"",
+        ""accent"": ""black video controls""
+      },
+      ""image_style"": ""video thumbnails with play overlay"",
+      ""other_visual_notes"": ""five video tiles in a row""
+    },
+    ""cta_section"": {
+      ""type"": ""form"",
+      ""description"": ""Call-to-action with phone number and appointment booking form."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""bold sans-serif headline"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""form_labels"": {
+          ""visual_description"": ""small uppercase sans-serif"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide vertical"",
+        ""margin"": ""large vertical""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue"",
+        ""accent"": ""light blue button""
+      },
+      ""image_style"": ""small group photo on left"",
+      ""other_visual_notes"": ""form fields with thin border and rounded corners""
+    },
+    ""supplements_section"": {
+      ""type"": ""promo"",
+      ""description"": ""Two-column layout with photo of woman in kitchen on left and Fullscript brand logo with text on right."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""bold sans-serif with green heart logo"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""medium sans-serif with occasional bold emphasis"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide vertical"",
+        ""margin"": ""large vertical""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue and gray"",
+        ""accent"": ""green logo and light blue highlights""
+      },
+      ""image_style"": ""lifestyle stock photo"",
+      ""other_visual_notes"": ""button styled as outlined pill""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Full-width footer with newsletter sign-up, navigation links, contact info, and social icons."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""uppercase small sans-serif"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""slight"",
+          ""text_transform"": ""uppercase""
+        },
+        ""body"": {
+          ""visual_description"": ""small sans-serif, white text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""wide vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""dark navy blue"",
+        ""text"": ""white and light gray"",
+        ""accent"": ""light blue hover states""
+      },
+      ""image_style"": ""social media icons in white"",
+      ""other_visual_notes"": ""newsletter input with rounded button""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""navigation_bar"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""services_section"", ""order"": 3},
+    {""component"": ""doctor_intro"", ""order"": 4},
+    {""component"": ""testimonial_slider"", ""order"": 5},
+    {""component"": ""video_testimonials"", ""order"": 6},
+    {""component"": ""cta_section"", ""order"": 7},
+    {""component"": ""supplements_section"", ""order"": 8},
+    {""component"": ""footer"", ""order"": 9}
+  ]
+}
+```"
+10,https://www.coastalglo.net/,"```json
+{
+  ""components"": {
+    ""top_navigation"": {
+      ""type"": ""nav"",
+      ""description"": ""Top navigation bar with logo on left, links centered, and call-to-action buttons on right. Background is a semi-transparent teal overlay on a beach image."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""Small uppercase sans-serif, white text"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        },
+        ""buttons"": {
+          ""visual_description"": ""Bold sans-serif in teal or white background with contrasting text"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""small vertical, medium horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""transparent teal overlay"",
+        ""text"": ""white"",
+        ""accent"": ""aqua teal""
+      },
+      ""image_style"": ""small circular logo on left"",
+      ""other_visual_notes"": ""Call-to-action buttons stand out with solid background fill.""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Full-width beach aerial background with gradient overlay. Centered text layered on image with main welcome headline and subheading."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif script for 'Coastal Glo Med Spa'"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""subheading"": {
+          ""visual_description"": ""All caps sans-serif 'WELCOME TO' in aqua teal"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""beach photo with teal overlay"",
+        ""text"": ""white and aqua teal"",
+        ""accent"": ""aqua teal button""
+      },
+      ""image_style"": ""background photo"",
+      ""other_visual_notes"": ""Button styled as solid aqua teal with white text.""
+    },
+    ""intro_text_image"": {
+      ""type"": ""text_block"",
+      ""description"": ""Centered text block introducing medical spa with right-aligned rectangular image of smiling women."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Medium serif italic subheading"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""Regular sans-serif, black text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""medium horizontal""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark gray"",
+        ""accent"": ""aqua teal button""
+      },
+      ""image_style"": ""rectangular photo with rounded corners"",
+      ""other_visual_notes"": ""Text left-aligned, image right-aligned.""
+    },
+    ""what_is_microchanneling"": {
+      ""type"": ""section"",
+      ""description"": ""Two-column layout with illustrated graphics and text explanation. Includes icons and teal accents."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif italic heading in dark teal"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""Light sans-serif body text"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""wide horizontal""
+      },
+      ""colors"": {
+        ""background"": ""soft beige"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""teal highlights""
+      },
+      ""image_style"": ""flat illustration icons"",
+      ""other_visual_notes"": ""Content alternates between text and illustrative graphics.""
+    },
+    ""testimonial_section"": {
+      ""type"": ""testimonial"",
+      ""description"": ""Client testimonial highlighted in beige background box with quotation mark icon and star rating."",
+      ""typography"": {
+        ""quote"": {
+          ""visual_description"": ""Italic serif text in dark charcoal"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""author"": {
+          ""visual_description"": ""Small sans-serif, teal text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium"",
+        ""margin"": ""large vertical""
+      },
+      ""colors"": {
+        ""background"": ""pale beige"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""teal icons""
+      },
+      ""image_style"": ""none"",
+      ""other_visual_notes"": ""Quotation marks in large stylized form, star rating icons in teal.""
+    },
+    ""treatment_cards"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Four-column grid of cards each with image, heading, text, and button."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Medium serif italic headings"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""Small sans-serif, dark gray text"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""buttons"": {
+          ""visual_description"": ""Small uppercase sans-serif in teal button"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""wide"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium inside cards"",
+        ""margin"": ""medium grid gaps""
+      },
+      ""colors"": {
+        ""background"": ""white cards on beige section"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""teal buttons""
+      },
+      ""image_style"": ""rectangular top images"",
+      ""other_visual_notes"": ""Cards have light shadow and clean edges.""
+    },
+    ""contact_section"": {
+      ""type"": ""map_contact"",
+      ""description"": ""Full-width map embed with contact form and contact details below."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Italic serif subheading in dark teal"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""title case""
+        },
+        ""body"": {
+          ""visual_description"": ""Sans-serif labels in gray"",
+          ""weight"": ""light"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark charcoal"",
+        ""accent"": ""teal buttons and icons""
+      },
+      ""image_style"": ""Google Maps embed"",
+      ""other_visual_notes"": ""Form fields with teal button, rounded edges.""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Dark teal full-width footer with logo, social icons, contact details, and hours."",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""Small sans-serif, white text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""links"": {
+          ""visual_description"": ""Small sans-serif, light teal text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""dark teal"",
+        ""text"": ""white"",
+        ""accent"": ""light teal highlights""
+      },
+      ""image_style"": ""small circular logo, flat icons"",
+      ""other_visual_notes"": ""Structured in multiple columns with social links.""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""top_navigation"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""intro_text_image"", ""order"": 3},
+    {""component"": ""what_is_microchanneling"", ""order"": 4},
+    {""component"": ""treatment_cards"", ""order"": 5},
+    {""component"": ""testimonial_section"", ""order"": 6},
+    {""component"": ""contact_section"", ""order"": 7},
+    {""component"": ""footer"", ""order"": 8}
+  ]
+}
+```"
+11,,
+12,,
+13,,
+14,,
+15,,
+16,,
+17,,
+18,,
+19,,
+20,,
+21,,
+22,,
+23,,
+24,,
+25,,
+26,,
+27,,
+28,,
+29,,
+30,,
+31,,
+32,,
+33,,
+34,,
+35,,

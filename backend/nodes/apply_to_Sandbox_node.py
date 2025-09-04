@@ -20,12 +20,13 @@ def _normalize_e2b_api(src: str) -> str:
     Convert any legacy generator script to current E2B SDK surface.
     Also removes markdown code blocks that some LLMs add.
     """
+    import re  # ✅ FIXED: Move import to top to prevent UnboundLocalError
+    
     print("Normalizing the generator script for current E2B SDK...")
 
     # CRITICAL FIX: Remove markdown code blocks if present
     if "```python" in src:
         # Extract code between ```python and ```
-        import re
         code_match = re.search(r'```python\s*(.*?)\s*```', src, re.DOTALL)
         if code_match:
             src = code_match.group(1)

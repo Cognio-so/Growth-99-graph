@@ -100,11 +100,12 @@ def build_graph():
     g.add_edge("apply_sandbox", "validation")
     
     # Validation routing: success -> output, failure -> code_analysis
-    g.add_conditional_edges("validation", route_after_validation_local, {
-        "output": "output",
-        "code_analysis": "code_analysis",
-        "schema_extraction": "schema_extraction"
-    })
+    # g.add_conditional_edges("validation", route_after_validation_local, {
+    #     "output": "output",
+    #     "code_analysis": "code_analysis",
+    #     "schema_extraction": "schema_extraction"
+    # })
+    g.add_edge("validation", "output")
     
     # Code analysis routing: back to generator for correction
     g.add_edge("code_analysis", "generator")

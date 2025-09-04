@@ -358,15 +358,15 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
-    """Extract correction data from LLM response."""
+    """Extract correction data from LLM response with enhanced parsing."""
     try:
         print(f"🔍 Extracting correction data from response...")
         print(f"   Response length: {len(response_content)} characters")
         print(f"   Response preview: {response_content[:200]}...")
         
-        # Look for Python dictionary in the response
         import re
         import ast
+        import json
         
         # Method 1: Find Python dictionary pattern with ```python blocks
         dict_match = re.search(r'```python\s*(\{.*?\})\s*```', response_content, re.DOTALL)
@@ -380,37 +380,45 @@ def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
             except Exception as parse_error:
                 print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
         
-        # Method 2: Find Python dictionary without code blocks
-        dict_match2 = re.search(r'(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})', response_content, re.DOTALL)
-        if dict_match2:
-            dict_str = dict_match2.group(1)
-            print(f"   ✅ Found Python dictionary without code blocks")
-            try:
-                correction_data = ast.literal_eval(dict_str)
-                print(f"   ✅ Successfully parsed Python dictionary")
-                return correction_data
-            except Exception as parse_error:
-                print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
+        # Method 2: Find COMPLETE dictionary structure (ENHANCED)
+        # Look for the opening brace and find its matching closing brace
+        start_idx = response_content.find('{')
+        if start_idx != -1:
+            brace_count = 0
+            end_idx = start_idx
+            
+            for i in range(start_idx, len(response_content)):
+                char = response_content[i]
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end_idx = i + 1
+                        break
+            
+            if brace_count == 0:  # Found complete dictionary
+                dict_str = response_content[start_idx:end_idx]
+                print(f"   ✅ Found complete dictionary structure ({len(dict_str)} chars)")
+                try:
+                    correction_data = ast.literal_eval(dict_str)
+                    print(f"   ✅ Successfully parsed complete dictionary")
+                    return correction_data
+                except Exception as parse_error:
+                    print(f"   ❌ Failed to parse complete dictionary: {parse_error}")
+                    # Try JSON parsing as fallback
+                    try:
+                        correction_data = json.loads(dict_str)
+                        print(f"   ✅ Successfully parsed as JSON")
+                        return correction_data
+                    except Exception as json_error:
+                        print(f"   ❌ JSON parsing also failed: {json_error}")
         
-        # Method 3: Try to find JSON-like structure
-        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_content, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-            print(f"   ✅ Found JSON-like structure")
-            try:
-                import json
-                correction_data = json.loads(json_str)
-                print(f"   ✅ Successfully parsed JSON")
-                return correction_data
-            except Exception as json_error:
-                print(f"   ❌ Failed to parse JSON: {json_error}")
-        
-        # Method 4: Look for specific patterns in the response
+        # Method 3: Manual extraction fallback
         if "files_to_correct" in response_content or "corrected_content" in response_content:
             print(f"   ⚠️ Found edit-related keywords but couldn't extract structured data")
             print(f"   🔧 Attempting manual extraction...")
             
-            # Try to manually construct the data structure
             manual_data = _manual_extract_edit_data(response_content)
             if manual_data:
                 print(f"   ✅ Manual extraction successful")

@@ -124,6 +124,21 @@ async def accept_query(
 # LangGraph playground endpoints
 add_routes(app, compiled_graph, path="/graph")
 
+@app.post("/api/cleanup")
+async def cleanup_session():
+    """Emergency cleanup endpoint - kills all running sandboxes immediately"""
+    try:
+        # Import the cleanup function
+        from nodes.apply_to_Sandbox_node import _kill_existing_sandbox
+        
+        print("🧹 EMERGENCY CLEANUP - Killing all sandboxes...")
+        _kill_existing_sandbox()
+        
+        return {"success": True, "message": "All sandboxes terminated"}
+    except Exception as e:
+        print(f"❌ Cleanup failed: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.get("/")
 def health():
     return {"ok": True, "service": "lovable-orchestrator"}
