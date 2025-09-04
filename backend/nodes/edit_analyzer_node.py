@@ -98,7 +98,7 @@ def _capture_existing_code_context(state: GraphState) -> str:
 def _build_edit_analysis_prompt(state: GraphState) -> str:
     """Build the prompt for analyzing edit requests."""
     text = state.get("text", "")
-    
+    ##
     # CRITICAL: Capture the existing code context
     existing_code = _capture_existing_code_context(state)
     
