@@ -29,8 +29,8 @@ MODEL_ALIASES: Dict[str, Dict[str, str]] = {
     "claude-3-5-sonnet-20240620": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
     "sonnet-4": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
     "glm-4.5": {"provider": "openrouter", "model": "z-ai/glm-4.5"},
-    "groq-default": {"provider": "groq", "model": "moonshotai/kimi-k2-instruct"},
-    "groq-kimi": {"provider": "groq", "model": "moonshotai/kimi-k2-instruct"},
+    "groq-default": {"provider": "groq", "model": "moonshotai/kimi-k2-instruct-0905"},
+    "groq-kimi": {"provider": "groq", "model": "moonshotai/kimi-k2-0905"},
 }
 
 def _resolve_model(model_name: Optional[str]) -> Dict[str, str]:
@@ -48,7 +48,7 @@ def _resolve_model(model_name: Optional[str]) -> Dict[str, str]:
     if key.startswith("claude-"):
         return {"provider": "anthropic", "model": key}
     if key.startswith("groq"):
-        return {"provider": "groq", "model": "moonshotai/kimi-k2-instruct"}
+        return {"provider": "groq", "model": "moonshotai/kimi-k2-instruct-0905"}
     if key.startswith("k2"):
         return {"provider": "k2-fallback", "model": "moonshotai/kimi-k2-instruct"}
     # Default
@@ -103,12 +103,12 @@ def _get_k2_model_with_fallback(**kwargs) -> Any:
     if _FALLBACK_STATE["k2_provider"] == "openrouter":
         if _has_key("OPENROUTER_API_KEY"):
             print("✅ Using OpenRouter K2 model (cached working provider)")
-            return _make_openrouter("moonshotai/kimi-k2", **kwargs)
+            return _make_openrouter("moonshotai/kimi-k2-0905", **kwargs)
     
     # Try Groq first (unless we know it's failing)
     if _FALLBACK_STATE["k2_provider"] == "groq" and _has_key("GROQ_API_KEY"):
         try:
-            groq_model = _make_groq("moonshotai/kimi-k2-instruct", **kwargs)
+            groq_model = _make_groq("moonshotai/kimi-k2-instruct-0905", **kwargs)
             # Test the model with a simple call
             test_messages = [HumanMessage(content="Hello")]
             groq_model.invoke(test_messages)
