@@ -14,7 +14,7 @@ from nodes.validation_node import validate_generated_code  # removed route_after
 from nodes.code_analysis_node import analyze_and_fix_code, route_after_analysis
 from nodes.output_node import output_result
 from observability import trace_node
-
+from nodes.photo_generator_node import photo_generator
 # from nodes.validation_node import validate_generated_code  # removed route_after_validation
 
 def route_after_validation_local(state: GraphState) -> str:
@@ -60,6 +60,7 @@ def build_graph():
     g.add_node("analyze_intent",     trace_node(analyze_intent, "analyze_intent"))
     g.add_node("new_design",         trace_node(new_design, "new_design"))
     g.add_node("schema_extraction",  trace_node(schema_extraction, "schema_extraction"))
+    g.add_node("photo_generator",    trace_node(photo_generator, "photo_generator"))
     g.add_node("url_extraction",     trace_node(url_extraction, "url_extraction"))
     g.add_node("edit_analyzer",      trace_node(edit_analyzer, "edit_analyzer"))
     g.add_node("generator",          trace_node(generator, "generator"))
@@ -85,11 +86,12 @@ def build_graph():
     })
 
     g.add_conditional_edges("new_design", new_design_route, {
-        "generator":"generator",
+        "photo_generator":"photo_generator",
         "schema_extraction":"schema_extraction",
     })
 
-    g.add_edge("schema_extraction", "generator")
+    g.add_edge("schema_extraction", "photo_generator")
+    g.add_edge("photo_generator", "generator")
     g.add_edge("url_extraction", "generator")
     
     # ENHANCED: Edit analyzer now goes to generator for targeted changes

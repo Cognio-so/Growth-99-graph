@@ -16,11 +16,14 @@ const MODELS = [
 
 const MODEL_DISPLAY_NAMES = {
   "k2": "Kimi K2 (Moonshot) 🚀",
-  "claude": "Claude 3.5 Sonnet 🧠", 
-  "claude-haiku": "Claude 3.5 Haiku ⚡",
-  "gpt-4": "GPT-4o (OpenAI) 🤖",
   "gpt-4o": "GPT-4o (OpenAI) 🤖",
-  "glm-4.5": "GLM-4.5 (ZhipuAI) 🤖"  // ✅ ADDED: Missing display name
+  "gpt-4o-mini": "GPT-4o Mini (OpenAI) ⚡",
+  "gpt-4-turbo": "GPT-4 Turbo (OpenAI) 🧠",
+  "gpt-5": "GPT-5 (OpenAI) 🧠",
+  "claude-3-sonnet-20240229": "Claude 3 Sonnet 🧠",
+  "claude-3-5-sonnet-20240620": "Claude 3.5 Sonnet 🧠",
+  "sonnet-4": "Claude Sonnet 4 🧠",
+  "glm-4.5": "GLM-4.5 (ZhipuAI) 🤖"
 };
 
 function IntentForm() {

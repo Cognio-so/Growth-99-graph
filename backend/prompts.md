@@ -133,6 +133,181 @@ STEP 5: TAILWIND CSS CLASS VALIDATION
 
 ---
 
+## 🖼️ ENHANCED IMAGE INTEGRATION RULES - MANDATORY FOR ALL GENERATED IMAGES
+
+### **CRITICAL IMAGE USAGE REQUIREMENTS:**
+
+**RULE #1: MANDATORY IMAGE USAGE**
+- **ALWAYS use provided images** - Never skip or ignore available images
+- **NO placeholder images** - Use the actual generated image URLs
+- **NO text-based alternatives** - Use real images, not text or icons as substitutes
+- **MATCH images to components** - Use images according to their description and context
+
+**RULE #2: IMAGE-SCHEMA ALIGNMENT**
+- **Map images to JSON schema components** - Each image should be used in the appropriate schema component
+- **Follow schema structure** - Use images in the exact components defined in the JSON schema
+- **Maintain data flow** - Images should flow through the schema as intended
+- **Respect component hierarchy** - Use images in the correct component order
+
+**RULE #3: PROPER IMAGE ALIGNMENT & STYLING**
+
+#### **LOGO IMAGES - NAVBAR/HEADER/FOOTER:**
+```jsx
+// CORRECT LOGO USAGE:
+<img 
+  src={logoUrl} 
+  alt={altText}
+  className="h-12 w-auto object-contain"
+  style={{ filter: 'brightness(0) invert(1)' }} // For dark backgrounds
+/>
+
+// POSITIONING:
+- Navbar: Left-aligned, 150-200px width
+- Header: Centered, 200-300px width  
+- Footer: Centered, 100-150px width
+```
+
+#### **BANNER/HERO IMAGES - FULL-WIDTH SECTIONS:**
+```jsx
+// CORRECT BANNER USAGE:
+<div className="relative h-96 md:h-[500px] overflow-hidden">
+  <img 
+    src={bannerUrl}
+    alt={altText}
+    className="absolute inset-0 w-full h-full object-cover"
+  />
+  <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+  <div className="relative z-10 flex items-center justify-center h-full">
+    {/* Content overlay */}
+  </div>
+</div>
+
+// POSITIONING:
+- Full-width containers
+- object-cover for consistent cropping
+- Overlay for text readability
+```
+
+#### **PHOTO IMAGES - CARDS & CONTENT:**
+```jsx
+// CORRECT PHOTO USAGE:
+<div className="relative overflow-hidden rounded-lg">
+  <img 
+    src={photoUrl}
+    alt={altText}
+    className="w-full h-48 md:h-64 object-cover transition-transform hover:scale-105"
+  />
+</div>
+
+// POSITIONING:
+- Responsive aspect ratios (16:9 or 4:3)
+- object-cover for consistent display
+- Rounded corners for modern look
+- Hover effects for interactivity
+```
+
+#### **ICON IMAGES - UI ELEMENTS:**
+```jsx
+// CORRECT ICON USAGE:
+<img 
+  src={iconUrl}
+  alt={altText}
+  className="w-8 h-8 md:w-12 md:h-12 object-contain"
+  style={{ filter: 'hue-rotate(200deg) saturate(1.2)' }} // Theme matching
+/>
+
+// POSITIONING:
+- Consistent sizing (24-48px for small, 64-96px for large)
+- object-contain to preserve aspect ratio
+- CSS filters for theme color matching
+```
+
+**RULE #4: RESPONSIVE IMAGE IMPLEMENTATION**
+```jsx
+// RESPONSIVE IMAGE PATTERN:
+<img 
+  src={imageUrl}
+  alt={altText}
+  className="w-full h-auto object-cover md:object-contain"
+  loading="lazy"
+  onError={(e) => {
+    e.target.src = fallbackUrl; // Use additional URL as fallback
+  }}
+/>
+```
+
+**RULE #5: IMAGE-SCHEMA COMPONENT MAPPING**
+
+#### **MANDATORY MAPPING RULES:**
+- **Header Component**: Use LOGO images for branding
+- **Hero Component**: Use BANNER images for backgrounds
+- **Services Component**: Use PHOTO images for service cards
+- **Team Component**: Use PHOTO images for team members
+- **Testimonials Component**: Use PHOTO images for client photos
+- **Gallery Component**: Use PHOTO images for content display
+- **Footer Component**: Use LOGO images for footer branding
+- **Social Media Component**: Use ICON images for social links
+
+**RULE #6: IMAGE QUALITY & PERFORMANCE**
+```jsx
+// HIGH-QUALITY IMAGE IMPLEMENTATION:
+<img 
+  src={imageUrl}
+  alt={altText}
+  className="w-full h-auto"
+  style={{
+    imageRendering: 'high-quality',
+    WebkitImageRendering: 'high-quality'
+  }}
+  loading="lazy"
+  decoding="async"
+/>
+```
+
+**RULE #7: ACCESSIBILITY REQUIREMENTS**
+- **Always include alt text** - Use the provided alt text or generate descriptive alt text
+- **Proper contrast** - Ensure images work with the chosen theme
+- **Screen reader friendly** - Images should enhance, not replace, text content
+- **Keyboard navigation** - Images in interactive elements should be focusable
+
+**RULE #8: THEME INTEGRATION**
+- **Match theme colors** - Use CSS filters to adjust image colors to match theme
+- **Consistent styling** - Apply the same styling patterns across all images
+- **Brand consistency** - Ensure images support the overall brand aesthetic
+- **Visual harmony** - Images should complement the chosen color scheme
+
+### **IMAGE USAGE CHECKLIST - VERIFY BEFORE GENERATING CODE:**
+
+✅ **Image Assignment:**
+- [ ] All provided images are assigned to appropriate components
+- [ ] Images match their intended purpose (logo, photo, icon, banner)
+- [ ] No images are left unused or ignored
+
+✅ **Schema Compliance:**
+- [ ] Images are used in the correct JSON schema components
+- [ ] Component structure follows the schema hierarchy
+- [ ] Data flow includes image URLs as intended
+
+✅ **Technical Implementation:**
+- [ ] Proper img tags with src, alt, and className attributes
+- [ ] Responsive sizing with Tailwind classes
+- [ ] Object-fit properties for consistent display
+- [ ] Loading and error handling implemented
+
+✅ **Design Integration:**
+- [ ] Images align with the chosen theme
+- [ ] Proper spacing and alignment within components
+- [ ] Consistent styling across all image types
+- [ ] Visual hierarchy maintained
+
+✅ **Performance & Accessibility:**
+- [ ] Lazy loading implemented where appropriate
+- [ ] Alt text provided for all images
+- [ ] Fallback URLs configured
+- [ ] High-quality rendering enabled
+
+---
+
 ### Design Schema Requirements — MANDATORY THREE-INPUT APPROACH
 - **JSON SCHEMA**: Always use for component structure and data organization
 - **UI GUIDELINES**: Always use for design principles and visual styling

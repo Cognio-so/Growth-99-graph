@@ -1,5 +1,5 @@
 # nodes/edit_analyzer.py
-from typing import Dict, Any
+from typing import Dict, Any, List
 from graph_types import GraphState
 from llm import get_chat_model, call_llm_json
 
@@ -17,7 +17,15 @@ Analyze the user's request and output strict JSON:
     "Modify the header text"
   ],
   "preserve_existing": boolean,
-  "context_needed": "What existing code context is needed for this edit"
+  "context_needed": "What existing code context is needed for this edit",
+  "image_requirements": [
+    {
+      "description": "Description of the image needed",
+      "category": "logo" | "photo" | "icon" | "banner",
+      "context": "Where the image will be used",
+      "required": true
+    }
+  ]
 }
 
 Rules:
@@ -27,6 +35,7 @@ Rules:
 - "specific_requirements" should list the exact changes needed
 - "preserve_existing" should be true if existing functionality should be kept
 - "context_needed" should describe what existing code context is required
+- "image_requirements" should list any images needed for the edit (empty array if no images needed)
 """
 
 def _capture_existing_code_context(state: GraphState) -> str:
@@ -124,6 +133,126 @@ Provide your analysis in the required JSON format.
 """
     return prompt
 
+def _detect_image_requirements(user_text: str, existing_code: str) -> List[Dict[str, Any]]:
+    """
+    Detect if the edit request requires images and generate descriptions.
+    """
+    image_keywords = [
+        'image', 'photo', 'picture', 'logo', 'banner', 'icon', 'avatar', 'thumbnail',
+        'background', 'hero', 'header image', 'profile picture', 'product image',
+        'gallery', 'carousel', 'slider', 'visual', 'graphic', 'illustration'
+    ]
+    
+    user_text_lower = user_text.lower()
+    
+    # Check if the request mentions images
+    has_image_mention = any(keyword in user_text_lower for keyword in image_keywords)
+    
+    if not has_image_mention:
+        return []
+    
+    # Use LLM to analyze and generate image requirements
+    try:
+        model = get_chat_model("groq-default", temperature=0.1)
+        
+        prompt = f"""
+Analyze this edit request and determine what images are needed:
+
+USER REQUEST: {user_text}
+
+EXISTING CODE CONTEXT: {existing_code}
+
+If the user wants to add, change, or modify images, provide detailed image requirements.
+Output JSON array of image requirements:
+[
+  {{
+    "description": "Detailed description of the image needed",
+    "category": "logo|photo|icon|banner",
+    "context": "Where/how the image will be used",
+    "required": true
+  }}
+]
+
+If no images are needed, return empty array: []
+"""
+        
+        result = call_llm_json(model, "You are an image requirements analyzer. Output only valid JSON.", prompt)
+        
+        if isinstance(result, list):
+            return result
+        elif isinstance(result, dict) and "image_requirements" in result:
+            return result["image_requirements"]
+        else:
+            return []
+            
+    except Exception as e:
+        print(f"❌ Error detecting image requirements: {e}")
+        return []
+
+def _generate_images_for_edit(image_requirements: List[Dict[str, Any]], state: GraphState) -> List[Dict[str, Any]]:
+    """
+    Generate images for edit requirements using photo generator functions.
+    """
+    if not image_requirements:
+        return []
+    
+    print(f"🖼️ Generating {len(image_requirements)} images for edit request...")
+    
+    try:
+        # Import photo generator functions
+        from nodes.photo_generator_node import (
+            _generate_high_quality_images_from_pexels,
+            _save_image_to_csv,
+            _infer_category_from_description
+        )
+        
+        generated_images = []
+        
+        for req in image_requirements:
+            description = req.get("description", "")
+            category = req.get("category", "photo")
+            context = req.get("context", "")
+            
+            if not description:
+                continue
+            
+            print(f"   Generating: {description} ({category})")
+            
+            # Generate images using the photo generator
+            urls = _generate_high_quality_images_from_pexels(
+                description=description,
+                context=context,
+                category=category,
+                max_images=1
+            )
+            
+            if urls:
+                # Save to CSV
+                website_type = state.get("context", {}).get("website_type", "general")
+                _save_image_to_csv(description, website_type, context, category, urls)
+                
+                # Add to generated images list
+                generated_images.append({
+                    "description": description,
+                    "category": category,
+                    "context": context,
+                    "urls": urls,
+                    "generated_for_edit": True
+                })
+                
+                print(f"   ✅ Generated: {description}")
+            else:
+                print(f"   ❌ Failed to generate: {description}")
+        
+        print(f"✅ Generated {len(generated_images)} images for edit")
+        return generated_images
+        
+    except Exception as e:
+        print(f"❌ Error generating images for edit: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
 def edit_analyzer(state: GraphState) -> GraphState:
     """
     Analyze user edit requests to determine what changes need to be made.
@@ -168,6 +297,19 @@ def edit_analyzer(state: GraphState) -> GraphState:
         existing_code = _capture_existing_code_context(state)
         ctx["existing_code"] = existing_code
         
+        # NEW: Check for image requirements and generate images if needed
+        image_requirements = result.get("image_requirements", [])
+        if not image_requirements:
+            # Fallback: detect image requirements from user text
+            image_requirements = _detect_image_requirements(user_text, existing_code)
+        
+        generated_images = []
+        if image_requirements:
+            print(f"🖼️ Detected {len(image_requirements)} image requirements")
+            generated_images = _generate_images_for_edit(image_requirements, state)
+            edit_analysis["image_requirements"] = image_requirements
+            edit_analysis["generated_images"] = generated_images
+        
         # Prepare generator input for editing mode
         gi = ctx.get("generator_input", {})
         gi.update({
@@ -175,7 +317,8 @@ def edit_analyzer(state: GraphState) -> GraphState:
             "user_text": user_text,
             "edit_analysis": edit_analysis,
             "is_edit_mode": True,
-            "existing_code": existing_code  # Pass existing code to generator
+            "existing_code": existing_code,  # Pass existing code to generator
+            "generated_images": generated_images  # Pass generated images to generator
         })
         
         ctx["edit_analysis"] = edit_analysis
@@ -185,6 +328,8 @@ def edit_analyzer(state: GraphState) -> GraphState:
         print(f"   Target files: {edit_analysis['target_files']}")
         print(f"   Changes: {edit_analysis['changes_description']}")
         print(f"   Existing code context captured: {len(existing_code.split('```')) // 2} files")
+        if generated_images:
+            print(f"   Generated {len(generated_images)} images for edit")
         
     except Exception as e:
         print(f"❌ Error in edit analysis: {e}")

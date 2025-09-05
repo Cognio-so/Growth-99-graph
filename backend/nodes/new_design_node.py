@@ -14,6 +14,10 @@ def new_design(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         gi["schema_source"] = "none"
 
+    # Clear edit history for new design
+    state["edit_history"] = None
+    state["existing_code"] = None
+
     ctx["generator_input"] = gi
     state["context"] = ctx
     return state

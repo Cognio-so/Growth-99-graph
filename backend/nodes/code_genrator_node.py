@@ -36,6 +36,8 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     """Constructs the detailed user-facing prompt for the generator LLM."""
     user_text = gi.get("user_text", "No user text provided.")
     json_schema = gi.get("json_schema")
+    generated_images = gi.get("generated_images", [])
+    has_images = gi.get("has_images", False)
     
     prompt_parts = [
         "## USER PROMPT - YOUR DESIGN DIRECTION",
@@ -56,11 +58,136 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
         "5. **Maintain visual harmony** - create cohesive design",
         "",
         "**IMPORTANT**: You are the designer - choose colors that make sense for the theme!",
+        ""
+    ]
+    
+    # Add image information if available
+    if has_images and generated_images:
+        prompt_parts.extend([
+            "## 🖼️ AVAILABLE IMAGES - USE THESE IMAGES IN YOUR CODE",
+            "**MANDATORY**: You MUST use these available images in your React components.",
+            "**IMAGE INTEGRATION**: Include these images using the provided URLs and alt text.",
+            "**CRITICAL**: Use the images provided - do not create placeholder images or skip using them.",
+            "",
+            "### Available Images:"
+        ])
+        
+        # Group images by category for better organization
+        images_by_category = {}
+        for img in generated_images:
+            category = img.get("category", "unknown")
+            if category not in images_by_category:
+                images_by_category[category] = []
+            images_by_category[category].append(img)
+        
+        for category, images in images_by_category.items():
+            prompt_parts.extend([
+                f"#### {category.upper()} IMAGES:",
+                ""
+            ])
+            
+            for i, img in enumerate(images, 1):
+                prompt_parts.extend([
+                    f"**{category.title()} {i}: {img['type']}**",
+                    f"- Description: {img['description']}",
+                    f"- Website Type: {img.get('website_type', 'general')}",
+                    f"- Context: {img['context']}",
+                    f"- Primary URL: {img['primary_url']}",
+                    f"- Alt Text: {img['alt_text']}",
+                ])
+                
+                # Show all available URLs
+                if img.get('urls') and len(img['urls']) > 1:
+                    prompt_parts.append("- Additional URLs:")
+                    for j, url in enumerate(img['urls'][1:], 2):
+                        prompt_parts.append(f"  - URL {j}: {url}")
+                
+                prompt_parts.append("")
+        
+        prompt_parts.extend([
+            "### Image Usage Instructions by Category:",
+            "",
+            "#### LOGO IMAGES:",
+            "- Use for navbar, header, footer branding elements",
+            "- Apply appropriate sizing (typically 150-200px width for navbar, 100-150px for footer)",
+            "- Use CSS filters if needed to match theme colors",
+            "- Ensure proper contrast with background",
+            "- MANDATORY: Use the provided logo URLs, do not create text-based logos",
+            "",
+            "#### PHOTO IMAGES:",
+            "- Use for service cards, product displays, team photos, testimonials",
+            "- Apply responsive sizing with proper aspect ratios",
+            "- Use CSS object-fit: cover for consistent cropping",
+            "- Add subtle shadows or borders for professional look",
+            "- MANDATORY: Use the provided photo URLs, do not create placeholder images",
+            "",
+            "#### ICON IMAGES:",
+            "- Use for service icons, feature indicators, UI elements",
+            "- Apply consistent sizing (typically 24-48px for small icons, 64-96px for large icons)",
+            "- Use CSS filters to match theme colors",
+            "- Ensure proper spacing and alignment",
+            "- MANDATORY: Use the provided icon URLs, do not create text-based icons",
+            "",
+            "#### BANNER IMAGES:",
+            "- Use for hero sections, background images, promotional banners",
+            "- Apply full-width or container-width sizing as appropriate",
+            "- Use CSS object-fit: cover for consistent display",
+            "- Add overlay effects if needed for text readability",
+            "- MANDATORY: Use the provided banner URLs, do not create placeholder backgrounds",
+            "",
+            "### General Image Guidelines:",
+            "- Use the primary URL for the main image display",
+            "- Use additional URLs for responsive design or fallbacks",
+            "- Include proper alt text for accessibility",
+            "- Match images to their intended purpose based on description, website type, and context",
+            "- Apply appropriate CSS classes for consistent styling",
+            "- Use high-quality images (these are ultra HD images from Pexels API)",
+            "- CRITICAL: Always use the provided images - never skip them or create alternatives",
+            ""
+        ])
+    
+    # Add logo processing instructions
+    prompt_parts.extend([
+        "### 🎨 LOGO PROCESSING INSTRUCTIONS:",
+        "**CRITICAL FOR LOGO IMAGES**: When using logo images, apply these CSS properties:",
         "",
+        "```css",
+        "/* Logo styling to remove backgrounds and make them look professional */",
+        ".logo {",
+        "  background: transparent;",
+        "  filter: brightness(1.1) contrast(1.2);",
+        "  mix-blend-mode: multiply;",
+        "  border-radius: 8px;",
+        "  padding: 10px;",
+        "  max-width: 200px;",
+        "  height: auto;",
+        "  object-fit: contain;",
+        "}",
+        "",
+        "/* For navbar logos */",
+        ".navbar .logo {",
+        "  max-width: 150px;",
+        "  height: 50px;",
+        "  object-fit: contain;",
+        "}",
+        "",
+        "/* For footer logos */",
+        ".footer .logo {",
+        "  max-width: 120px;",
+        "  height: 40px;",
+        "  object-fit: contain;",
+        "}",
+        "```",
+        "",
+        "**MANDATORY**: Apply these styles to ALL logo images to make them look professional and remove any background colors.",
+        ""
+    ])
+    
+    prompt_parts.extend([
         "## JSON SCHEMA - COMPONENT STRUCTURE & DATA",
         "**MANDATORY**: You MUST use this schema for component organization and data flow.",
         ""
-    ]
+    ])
     
     if json_schema and isinstance(json_schema, dict):
         schema_str = json.dumps(json_schema, indent=2)
@@ -73,17 +200,18 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
         "## 🎨 UI GUIDELINES - DESIGN PRINCIPLES & POLISH",
         "**MANDATORY**: You MUST use the UI guidelines for layout, spacing, typography, and design principles.",
         "",
-        "## 🔄 MANDATORY THREE-INPUT SYNTHESIS",
-        "**CRITICAL**: You MUST combine ALL THREE inputs together:",
+        "## 🔄 MANDATORY INPUT SYNTHESIS",
+        "**CRITICAL**: You MUST combine ALL inputs together:",
         "1. 🎯 USER PROMPT - Implement specific requirements (themes, colors, features) GLOBALLY",
         "2. 📋 JSON SCHEMA - Use for component structure and data organization",
         "3. 🎨 UI GUIDELINES - Apply for design principles and professional polish",
-        "4. 🔄 SYNTHESIS - Combine all three for cohesive, beautiful design",
+        "4. 🖼️ AVAILABLE IMAGES - Use the provided images in your components with proper categorization",
+        "5. 🔄 SYNTHESIS - Combine all inputs for cohesive, beautiful design",
         "",
         "**THEME IMPLEMENTATION**: Apply user's theme to the ENTIRE application. YOU choose the specific colors!**"
     ])
     
-    return "\n\n".join(prompt_parts)
+    return "\n".join(prompt_parts)
 
 def _build_correction_prompt(ctx: Dict[str, Any]) -> str:
     """Build a targeted correction prompt when validation fails."""
@@ -165,14 +293,36 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
 - **Specific Requirements**: {chr(10).join(f"- {req}" for req in edit_analysis.get('specific_requirements', []))}
 - **Preserve Existing**: {edit_analysis.get('preserve_existing', True)}
 - **Context Needed**: {edit_analysis.get('context_needed', '')}
+- **Content Preservation Rules**: {chr(10).join(f"- {rule}" for rule in edit_analysis.get('content_preservation_rules', []))}
 
 ### 🚨 CRITICAL EDITING INSTRUCTIONS:
+
+#### FOR THEME/STYLING CHANGES:
+- **ONLY modify visual appearance**: colors, backgrounds, borders, shadows, animations, gradients, CSS classes
+- **NEVER change text content**: headings, descriptions, button text, form labels, component names, etc.
+- **PRESERVE component structure**: same components, same layout, same functionality
+- **KEEP all existing content**: text, images, links, form fields, etc.
+- **ONLY update className attributes and style properties**
+
+#### FOR FUNCTIONALITY CHANGES:
+- **ONLY modify what's specifically requested**: add/remove features as asked
+- **PRESERVE existing functionality**: don't break what's already working
+- **MAINTAIN component structure**: keep the same layout and organization
+
+#### FOR LAYOUT CHANGES:
+- **ONLY modify positioning and spacing**: margins, padding, flexbox, grid
+- **PRESERVE content**: same text, same components, same functionality
+- **MAINTAIN responsive design**: ensure it still works on all screen sizes
+
+### 🚨 ABSOLUTE RULES:
 1. **DO NOT regenerate the entire application**
 2. **Make ONLY the specific changes requested**
 3. **Preserve all existing functionality unless explicitly asked to change it**
 4. **Focus on the target files identified in the analysis**
 5. **Ensure the changes integrate seamlessly with existing code**
 6. **Maintain the same code style and structure**
+7. **NEVER change text content when making theme changes**
+8. **ONLY modify styling properties and CSS classes**
 
 ### EXISTING CODE CONTEXT (MODIFY THIS CODE):
 {existing_code}
@@ -208,13 +358,16 @@ You MUST return ONLY a Python dictionary with this EXACT structure:
 - **NO REGENERATION**: Do not create new components unless explicitly requested
 - **MAINTAIN FUNCTIONALITY**: Keep all existing features and interactions
 - **EXACT FORMAT**: Return ONLY the Python dictionary, no explanations or markdown
+- **PRESERVE TEXT**: Keep all existing text content unchanged when making theme changes
 
-### 📝 EXAMPLE:
-If user says "add a contact form", you should:
-1. Find the existing App.jsx in the code above
-2. Add the contact form component import and usage
-3. Create a new ContactForm.jsx component
-4. Return the modified App.jsx and new ContactForm.jsx in the exact format above
+### 📝 THEME CHANGE EXAMPLE:
+If user says "change to cyberpunk theme", you should:
+1. Find the existing code above
+2. ONLY modify className attributes and style properties
+3. Change colors, backgrounds, borders, shadows to cyberpunk style
+4. KEEP all existing text content, headings, descriptions, button text
+5. PRESERVE all component structure and functionality
+6. Return the modified files with ONLY styling changes
 
 ###  CRITICAL:
 - Return ONLY the Python dictionary
@@ -222,6 +375,7 @@ If user says "add a contact form", you should:
 - No explanations
 - No additional text
 - Just the dictionary structure
+- PRESERVE ALL EXISTING TEXT CONTENT
 
 Generate ONLY the corrected file content for the files that need changes.
 """

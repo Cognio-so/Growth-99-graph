@@ -12,4 +12,4 @@ class GraphState(TypedDict, total=False):
     context: Dict[str, Any]
     # Enhanced context for editing support
     existing_code: Optional[str]          # Existing code context for edits
-    edit_history: Optional[List[Dict[str, Any]]]  # History of edits made
+    edit_history: Optional[Dict[str, Any]]  # Single edit context (not a list)

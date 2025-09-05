@@ -22,7 +22,13 @@ MODEL_ALIASES: Dict[str, Dict[str, str]] = {
     "claude-haiku": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
     "gpt-4": {"provider": "openai", "model": "gpt-4o"},
     "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
-    "glm-4.5": {"provider": "openrouter", "model": "z-ai/glm-4.5"},  # ✅ ADDED: GLM-4.5 support
+    "gpt-4o-mini": {"provider": "openai", "model": "gpt-4o-mini"},
+    "gpt-4-turbo": {"provider": "openai", "model": "gpt-4-turbo"},
+    "gpt-5": {"provider": "openai", "model": "gpt-5"},
+    "claude-3-sonnet-20240229": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240229"},
+    "claude-3-5-sonnet-20240620": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
+    "sonnet-4": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
+    "glm-4.5": {"provider": "openrouter", "model": "z-ai/glm-4.5"},
     "groq-default": {"provider": "groq", "model": "moonshotai/kimi-k2-instruct"},
     "groq-kimi": {"provider": "groq", "model": "moonshotai/kimi-k2-instruct"},
 }

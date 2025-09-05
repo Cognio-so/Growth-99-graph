@@ -25,38 +25,81 @@ DEFAULT_ROWS = [
     })},
 ]
 
-def _get_regeneration_count() -> int:
-    """Get the current regeneration count from persistent storage."""
+def _get_regeneration_count(session_id: str = None) -> int:
+    """Get the current regeneration count from persistent storage for a specific session."""
     try:
         if REGENERATION_COUNTER_FILE.exists():
             with REGENERATION_COUNTER_FILE.open("r") as f:
                 data = json.load(f)
-                return data.get("count", 0)
+                # If no session_id provided, use legacy global counter
+                if not session_id:
+                    return data.get("count", 0)
+                # Return session-specific counter, defaulting to 0 for new sessions
+                return data.get("sessions", {}).get(session_id, 0)
     except Exception as e:
         print(f"⚠️ Error reading regeneration counter: {e}")
     return 0
 
-def _increment_regeneration_count() -> int:
-    """Increment and save the regeneration count."""
+def _increment_regeneration_count(session_id: str = None) -> int:
+    """Increment and save the regeneration count for a specific session."""
     try:
-        current_count = _get_regeneration_count()
+        # Load existing data
+        data = {}
+        if REGENERATION_COUNTER_FILE.exists():
+            with REGENERATION_COUNTER_FILE.open("r") as f:
+                data = json.load(f)
+        
+        # Initialize sessions dict if it doesn't exist
+        if "sessions" not in data:
+            data["sessions"] = {}
+        
+        # Get current count for this session
+        current_count = data["sessions"].get(session_id, 0) if session_id else data.get("count", 0)
         new_count = current_count + 1
         
-        with REGENERATION_COUNTER_FILE.open("w") as f:
-            json.dump({"count": new_count, "last_updated": json.dumps(None)}, f)
+        # Update the appropriate counter
+        if session_id:
+            data["sessions"][session_id] = new_count
+            print(f"📊 Regeneration count for session {session_id}: {new_count}")
+        else:
+            # Legacy support for global counter
+            data["count"] = new_count
+            print(f"📊 Global regeneration count: {new_count}")
         
-        print(f"📊 Regeneration count: {new_count}")
+        # Save updated data
+        with REGENERATION_COUNTER_FILE.open("w") as f:
+            json.dump(data, f)
+        
         return new_count
     except Exception as e:
         print(f"⚠️ Error updating regeneration counter: {e}")
         return 0
 
-def _reset_regeneration_count():
-    """Reset regeneration count (for testing or manual reset)."""
+def _reset_regeneration_count(session_id: str = None):
+    """Reset regeneration count for a specific session (for testing or manual reset)."""
     try:
+        # Load existing data
+        data = {}
+        if REGENERATION_COUNTER_FILE.exists():
+            with REGENERATION_COUNTER_FILE.open("r") as f:
+                data = json.load(f)
+        
+        # Initialize sessions dict if it doesn't exist
+        if "sessions" not in data:
+            data["sessions"] = {}
+        
+        # Reset the appropriate counter
+        if session_id:
+            data["sessions"][session_id] = 0
+            print(f"🔄 Regeneration counter reset to 0 for session {session_id}")
+        else:
+            # Legacy support for global counter
+            data["count"] = 0
+            print("🔄 Global regeneration counter reset to 0")
+        
+        # Save updated data
         with REGENERATION_COUNTER_FILE.open("w") as f:
-            json.dump({"count": 0, "last_updated": json.dumps(None)}, f)
-        print("🔄 Regeneration counter reset to 0")
+            json.dump(data, f)
     except Exception as e:
         print(f"⚠️ Error resetting regeneration counter: {e}")
 
@@ -154,28 +197,30 @@ def _pick_random_schema_with_fallback(primary_schemas: list[dict], fallback_sche
     print("🔄 All schemas failed, using default schemas...")
     return _pick_random_schema(DEFAULT_ROWS, max_attempts=2)
 
-def _get_priority_schemas() -> tuple[list[dict], str]:
+def _get_priority_schemas(session_id: str = None) -> tuple[list[dict], str]:
     """
     Get schemas with priority system and fallback handling:
-    - First 10 regenerations: use schema2.csv with schema.csv as fallback
-    - After 10: use schema.csv with default as fallback
+    - First 7 regenerations: use schema2.csv with schema.csv as fallback
+    - After 7: use schema.csv with default as fallback
     """
-    regen_count = _get_regeneration_count()
+    regen_count = _get_regeneration_count(session_id)
     
-    # Priority 1: schema2.csv for first 10 regenerations
+    # Priority 1: schema2.csv for first 7 regenerations
     if regen_count < MAX_SCHEMA2_USES and SCHEMA2_CSV_PATH.exists():
         schema2_schemas = _load_schemas_from_csv(SCHEMA2_CSV_PATH)
         if schema2_schemas:
             remaining = MAX_SCHEMA2_USES - regen_count
-            print(f"🎯 Using PRIORITY schema2.csv ({remaining} uses remaining)")
+            print(f"🎯 Using PRIORITY schema2.csv ({remaining} uses remaining) for session {session_id}")
             return schema2_schemas, f"schema2.csv"
     
     # Priority 2: schema.csv (default or fallback)
     schema1_schemas = _load_schemas_from_csv(SCHEMA_CSV_PATH)
     if schema1_schemas:
+        print(f"📋 Using schema.csv for session {session_id}")
         return schema1_schemas, "schema.csv"
     
     # Fallback: default schemas
+    print(f"🔄 Using default schemas for session {session_id}")
     return DEFAULT_ROWS, "default"
 
 def _inline_schema_from_text(text: str) -> Optional[dict]:
@@ -191,12 +236,17 @@ def _inline_schema_from_text(text: str) -> Optional[dict]:
     return None
 
 def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Enhanced schema extraction with robust error handling."""
+    """Enhanced schema extraction with robust error handling and session-aware regeneration counting."""
     print("--- Running Schema Extraction Node ---")
     
     text = state.get("text", "")
     force_random = bool((state.get("metadata") or {}).get("regenerate"))
     is_new_design = state.get("context", {}).get("intent", {}).get("is_new_design", False)
+    
+    # Get session ID for session-aware regeneration counting
+    session_id = state.get("session_id")
+    if session_id:
+        print(f"🆔 Processing schema extraction for session: {session_id}")
     
     is_regeneration_request = force_random or is_new_design
     inline_schema = None if force_random else _inline_schema_from_text(text)
@@ -209,10 +259,10 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
         schema_source = "inline"
     else:
         if is_regeneration_request:
-            _increment_regeneration_count()
+            _increment_regeneration_count(session_id)
         
-        # Get primary and fallback schemas
-        primary_schemas, source_info = _get_priority_schemas()
+        # Get primary and fallback schemas with session-aware counting
+        primary_schemas, source_info = _get_priority_schemas(session_id)
         
         # For priority system, also load fallback schemas
         if "schema2.csv" in source_info:
@@ -252,6 +302,6 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 # Utility function to manually reset the counter (for testing/debugging)
-def reset_schema_priority_counter():
-    """Reset the regeneration counter - useful for testing."""
-    _reset_regeneration_count()
+def reset_schema_priority_counter(session_id: str = None):
+    """Reset the regeneration counter for a specific session - useful for testing."""
+    _reset_regeneration_count(session_id)

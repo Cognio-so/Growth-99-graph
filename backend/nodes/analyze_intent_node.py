@@ -61,6 +61,8 @@ def analyze_intent(state: GraphState) -> GraphState:
     # Force regeneration path to schema_extraction
     if (state.get("metadata") or {}).get("regenerate"):
         route = "schema_extraction"
+        state["edit_history"] = None
+        state["existing_code"] = None
 
     ctx = state.get("context") or {}
     ctx["intent"] = {
