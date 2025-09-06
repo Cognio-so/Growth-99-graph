@@ -98,29 +98,32 @@ def _create_fast_vite_project(sandbox) -> bool:
         sandbox.commands.run("npm create vite@latest my-app -- --template react", timeout=180)
 
         # 2) Install dependencies
-        print("Installing dependencies...")
-        sandbox.commands.run("cd my-app && npm install", timeout=420)
+        sandbox.commands.run("cd my-app && npm install", timeout=300)
 
-        # 3) Install the React plugin only
-        print("Installing required Vite React plugin...")
-        sandbox.commands.run("cd my-app && npm install @vitejs/plugin-react", timeout=240)
+        # 3) Setup Tailwind with CDN approach for speed
+        index_html = """<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>"""
+        sandbox.files.write("my-app/index.html", index_html)
 
-        # 4) Create minimal index.css (Tailwind will come from CDN)
-        tailwind_css = """@tailwind base;
-@tailwind components;
-@tailwind utilities;
-"""
-        sandbox.files.write("my-app/src/index.css", tailwind_css)
-
-        # 5) CRITICAL: Create components directory
-        sandbox.commands.run("mkdir -p my-app/src/components", timeout=10)
-
-        print("✅ Fast Vite + React project setup completed (Tailwind via CDN).")
+        print("✅ Vite project created with CDN Tailwind")
         return True
 
     except Exception as e:
-        print(f"❌ Error in fast Vite setup: {e}")
+        print(f"❌ Error creating Vite project: {e}")
         return False
+
 
 def _ensure_css_files(sandbox: Sandbox):
     print("🎨 Ensuring comprehensive CSS files...")
@@ -774,8 +777,10 @@ def _detect_and_install_dependencies(sandbox: Sandbox, script_content: str) -> L
     
     # WHITELIST of allowed packages - ONLY these will be installed
     ALLOWED_PACKAGES = {
-        'react-dom', 'lucide-react', 'react-icons', '@heroicons/react'
-        # REMOVED: framer-motion, play-button, and other problematic packages
+        'react-dom', 'lucide-react', 'react-icons', '@heroicons/react',
+        'framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-slot',
+        'class-variance-authority', 'clsx', 'tailwind-merge'
+        # Expanded list to include common UI libraries
     }
     
     # Simplified dependency extraction
@@ -1446,7 +1451,7 @@ def _get_existing_sandbox_only(ctx: Dict[str, Any]):
     return None
 
 def _apply_edit_changes(correction_data: Dict[str, Any]) -> bool:
-    """Apply edit changes to the existing sandbox with robust validation."""
+    """Apply edit changes to the existing sandbox with robust validation and dependency installation."""
     global _global_sandbox
     
     if not _global_sandbox:
@@ -1466,8 +1471,41 @@ def _apply_edit_changes(correction_data: Dict[str, Any]) -> bool:
         if not backup_files:
             print("⚠️ Could not backup critical files, proceeding with caution")
         
-        # STEP 3: APPLY EDITS WITH VALIDATION
+        # STEP 3: COLLECT ALL FILE CONTENTS FOR DEPENDENCY ANALYSIS
+        all_new_content = []
         files_to_correct = correction_data.get("files_to_correct", [])
+        new_files = correction_data.get("new_files", [])
+        
+        # Collect content from files being corrected
+        for file_correction in files_to_correct:
+            content = file_correction.get("corrected_content", "")
+            if content:
+                all_new_content.append(content)
+        
+        # Collect content from new files
+        for file_info in new_files:
+            content = file_info.get("content", "")
+            if content:
+                all_new_content.append(content)
+        
+        # STEP 4: DETECT AND INSTALL NEW DEPENDENCIES
+        if all_new_content:
+            print("🔍 Analyzing edited/new files for dependencies...")
+            combined_content = "\n".join(all_new_content)
+            
+            try:
+                installed_packages = _detect_and_install_dependencies(_global_sandbox, combined_content)
+                if installed_packages:
+                    print(f"✅ Successfully installed {len(installed_packages)} new packages: {', '.join(installed_packages)}")
+                    # Give npm a moment to update package.json and node_modules
+                    time.sleep(2)
+                else:
+                    print("ℹ️ No new dependencies detected in edited files")
+            except Exception as e:
+                print(f"⚠️ Warning: Could not install dependencies: {e}")
+                # Continue with edits even if dependency installation fails
+        
+        # STEP 5: APPLY EDITS WITH VALIDATION
         print(f"📝 Applying edits to {len(files_to_correct)} files...")
         
         for file_correction in files_to_correct:
@@ -1505,8 +1543,7 @@ def _apply_edit_changes(correction_data: Dict[str, Any]) -> bool:
                         print(f"   🔄 Restored {file_path} from backup")
                     return False
         
-        # STEP 4: CREATE NEW FILES (if any)
-        new_files = correction_data.get("new_files", [])
+        # STEP 6: CREATE NEW FILES (if any)
         for file_info in new_files:
             file_path = file_info.get("path", "")
             content = file_info.get("content", "")
@@ -1522,7 +1559,7 @@ def _apply_edit_changes(correction_data: Dict[str, Any]) -> bool:
                     print(f"   ❌ Failed to create {file_path}: {e}")
                     return False
         
-        # STEP 5: VALIDATE PROJECT STRUCTURE AFTER EDITS
+        # STEP 7: VALIDATE PROJECT STRUCTURE AFTER EDITS
         if not _validate_project_structure(_global_sandbox):
             print("❌ Project structure corrupted after edits - restoring from backup")
             if backup_files:
@@ -1533,7 +1570,7 @@ def _apply_edit_changes(correction_data: Dict[str, Any]) -> bool:
                 print("❌ No backup available - project corrupted")
                 return False
         
-        # STEP 6: VALIDATE CRITICAL FILES
+        # STEP 8: VALIDATE CRITICAL FILES
         if not _validate_critical_files(_global_sandbox):
             print("❌ Critical files corrupted after edits")
             return False

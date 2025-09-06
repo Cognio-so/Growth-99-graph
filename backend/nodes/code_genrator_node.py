@@ -184,16 +184,159 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     ])
     
     prompt_parts.extend([
-        "## JSON SCHEMA - COMPONENT STRUCTURE & DATA",
-        "**MANDATORY**: You MUST use this schema for component organization and data flow.",
-        ""
+        "## 🚨 COMPREHENSIVE JSON SCHEMA UTILIZATION - EXTRACT EVERYTHING",
+        "**CRITICAL**: The JSON schema contains DETAILED design specifications. You MUST extract and use ALL available design information:",
+        "",
+        "### 📋 JSON SCHEMA - YOUR PRIMARY DESIGN SOURCE",
     ])
-    
+
     if json_schema and isinstance(json_schema, dict):
         schema_str = json.dumps(json_schema, indent=2)
-        prompt_parts.append(f"```json\n{schema_str}\n```")
+        prompt_parts.extend([
+            "```json",
+            schema_str,
+            "```",
+            "",
+            "### 🔍 MANDATORY SCHEMA ANALYSIS - EXTRACT ALL DESIGN DETAILS:",
+            "",
+            "**1. COLOR SPECIFICATIONS:**",
+            "- Extract ALL colors from each component (background, text, accent, etc.)",
+            "- Use EXACT color names/values specified (soft beige, dark charcoal, muted rose, etc.)",
+            "- Apply colors exactly as defined for each component",
+            "- Maintain color consistency across related components",
+            "",
+            "**2. TYPOGRAPHY SPECIFICATIONS:**",
+            "- Extract ALL typography details from each component:",
+            "  - Font families (serif, sans-serif, etc.)",
+            "  - Font weights (light, regular, medium, etc.)",
+            "  - Letter spacing (normal, wide, slight wide, etc.)",
+            "  - Text transforms (uppercase, none, etc.)",
+            "  - Visual descriptions (Large serif elegant, Small uppercase sans-serif, etc.)",
+            "- Apply typography rules exactly as specified for each text element",
+            "",
+            "**3. SPACING SPECIFICATIONS:**",
+            "- Extract ALL spacing rules from each component:",
+            "  - Padding values (small vertical, medium, large vertical, etc.)",
+            "  - Margin values (none, wide horizontal gutter, etc.)",
+            "  - Grid spacing (tight grid spacing, etc.)",
+            "- Apply spacing exactly as defined for proper layout",
+            "",
+            "**4. COMPONENT STRUCTURE & LAYOUT:**",
+            "- Follow page_structure order EXACTLY as specified",
+            "- Implement each component type as defined (nav, hero, layout, card grid, etc.)",
+            "- Use component descriptions for accurate implementation",
+            "- Maintain component hierarchy and relationships",
+            "",
+            "**5. VISUAL STYLING DETAILS:**",
+            "- Extract image_style specifications for each component",
+            "- Implement other_visual_notes exactly as described",
+            "- Apply component-specific styling (rounded corners, shadows, overlays, etc.)",
+            "- Use hover effects and interactive elements as specified",
+            "",
+            "**6. DESIGN THEME & AESTHETIC:**",
+            "- Understand overall design aesthetic from component descriptions",
+            "- Maintain consistent visual language across all components",
+            "- Preserve design intent and professional quality",
+            "- Ensure cohesive user experience",
+            "",
+            "### 🎯 SCHEMA UTILIZATION PRIORITY SYSTEM:",
+            "",
+            "**WHEN USER SPECIFIES DESIGN PREFERENCES:**",
+            "- User preferences OVERRIDE conflicting schema specifications",
+            "- Schema provides structure, user provides styling direction",
+            "- Example: User says 'dark theme' → override schema colors but keep typography, spacing, layout",
+            "",
+            "**WHEN USER DOESN'T SPECIFY DESIGN PREFERENCES:**",
+            "- Use ALL schema design specifications EXACTLY as provided",
+            "- Colors, typography, spacing, visual styles - implement everything",
+            "- Schema is your complete design system - use it fully",
+            "",
+            "### 📐 COMPONENT-SPECIFIC IMPLEMENTATION:",
+            "",
+            "**FOR EACH COMPONENT IN SCHEMA:**",
+            "1. Read component type and description",
+            "2. Extract and apply exact color specifications",
+            "3. Implement typography rules precisely",
+            "4. Apply spacing values as defined",
+            "5. Implement image_style requirements",
+            "6. Add other_visual_notes styling",
+            "7. Ensure component fits page structure order",
+            "",
+            "### 🎨 DESIGN COMPLETENESS CHECKLIST:",
+            "✅ All schema colors implemented exactly",
+            "✅ All typography specifications applied",
+            "✅ All spacing rules followed precisely",
+            "✅ All visual styling notes included",
+            "✅ Component structure matches schema",
+            "✅ Page order follows schema structure",
+            "✅ Image styles implemented as specified",
+            "✅ Hover effects and interactions included",
+            "✅ Professional quality maintained throughout",
+            "",
+            "### 🧠 INTELLIGENT DESIGN SYNTHESIS:",
+            "",
+            "**YOUR ANALYSIS PROCESS:**",
+            "1. **EXTRACT EVERYTHING**: Pull ALL design details from schema (colors, fonts, spacing, styles)",
+            "2. **ANALYZE USER INTENT**: Identify any user design preferences that should override schema",
+            "3. **INTELLIGENT MERGE**: Combine user preferences with non-conflicting schema details",
+            "4. **IMPLEMENT COMPLETELY**: Use every available design specification for professional result",
+            "",
+            "**REMEMBER**: The JSON schema is a COMPLETE design system. Use every detail it provides unless user explicitly requests different styling for specific elements.",
+            "",
+            "### 🗺️ MANDATORY MAP INTEGRATION FOR CONTACT COMPONENTS:",
+            "",
+            "**CRITICAL REQUIREMENT**: For ANY contact-related components, ALWAYS include a map:",
+            "",
+            "**COMPONENTS REQUIRING MAPS:**",
+            "- CTA components with contact information",
+            "- Contact Us sections", 
+            "- Contact forms",
+            "- Consultation booking sections",
+            "- Any component asking for user contact/location",
+            "",
+            "**MAP IMPLEMENTATION REQUIREMENTS:**",
+            "1. **ALWAYS include a working map** alongside contact forms",
+            "2. **Use Google Maps embed** or similar interactive map service", 
+            "3. **Position map strategically** - typically beside or below contact form",
+            "4. **Use realistic location** - choose any major city location as example",
+            "5. **Make map responsive** - ensure it works on all screen sizes",
+            "",
+            "**MAP CODE EXAMPLE TO USE:**",
+            "```jsx",
+            "// MANDATORY: Include this type of map in contact components",
+            "<div className=\"w-full h-64 md:h-80 rounded-lg overflow-hidden\">",
+            "  <iframe",
+            "    src=\"https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3022.9663095343008!2d-74.00425878459418!3d40.74844097932681!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c259bf5c1654f3%3A0xc80f9cfce5383d5d!2sNew%20York%2C%20NY%2C%20USA!5e0!3m2!1sen!2sus!4v1635959472827!5m2!1sen!2sus\"",
+            "    width=\"100%\"",
+            "    height=\"100%\"",
+            "    style={{border: 0}}",
+            "    allowFullScreen=\"\"",
+            "    loading=\"lazy\"",
+            "    referrerPolicy=\"no-referrer-when-downgrade\"",
+            "  />",
+            "</div>",
+            "```",
+            "",
+            "**MAP STYLING GUIDELINES:**",
+            "- Match map container styling to overall component design",
+            "- Add subtle shadows or borders consistent with design theme", 
+            "- Ensure proper spacing between map and contact form",
+            "- Make map visually integrated with component layout",
+            "",
+            "**LAYOUT OPTIONS FOR MAP + CONTACT FORM:**",
+            "- **Side-by-side**: Map on left, form on right (desktop)",
+            "- **Stacked**: Form on top, map below (mobile)",
+            "- **Split section**: Map as background with overlay form",
+            "- **Tabbed interface**: Switch between form and map views",
+            "",
+            "**MANDATORY**: Never create contact components without including a map!",
+            ""
+        ])
     else:
-        prompt_parts.append("No JSON schema provided - use standard component structure.")
+        prompt_parts.extend([
+            "No JSON schema provided - you will use standard component structure with UI Guidelines.",
+            ""
+        ])
     
     prompt_parts.extend([
         "",
@@ -277,6 +420,10 @@ def _build_edit_prompt(ctx: Dict[str, Any]) -> str:
     if not edit_analysis.get("analysis_success"):
         return ""
     
+    # Extract file paths from target_files dictionaries
+    target_files = edit_analysis.get('target_files', [])
+    target_file_paths = [tf.get('file_path', 'Unknown') if isinstance(tf, dict) else str(tf) for tf in target_files]
+    
     edit_prompt = f"""
 ## EDIT MODE - TARGETED CHANGES REQUIRED
 
@@ -288,7 +435,7 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
 
 ### EDIT ANALYSIS:
 - **Edit Type**: {edit_analysis.get('edit_type', 'modify_existing')}
-- **Target Files**: {', '.join(edit_analysis.get('target_files', []))}
+- **Target Files**: {', '.join(target_file_paths)}
 - **Changes Description**: {edit_analysis.get('changes_description', '')}
 - **Specific Requirements**: {chr(10).join(f"- {req}" for req in edit_analysis.get('specific_requirements', []))}
 - **Preserve Existing**: {edit_analysis.get('preserve_existing', True)}
@@ -402,14 +549,14 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         existing_code = ctx.get("existing_code", "")
         if not existing_code or existing_code == "No existing code files found" or existing_code.startswith("Error"):
             print("❌ No valid existing code context available for editing")
-            print(f"   Context: {existing_code[:100]}...")
+            # print(f"   Context: {existing_code[:100]}...")
             ctx["generation_result"] = {
                 "error": f"No valid existing code context available for editing: {existing_code}"
             }
             state["context"] = ctx
             return state
         
-        print(f"📁 Using existing code context: {len(existing_code.split('```')) // 2} files")
+        # print(f"📁 Using existing code context: {len(existing_code.split('```')) // 2} files")
         
         system_prompt = _load_prompt_template_and_context()
         edit_prompt = _build_edit_prompt(ctx)
@@ -419,7 +566,7 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         model = state.get("llm_model", "groq-default")
         chat_model = get_chat_model(model, temperature=0.05)
         
-        print(f"Calling generator LLM for targeted edits...")
+        # print(f"Calling generator LLM for targeted edits...")
         response = chat_model.invoke([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -460,7 +607,7 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         model = state.get("llm_model", "groq-default")
         chat_model = get_chat_model(model, temperature=0.1)
         
-        print(f"Calling generator LLM for code correction...")
+        # print(f"Calling generator LLM for code correction...")
         response = chat_model.invoke([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -494,7 +641,7 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         model = state.get("llm_model", "groq-default")
         chat_model = get_chat_model(model, temperature=0.1)
         
-        print(f"Calling generator LLM for initial generation...")
+        # print(f"Calling generator LLM for initial generation...")
         response = chat_model.invoke([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -514,9 +661,9 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
 def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
     """Extract correction data from LLM response with enhanced parsing."""
     try:
-        print(f"🔍 Extracting correction data from response...")
-        print(f"   Response length: {len(response_content)} characters")
-        print(f"   Response preview: {response_content[:200]}...")
+        #   print(f"🔍 Extracting correction data from response...")
+        # print(f"   Response length: {len(response_content)} characters")
+        # print(f"   Response preview: {response_content[:200]}...")
         
         import re
         import ast
@@ -526,13 +673,13 @@ def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
         dict_match = re.search(r'```python\s*(\{.*?\})\s*```', response_content, re.DOTALL)
         if dict_match:
             dict_str = dict_match.group(1)
-            print(f"   ✅ Found Python dictionary in code block")
+            #   print(f"   ✅ Found Python dictionary in code block")
             try:
                 correction_data = ast.literal_eval(dict_str)
-                print(f"   ✅ Successfully parsed Python dictionary")
+                #   print(f"   ✅ Successfully parsed Python dictionary")
                 return correction_data
             except Exception as parse_error:
-                print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
+                  print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
         
         # Method 2: Find COMPLETE dictionary structure (ENHANCED)
         # Look for the opening brace and find its matching closing brace

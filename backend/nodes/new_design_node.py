@@ -26,5 +26,6 @@ def new_design_route(state: Dict[str, Any]) -> str:
     ctx = state.get("context") or {}
     gi = ctx.get("generator_input") or {}
     if gi.get("schema_source") == "doc" and isinstance(gi.get("json_schema"), dict):
-        return "generator"
+        # When JSON schema is provided, go to photo_generator which will then go to generator
+        return "photo_generator"
     return "schema_extraction"     # fallback to schema_extraction (will pick CSV-random)

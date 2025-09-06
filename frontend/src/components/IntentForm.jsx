@@ -12,6 +12,8 @@ const MODELS = [
   "claude-3-5-sonnet-20240620",
   "sonnet-4",
   "glm-4.5",
+  "gpt-oss-120b",  // New Groq model
+  "groq-compound",  // New Groq Compound model
 ];
 
 const MODEL_DISPLAY_NAMES = {
@@ -23,7 +25,9 @@ const MODEL_DISPLAY_NAMES = {
   "claude-3-sonnet-20240229": "Claude 3 Sonnet 🧠",
   "claude-3-5-sonnet-20240620": "Claude 3.5 Sonnet 🧠",
   "sonnet-4": "Claude Sonnet 4 🧠",
-  "glm-4.5": "GLM-4.5 (ZhipuAI) 🤖"
+  "glm-4.5": "GLM-4.5 (ZhipuAI) 🤖",
+  "gpt-oss-120b": "GPT-OSS-120B (Groq) 🚀",
+  "groq-compound": "Groq Compound (Groq) ⚡"
 };
 
 function IntentForm() {

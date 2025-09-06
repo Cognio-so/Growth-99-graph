@@ -31,6 +31,8 @@ MODEL_ALIASES: Dict[str, Dict[str, str]] = {
     "glm-4.5": {"provider": "openrouter", "model": "z-ai/glm-4.5"},
     "groq-default": {"provider": "groq", "model": "moonshotai/kimi-k2-instruct-0905"},
     "groq-kimi": {"provider": "groq", "model": "moonshotai/kimi-k2-0905"},
+    "gpt-oss-120b": {"provider": "groq", "model": "openai/gpt-oss-120b"},
+    "groq-compound": {"provider": "groq", "model": "groq/compound"},
 }
 
 def _resolve_model(model_name: Optional[str]) -> Dict[str, str]:
