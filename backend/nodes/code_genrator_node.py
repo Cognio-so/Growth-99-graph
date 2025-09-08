@@ -39,27 +39,105 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     generated_images = gi.get("generated_images", [])
     has_images = gi.get("has_images", False)
     
+    # Get extracted business information from generator_input (passed from new_design_node)
+    has_extracted_business_info = gi.get("has_extracted_business_info", False)
+    extraction_priority = gi.get("extraction_priority", "low")
+    
     prompt_parts = [
         "## USER PROMPT - YOUR DESIGN DIRECTION",
         f"{user_text}",
         "",
+    ]
+    
+    # HIGHEST PRIORITY: Business information from document
+    if has_extracted_business_info and extraction_priority == "high":
+        prompt_parts.extend([
+            "## 🎨 HIGHEST PRIORITY - BUSINESS INFORMATION FROM DOCUMENT",
+            "**CRITICAL**: The user provided a document with business information. This takes ABSOLUTE PRIORITY over all other design sources.",
+            "**OVERRIDE ALL**: Use this business information instead of JSON schema colors, UI guidelines, or any other source.",
+            "",
+        ])
+        
+        # Business name and brand
+        business_name = gi.get("extracted_business_name") or gi.get("extracted_brand_name")
+        if business_name:
+            prompt_parts.extend([
+                f"**BUSINESS/BRAND NAME**: {business_name}",
+                "**USAGE**: Use this exact name throughout the website for branding consistency.",
+                "",
+            ])
+        
+        # Unique value proposition (motive of website)
+        unique_value_proposition = gi.get("extracted_unique_value_proposition")
+        if unique_value_proposition:
+            prompt_parts.extend([
+                f"**UNIQUE VALUE PROPOSITION (MOTIVE OF WEBSITE)**: {unique_value_proposition}",
+                "**USAGE**: Highlight this prominently in hero sections, about sections, and key messaging areas.",
+                "**IMPORTANCE**: This is the core message and purpose of the website - make it central to the design.",
+                "",
+            ])
+        
+        # Color palette from document
+        color_palette = gi.get("extracted_color_palette")
+        if color_palette:
+            prompt_parts.extend([
+                f"**DOCUMENT COLOR PALETTE**: {color_palette}",
+                "**CRITICAL**: Use these EXACT colors from the document. Override any colors from JSON schema or UI guidelines.",
+                "**PRIORITY**: Document colors > User query colors > JSON schema colors > UI guidelines",
+                "",
+            ])
+        
+        # Font style from document
+        font_style = gi.get("extracted_font_style")
+        if font_style:
+            prompt_parts.extend([
+                f"**DOCUMENT FONT STYLE**: {font_style}",
+                "**CRITICAL**: Use this EXACT font style from the document. Override any typography from JSON schema or UI guidelines.",
+                "**PRIORITY**: Document fonts > User query fonts > JSON schema fonts > UI guidelines",
+                "",
+            ])
+        
+        # Logo URL from document
+        logo_url = gi.get("extracted_logo_url")
+        if logo_url:
+            prompt_parts.extend([
+                f"**DOCUMENT LOGO URL**: {logo_url}",
+                "**CRITICAL**: Use this EXACT logo from the document. Do not use any generated logos or create text-based logos.",
+                "**USAGE**: Use this logo in header, navbar, footer, and all branding areas.",
+                "",
+            ])
+        
+        # Competitor websites
+        competitor_websites = gi.get("extracted_competitor_websites", [])
+        if competitor_websites:
+            prompt_parts.extend([
+                f"**COMPETITOR WEBSITES**: {', '.join(competitor_websites)}",
+                "**USAGE**: Use these as reference to create a BETTER design than competitors.",
+                "**GOAL**: Analyze what competitors do and improve upon their weaknesses.",
+                "",
+            ])
+    
+    # Add theme application rules (but with business info priority)
+    prompt_parts.extend([
         "## 🎨 THEME APPLICATION RULES:",
+        "**PRIORITY ORDER**: Document info > User theme > JSON schema > UI guidelines",
         "**GLOBAL THEME**: When user mentions a theme, apply it to the ENTIRE application",
-        "**YOU CHOOSE COLORS**: Decide what colors work best for the requested theme",
+        "**YOU CHOOSE COLORS**: Decide what colors work best for the requested theme (unless document specifies colors)",
         "**THEME CONSISTENCY**: Use consistent colors from the same theme family throughout",
         "**SECTION OVERRIDE**: Only change theme for specific sections if user explicitly requests it",
         "**VISUAL COHESION**: Maintain consistent design by using the same theme palette",
         "",
         "## 🎨 THEME IMPLEMENTATION PROCESS:",
-        "1. **User mentions a theme** - interpret what they want",
-        "2. **YOU choose appropriate colors** - decide what works best",
-        "3. **Apply consistently** - use the same theme across all components",
-        "4. **Ensure accessibility** - maintain proper contrast ratios",
-        "5. **Maintain visual harmony** - create cohesive design",
+        "1. **Check document colors first** - use document colors if available",
+        "2. **User mentions a theme** - interpret what they want",
+        "3. **YOU choose appropriate colors** - decide what works best",
+        "4. **Apply consistently** - use the same theme across all components",
+        "5. **Ensure accessibility** - maintain proper contrast ratios",
+        "6. **Maintain visual harmony** - create cohesive design",
         "",
-        "**IMPORTANT**: You are the designer - choose colors that make sense for the theme!",
+        "**IMPORTANT**: Document business information takes ABSOLUTE PRIORITY over all other design sources!",
         ""
-    ]
+    ])
     
     # Add image information if available
     if has_images and generated_images:
@@ -148,7 +226,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     
     # Add logo processing instructions
     prompt_parts.extend([
-        "### 🎨 LOGO PROCESSING INSTRUCTIONS:",
+        "### �� LOGO PROCESSING INSTRUCTIONS:",
         "**CRITICAL FOR LOGO IMAGES**: When using logo images, apply these CSS properties:",
         "",
         "```css",

@@ -43,7 +43,12 @@ function IntentForm() {
   const [error, setError] = React.useState("");
   const [showPreview, setShowPreview] = React.useState(false);
 
+  // Update the file input to properly clear
   const onFile = (e) => setFile(e.target.files?.[0] || null);
+
+  // Add a ref to the file input for programmatic clearing
+  const fileInputRef = React.useRef(null);
+
   const clearSession = () => { 
     setSessionId(""); 
     localStorage.removeItem("session_id"); 
@@ -90,6 +95,18 @@ function IntentForm() {
       setResp(json);
       if (json?.session_id) { 
         setSessionId(json.session_id); 
+      }
+      
+      // ENHANCED: Check if we should clear the form after edit operation
+      if (json?.state?.context?.final_result?.clear_form) {
+        console.log('Clearing form after edit operation with document');
+        setText(""); // Clear text input
+        setFile(null); // Clear file input
+        // Clear the actual file input element
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        // Note: We don't clear sessionId as it should persist for the session
       }
       
       // Automatically open preview in new tab when design is ready
@@ -213,6 +230,7 @@ function IntentForm() {
                   {/* File Upload Button */}
                   <label className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer">
                     <input
+                      ref={fileInputRef}
                       type="file"
                       onChange={onFile}
                       className="hidden"

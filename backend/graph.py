@@ -10,12 +10,11 @@ from nodes.url_extraction import url_extraction
 from nodes.edit_analyzer_node import edit_analyzer
 from nodes.code_genrator_node import generator
 from nodes.apply_to_Sandbox_node import apply_sandbox
-from nodes.validation_node import validate_generated_code  # removed route_after_validation
+from nodes.validation_node import validate_generated_code
 from nodes.code_analysis_node import analyze_and_fix_code, route_after_analysis
 from nodes.output_node import output_result
 from observability import trace_node
 from nodes.photo_generator_node import photo_generator
-# from nodes.validation_node import validate_generated_code  # removed route_after_validation
 
 def route_after_validation_local(state: GraphState) -> str:
     ctx = state.get("context", {})
@@ -51,10 +50,14 @@ def route_after_validation_local(state: GraphState) -> str:
 def route_after_user(state: GraphState) -> str:
     return "doc_extraction" if state.get("doc") else "analyze_intent"
 
+def route_after_doc_extraction(state: GraphState) -> str:
+    """Route after doc extraction - go directly to analyze intent."""
+    return "analyze_intent"
+
 def build_graph():
     g = StateGraph(GraphState)
 
-    # Add all nodes including the enhanced edit analyzer
+    # Add all nodes (removed competitor_analysis)
     g.add_node("user_node",          trace_node(user_node, "user_node"))
     g.add_node("doc_extraction",     trace_node(doc_extraction, "doc_extraction"))
     g.add_node("analyze_intent",     trace_node(analyze_intent, "analyze_intent"))
@@ -73,10 +76,10 @@ def build_graph():
 
     g.set_entry_point("user_node")
     
-    # Original flow
+    # Simplified flow without competitor analysis
     g.add_conditional_edges("user_node", route_after_user,
                             {"doc_extraction":"doc_extraction","analyze_intent":"analyze_intent"})
-    g.add_edge("doc_extraction", "analyze_intent")
+    g.add_edge("doc_extraction", "analyze_intent")  # Direct route, no competitor analysis
 
     g.add_conditional_edges("analyze_intent", route_from_intent, {
         "new_design":"new_design",
@@ -102,11 +105,6 @@ def build_graph():
     g.add_edge("apply_sandbox", "validation")
     
     # Validation routing: success -> output, failure -> code_analysis
-    # g.add_conditional_edges("validation", route_after_validation_local, {
-    #     "output": "output",
-    #     "code_analysis": "code_analysis",
-    #     "schema_extraction": "schema_extraction"
-    # })
     g.add_edge("validation", "output")
     
     # Code analysis routing: back to generator for correction

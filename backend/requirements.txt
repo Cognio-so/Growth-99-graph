@@ -37,3 +37,4 @@ python-dotenv>=1.0.1
 # E2B sandbox
 
 e2b-code-interpreter
+websockets

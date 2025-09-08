@@ -3,21 +3,42 @@ from typing import Dict, Any, List
 from graph_types import GraphState
 from llm import get_chat_model, call_llm_json
 
-SYSTEM_PROMPT = """You are an edit analyzer for a React application. 
-Analyze the user's edit request and determine what changes need to be made.
+ENHANCED_SYSTEM_PROMPT = """You are an advanced edit analyzer for a React application. 
+Analyze the user's edit request and determine what changes need to be made with special attention to theme changes and image handling.
+
+🚨 CRITICAL THEME ANALYSIS RULES:
+1. **GLOBAL THEME CHANGES**: When user mentions themes (gradient, dark/light, cyberpunk, etc.), analyze as WHOLE UI changes
+2. **SCOPE DETECTION**: Determine if changes should apply to entire application or specific sections
+3. **IMAGE PROTECTION**: Identify existing images that need protection from theme overlays
+4. **COMPONENT COVERAGE**: Ensure theme changes cover ALL components, not just specific sections
 
 Analyze the user's request and output strict JSON:
 {
-  "edit_type": "modify_existing" | "add_new_component" | "modify_styling" | "modify_functionality" | "modify_layout",
+  "edit_type": "modify_styling" | "add_theme_toggle" | "modify_existing" | "add_new_component" | "modify_functionality" | "modify_layout",
+  "scope": "global" | "section_specific" | "component_specific",
   "target_files": ["src/App.jsx", "src/components/Component.jsx"],
   "changes_description": "Detailed description of what needs to be changed",
   "specific_requirements": [
-    "Change button color from blue to red",
-    "Add new input field for email",
-    "Modify the header text"
+    "Apply gradient theme to entire application",
+    "Add dark/light theme toggle with global state management", 
+    "Protect existing images from theme color overlays",
+    "Ensure theme consistency across all components"
   ],
+  "theme_analysis": {
+    "is_theme_change": boolean,
+    "theme_type": "gradient" | "dark_light_toggle" | "color_scheme" | "none",
+    "affects_whole_ui": boolean,
+    "image_protection_needed": boolean,
+    "requires_state_management": boolean
+  },
   "preserve_existing": boolean,
   "context_needed": "What existing code context is needed for this edit",
+  "content_preservation_rules": [
+    "Preserve all text content and functionality",
+    "Protect images from theme color overlays",
+    "Maintain existing component structure",
+    "Keep all interactive elements functional"
+  ],
   "image_requirements": [
     {
       "description": "Description of the image needed",
@@ -28,14 +49,18 @@ Analyze the user's request and output strict JSON:
   ]
 }
 
-Rules:
-- "edit_type" should categorize the type of edit being requested
-- "target_files" should list the specific files that need modification
-- "changes_description" should be a clear summary of the edit request
-- "specific_requirements" should list the exact changes needed
-- "preserve_existing" should be true if existing functionality should be kept
-- "context_needed" should describe what existing code context is required
-- "image_requirements" should list any images needed for the edit (empty array if no images needed)
+🚨 ENHANCED ANALYSIS RULES:
+1. **THEME SCOPE**: If user mentions themes without specifying sections, assume GLOBAL application changes
+2. **DARK/LIGHT TOGGLE**: When user wants theme toggle, analyze need for state management and global application
+3. **IMAGE SAFETY**: Always identify existing images that need protection from theme colors
+4. **COMPONENT COVERAGE**: Ensure all UI components are included in theme changes
+5. **CONSISTENCY**: Theme changes should create visual consistency across the entire application
+
+SPECIAL THEME DETECTION:
+- "gradient theme" → Global styling change with image protection
+- "dark/light theme" → Global toggle with state management
+- "add theme toggle" → New functionality affecting entire UI
+- Color mentions without section → Global color scheme changes
 """
 
 def _capture_existing_code_context(state: GraphState) -> str:
@@ -48,7 +73,7 @@ def _capture_existing_code_context(state: GraphState) -> str:
             print("❌ No global sandbox available for context capture")
             return "No existing sandbox available"
         
-        print(" Capturing existing code context for edit analysis...")
+        print("📁 Capturing existing code context for edit analysis...")
         
         # Capture critical files
         critical_files = [
@@ -104,12 +129,18 @@ def _capture_existing_code_context(state: GraphState) -> str:
         traceback.print_exc()
         return f"Error capturing context: {str(e)}"
 
-def _build_edit_analysis_prompt(state: GraphState) -> str:
-    """Build the prompt for analyzing edit requests."""
+def _build_enhanced_edit_analysis_prompt(state: GraphState) -> str:
+    """Build the enhanced prompt for analyzing edit requests with better theme and image handling."""
     text = state.get("text", "")
-    ##
+    ctx = state.get("context", {})
+    extraction = ctx.get("extraction", {})
+    doc = state.get("doc")
+    
     # CRITICAL: Capture the existing code context
     existing_code = _capture_existing_code_context(state)
+    
+    # Check if document information is available
+    has_document_info = doc and extraction.get("has_business_info")
     
     prompt = f"""
 ## USER EDIT REQUEST:
@@ -118,18 +149,65 @@ def _build_edit_analysis_prompt(state: GraphState) -> str:
 ## EXISTING CODE CONTEXT (CURRENT UI DESIGN):
 {existing_code}
 
+## 🎨 ENHANCED THEME ANALYSIS INSTRUCTIONS:
+
+### THEME SCOPE DETECTION:
+- **GLOBAL THEMES**: If user mentions themes without specifying sections (e.g., "apply gradient theme", "add dark/light theme"), treat as WHOLE APPLICATION changes
+- **SECTION SPECIFIC**: Only if user explicitly mentions specific sections (e.g., "change header to dark theme")
+- **DEFAULT ASSUMPTION**: Unless specified otherwise, theme changes affect the ENTIRE UI
+
+### IMAGE PROTECTION ANALYSIS:
+- **IDENTIFY EXISTING IMAGES**: Look for img tags, background images, icons in the existing code
+- **OVERLAY PROTECTION**: Determine if theme changes might make images invisible or unclear
+- **BACKGROUND SAFETY**: Ensure background colors don't conflict with image visibility
+
+### THEME TOGGLE REQUIREMENTS:
+- **STATE MANAGEMENT**: If user wants dark/light toggle, analyze need for React state or context
+- **GLOBAL APPLICATION**: Theme toggles should affect ALL components, not just headers or sections
+- **PERSISTENCE**: Consider if theme preference should persist across page reloads
+
+### COMPONENT COVERAGE:
+- **ALL COMPONENTS**: Theme changes should cover App.jsx and ALL component files
+- **CONSISTENCY**: Ensure visual consistency across the entire application
+- **RESPONSIVE**: Theme changes should work across all screen sizes
+"""
+
+    # Add document information if available
+    if has_document_info:
+        prompt += f"""
+
+## DOCUMENT EXTRACTION INFORMATION (APPLY TO EXISTING DESIGN):
+- Business Name: {extraction.get('business_name', 'Not specified')}
+- Brand Name: {extraction.get('brand_name', 'Not specified')}
+- Unique Value Proposition: {extraction.get('unique_value_proposition', 'Not specified')}
+- Color Palette: {extraction.get('color_palette', 'Not specified')}
+- Preferred Font Style: {extraction.get('preferred_font_style', 'Not specified')}
+- Logo URL: {extraction.get('logo_url', 'Not specified')}
+
+IMPORTANT: The user wants to apply these document specifications to the existing design.
+Use the document information as the PRIMARY source for design decisions.
+"""
+
+    prompt += f"""
+
 ## ANALYSIS TASK:
-Analyze this edit request and determine:
-1. What type of edit is being requested
-2. Which files need to be modified
-3. What specific changes are needed
-4. How to preserve existing functionality
-5. What context is needed from the existing code
+Analyze this edit request with ENHANCED FOCUS on:
+1. **Theme Scope**: Is this a global theme change or section-specific?
+2. **Image Protection**: Do existing images need protection from theme overlays?
+3. **Component Coverage**: Which files need modification to ensure consistent theming?
+4. **State Management**: Does this require React state for theme toggles?
+5. **User Intent**: What is the user's expectation for the scope of changes?
+
+## 🚨 CRITICAL ANALYSIS PRIORITIES:
+1. **ASSUME GLOBAL SCOPE**: Unless user specifies sections, assume whole-application changes
+2. **PROTECT IMAGES**: Always consider image visibility when applying themes
+3. **FULL COVERAGE**: Ensure theme changes cover ALL components for consistency
+4. **FUNCTIONALITY**: Preserve all existing functionality while applying themes
 
 IMPORTANT: The user wants to modify the EXISTING UI shown above, not create a new one.
-Focus on what specific changes need to be made to the current design.
+Focus on what specific changes need to be made to the current design with ENHANCED theme and image handling.
 
-Provide your analysis in the required JSON format.
+Provide your analysis in the required JSON format with the enhanced theme_analysis section.
 """
     return prompt
 
@@ -255,12 +333,15 @@ def _generate_images_for_edit(image_requirements: List[Dict[str, Any]], state: G
 
 def edit_analyzer(state: GraphState) -> GraphState:
     """
+    ENHANCED edit analyzer with better theme and image handling.
     Analyze user edit requests to determine what changes need to be made.
+    Enhanced to include document extraction information when document is provided.
     """
-    print("--- Running Edit Analyzer Node ---")
+    print("--- Running ENHANCED Edit Analyzer Node ---")
     
     ctx = state.get("context", {})
     user_text = state.get("text", "")
+    doc = state.get("doc")  # Check if document is provided for editing
     
     if not user_text:
         print("❌ No user text provided for edit analysis")
@@ -275,22 +356,58 @@ def edit_analyzer(state: GraphState) -> GraphState:
         model = state.get("llm_model", "groq-default")
         chat = get_chat_model(model, temperature=0.1)
         
-        # Build prompt with existing code context
-        user_prompt = _build_edit_analysis_prompt(state)
+        # Build ENHANCED prompt with existing code context
+        user_prompt = _build_enhanced_edit_analysis_prompt(state)
         
-        # Call LLM for analysis
-        print("🔍 Analyzing edit request with LLM...")
-        result = call_llm_json(chat, SYSTEM_PROMPT, user_prompt) or {}
+        # ENHANCED: Include document extraction information if available
+        extraction = ctx.get("extraction", {})
+        has_document_info = doc and extraction.get("has_business_info")
         
-        # Validate and process the result
+        if has_document_info:
+            print("📄 Document provided for editing - including extracted business information")
+            # Add document information to the prompt
+            doc_info = f"""
+## DOCUMENT EXTRACTION INFORMATION (HIGH PRIORITY):
+- Business Name: {extraction.get('business_name', 'Not specified')}
+- Brand Name: {extraction.get('brand_name', 'Not specified')}
+- Unique Value Proposition: {extraction.get('unique_value_proposition', 'Not specified')}
+- Color Palette: {extraction.get('color_palette', 'Not specified')}
+- Preferred Font Style: {extraction.get('preferred_font_style', 'Not specified')}
+- Logo URL: {extraction.get('logo_url', 'Not specified')}
+
+IMPORTANT: Use this document information as the PRIMARY source for design decisions.
+The user wants to apply these document specifications to the existing design.
+"""
+            user_prompt = doc_info + "\n\n" + user_prompt
+        
+        # Call LLM for ENHANCED analysis
+        print("🔍 Analyzing edit request with ENHANCED LLM analysis...")
+        result = call_llm_json(chat, ENHANCED_SYSTEM_PROMPT, user_prompt) or {}
+        
+        # Validate and process the result with ENHANCED fields
         edit_analysis = {
             "edit_type": result.get("edit_type", "modify_existing"),
+            "scope": result.get("scope", "global"),  # NEW: scope detection
             "target_files": result.get("target_files", []),
             "changes_description": result.get("changes_description", ""),
             "specific_requirements": result.get("specific_requirements", []),
+            "theme_analysis": result.get("theme_analysis", {  # NEW: theme analysis
+                "is_theme_change": False,
+                "theme_type": "none",
+                "affects_whole_ui": False,
+                "image_protection_needed": False,
+                "requires_state_management": False
+            }),
             "preserve_existing": result.get("preserve_existing", True),
             "context_needed": result.get("context_needed", ""),
-            "analysis_success": True
+            "content_preservation_rules": result.get("content_preservation_rules", [  # NEW: preservation rules
+                "Preserve all text content and functionality",
+                "Protect images from theme color overlays",
+                "Maintain existing component structure",
+                "Keep all interactive elements functional"
+            ]),
+            "analysis_success": True,
+            "has_document_info": has_document_info  # Flag to indicate document info is available
         }
         
         # CRITICAL: Store the existing code context for the generator
@@ -310,7 +427,7 @@ def edit_analyzer(state: GraphState) -> GraphState:
             edit_analysis["image_requirements"] = image_requirements
             edit_analysis["generated_images"] = generated_images
         
-        # Prepare generator input for editing mode
+        # ENHANCED: Prepare generator input for editing mode with document information
         gi = ctx.get("generator_input", {})
         gi.update({
             "edit_request": True,
@@ -321,22 +438,53 @@ def edit_analyzer(state: GraphState) -> GraphState:
             "generated_images": generated_images  # Pass generated images to generator
         })
         
+        # ENHANCED: Include document extraction information in generator input
+        if has_document_info:
+            print("📋 Including document business information in edit request")
+            gi.update({
+                "extracted_business_name": extraction.get("business_name"),
+                "extracted_brand_name": extraction.get("brand_name"),
+                "extracted_unique_value_proposition": extraction.get("unique_value_proposition"),
+                "extracted_color_palette": extraction.get("color_palette"),
+                "extracted_font_style": extraction.get("preferred_font_style"),
+                "extracted_logo_url": extraction.get("logo_url"),
+                "has_extracted_business_info": True,
+                "extraction_priority": "high"  # Document info takes highest priority for edits
+            })
+            print(f"✅ Document info included in edit:")
+            print(f"   - Business: {extraction.get('business_name')}")
+            print(f"   - Colors: {extraction.get('color_palette')}")
+            print(f"   - Font: {extraction.get('preferred_font_style')}")
+        else:
+            gi["has_extracted_business_info"] = False
+            gi["extraction_priority"] = "low"
+        
         ctx["edit_analysis"] = edit_analysis
         ctx["generator_input"] = gi
         
-        print(f"✅ Edit analysis completed: {edit_analysis['edit_type']}")
+        # ENHANCED logging
+        theme_analysis = edit_analysis.get("theme_analysis", {})
+        print(f"✅ ENHANCED Edit analysis completed: {edit_analysis['edit_type']}")
+        print(f"   Scope: {edit_analysis['scope']}")
         print(f"   Target files: {edit_analysis['target_files']}")
         print(f"   Changes: {edit_analysis['changes_description']}")
+        print(f"   Theme change: {theme_analysis.get('is_theme_change', False)}")
+        if theme_analysis.get('is_theme_change'):
+            print(f"   Theme type: {theme_analysis.get('theme_type', 'none')}")
+            print(f"   Affects whole UI: {theme_analysis.get('affects_whole_ui', False)}")
+            print(f"   Image protection needed: {theme_analysis.get('image_protection_needed', False)}")
         print(f"   Existing code context captured: {len(existing_code.split('```')) // 2} files")
         if generated_images:
             print(f"   Generated {len(generated_images)} images for edit")
+        if has_document_info:
+            print(f"   Document business information included for editing")
         
     except Exception as e:
-        print(f"❌ Error in edit analysis: {e}")
+        print(f"❌ Error in ENHANCED edit analysis: {e}")
         import traceback
         traceback.print_exc()
         ctx["edit_analysis"] = {
-            "error": f"Edit analysis failed: {str(e)}",
+            "error": f"Enhanced edit analysis failed: {str(e)}",
             "analysis_success": False
         }
         ctx["generator_input"] = {

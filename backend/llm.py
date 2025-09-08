@@ -64,15 +64,15 @@ def _make_groq(model_id: str, **kwargs) -> ChatGroq:
     return ChatGroq(
         api_key=os.getenv("GROQ_API_KEY"),
         model=model_id,
-        temperature=kwargs.get("temperature", 0.3),
-        max_tokens=kwargs.get("max_tokens", 8192),
+        temperature=kwargs.get("temperature", 0.6),
+        max_tokens=kwargs.get("max_tokens", 16384),
         streaming=False,  # keep non-streaming for .invoke stability
     )
 
 def _make_openrouter(model_id: str, **kwargs) -> ChatOpenAI:
     return ChatOpenAI(
         model="moonshotai/kimi-k2",  # Correct OpenRouter model ID
-        temperature=kwargs.get("temperature", 0.3),
+        temperature=kwargs.get("temperature", 0.9),
         max_retries=kwargs.get("max_retries", 2),
         timeout=kwargs.get("timeout", 60),
         openai_api_base="https://openrouter.ai/api/v1",

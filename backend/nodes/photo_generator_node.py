@@ -48,14 +48,15 @@ def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     ctx["generator_input"] = gi
     state["context"] = ctx
     
-    print(f"🖼️ Final result: {len(final_images)} images available for code generation")
+    # print(f"🖼️ Final result: {len(final_images)} images available for code generation")
     return state
 
 def _analyze_image_requirements_with_llm(user_text: str, json_schema: dict, state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Use LLM to analyze user text and JSON schema to determine what images are needed with detailed descriptions.
+    Completely removes logo generation - only uses logos from user documents.
     """
-    print("🤖 Using LLM to analyze image requirements...")
+    # print("🤖 Using LLM to analyze image requirements...") 
     
     # Prepare the analysis prompt
     analysis_prompt = f"""
@@ -65,15 +66,16 @@ USER REQUEST: "{user_text}"
 
 JSON SCHEMA: {json.dumps(json_schema, indent=2) if json_schema else "No schema provided"}
 
+CRITICAL: DO NOT generate any logo requirements. Logos should only come from user-provided documents.
+
 Your task is to identify what images are needed for this application. For each image needed, provide:
 1. A detailed, specific description (5-10 words) that clearly identifies the image type and context
 2. The website/application type this is for
 3. The specific purpose/context of the image
-4. Image category (logo, photo, icon, banner)
+4. Image category (photo, icon, banner) - NO LOGO CATEGORY
 5. Priority (high/medium/low)
 
-CRITICAL IMAGE CATEGORIES:
-- **LOGO**: Simple icon-style logos, minimal brand symbols, clean monograms for navbar, header, footer
+CRITICAL IMAGE CATEGORIES (NO LOGOS):
 - **PHOTO**: Real photos of people, places, products, services
 - **ICON**: Simple line icons, symbols, UI elements
 - **BANNER**: Hero images, background photos, promotional graphics
@@ -81,7 +83,6 @@ CRITICAL IMAGE CATEGORIES:
 IMPORTANT: Make descriptions very specific and detailed so they can be reused for similar projects.
 
 Examples of good descriptions:
-- LOGO: "simple icon logo design for navbar branding"
 - PHOTO: "dental hospital service card photo for healthcare website"
 - ICON: "medical service line icon for treatment cards"
 - BANNER: "restaurant interior hero banner for food website"
@@ -89,7 +90,6 @@ Examples of good descriptions:
 Focus on:
 - User avatars/profile pictures (PHOTO)
 - Product/service images (PHOTO)
-- Logos/branding (LOGO)
 - Hero/banner images (BANNER)
 - Service cards/feature images (PHOTO)
 - Background images (BANNER)
@@ -97,30 +97,33 @@ Focus on:
 - Equipment/facility photos (PHOTO)
 - UI icons (ICON)
 
+DO NOT include any logo requirements. Logos are handled separately from user documents.
+
 Return your analysis as a JSON array with this structure:
 [
-    {{
-        "description": "company logo design for navbar branding",
-        "website_type": "healthcare/hospital website",
-        "context": "top navigation bar logo",
-        "category": "logo",
-        "priority": "high"
-    }},
     {{
         "description": "dental service card photo for healthcare website",
         "website_type": "healthcare/hospital website", 
         "context": "service card display",
         "category": "photo",
         "priority": "high"
+    }},
+    {{
+        "description": "medical equipment display photo for healthcare website",
+        "website_type": "healthcare/hospital website",
+        "context": "equipment showcase",
+        "category": "photo",
+        "priority": "medium"
     }}
 ]
 
 Be very specific and detailed in descriptions. Only include images that are actually needed based on the user request and schema.
+DO NOT include any logo requirements.
 """
     
     try:
         model = get_chat_model(state.get("llm_model"))
-        print(f"model--- {model}")
+        # print(f"model--- {model}")    
         response = model.invoke(analysis_prompt)
         
         # Extract JSON from response
@@ -132,19 +135,28 @@ Be very specific and detailed in descriptions. Only include images that are actu
         if json_match:
             json_str = json_match.group(0)
             image_requirements = json.loads(json_str)
-            print(f"✅ LLM identified {len(image_requirements)} detailed image requirements")
+            
+            # ENHANCED: Filter out any logo requirements that might slip through
+            original_count = len(image_requirements)
+            image_requirements = [req for req in image_requirements if req.get("category") != "logo"]
+            filtered_count = original_count - len(image_requirements)
+            if filtered_count > 0:
+                print(f"🚫 Filtered out {filtered_count} logo requirements (logos not generated)")
+            
+            # print(f"✅ LLM identified {len(image_requirements)} detailed image requirements")
             return image_requirements
         else:
-            print("⚠️ Could not parse LLM response as JSON, using fallback analysis")
-            return _fallback_detailed_analysis(user_text, json_schema)
+            # print("⚠️ Could not parse LLM response as JSON, using fallback analysis")
+            return _fallback_detailed_analysis(user_text, json_schema, state)
             
     except Exception as e:
-        print(f"❌ LLM analysis failed: {e}, using fallback analysis")
-        return _fallback_detailed_analysis(user_text, json_schema)
+        # print(f"❌ LLM analysis failed: {e}, using fallback analysis")
+        return _fallback_detailed_analysis(user_text, json_schema, state)
 
-def _fallback_detailed_analysis(user_text: str, json_schema: dict) -> List[Dict[str, Any]]:
+def _fallback_detailed_analysis(user_text: str, json_schema: dict, state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Fallback detailed image analysis when LLM fails.
+    Completely removes logo generation - only uses logos from user documents.
     """
     image_requirements = []
     user_text_lower = user_text.lower()
@@ -162,7 +174,7 @@ def _fallback_detailed_analysis(user_text: str, json_schema: dict) -> List[Dict[
     elif any(word in user_text_lower for word in ["real estate", "property", "house", "apartment"]):
         website_type = "real estate website"
     
-    # Check for common image types with detailed descriptions
+    # Check for common image types with detailed descriptions (NO LOGOS)
     if any(word in user_text_lower for word in ["avatar", "profile", "user"]):
         image_requirements.append({
             "description": f"user profile avatar photo for {website_type}",
@@ -207,14 +219,8 @@ def _fallback_detailed_analysis(user_text: str, json_schema: dict) -> List[Dict[
             "priority": "high"
         })
     
-    if any(word in user_text_lower for word in ["logo", "brand"]):
-        image_requirements.append({
-            "description": f"company logo design for {website_type}",
-            "website_type": website_type,
-            "context": "branding and logo display",
-            "category": "logo",
-            "priority": "medium"
-        })
+    # REMOVED: Logo generation completely removed
+    # No logo requirements will be added regardless of user input
     
     if any(word in user_text_lower for word in ["banner", "hero", "header"]):
         image_requirements.append({
@@ -225,7 +231,7 @@ def _fallback_detailed_analysis(user_text: str, json_schema: dict) -> List[Dict[
             "priority": "medium"
         })
     
-    # If no specific requirements found, add defaults based on website type
+    # If no specific requirements found, add defaults based on website type (NO LOGOS)
     if not image_requirements:
         if "healthcare" in website_type:
             image_requirements = [
@@ -244,6 +250,25 @@ def _fallback_detailed_analysis(user_text: str, json_schema: dict) -> List[Dict[
                     "priority": "medium"
                 }
             ]
+            # REMOVED: No logo added even for healthcare websites
+        elif "restaurant" in website_type:
+            image_requirements = [
+                {
+                    "description": "restaurant food service photo for restaurant website",
+                    "website_type": website_type,
+                    "context": "service card display",
+                    "category": "photo",
+                    "priority": "high"
+                },
+                {
+                    "description": "restaurant interior photo for restaurant website",
+                    "website_type": website_type,
+                    "context": "interior showcase",
+                    "category": "photo",
+                    "priority": "medium"
+                }
+            ]
+            # REMOVED: No logo added even for restaurant websites
         else:
             image_requirements = [
                 {
@@ -251,23 +276,25 @@ def _fallback_detailed_analysis(user_text: str, json_schema: dict) -> List[Dict[
                     "website_type": website_type,
                     "context": "service card display",
                     "category": "photo",
-                    "priority": "medium"
+                    "priority": "high"
                 }
             ]
+            # REMOVED: No logo added for general websites
     
+    print(f"🚫 Logo generation completely disabled - only using document-provided logos")
     return image_requirements
 
 def _intelligent_check_existing_images(image_requirements: List[Dict[str, Any]], state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Intelligently check existing images in CSV and determine what new images need to be generated.
     """
-    print("📋 Checking existing images in CSV...")
+   
     
     # Load existing images from CSV
     existing_images = _load_images_from_csv()
     
     if not existing_images:
-        print(" No existing images found, will generate all required images")
+       
         return image_requirements
     
     # Batch process all requirements in a single LLM call
@@ -370,24 +397,24 @@ Example:
                 
                 if not has_suitable:
                     needed_images.append(req)
-                    print(f" Need to generate: {description} ({req['category']})")
+                    # print(f" Need to generate: {description} ({req['category']})")
                 else:
                     print(f"✅ Found suitable existing images for: {description} ({req['category']})")
             
             return needed_images
         else:
-            print("⚠️ Could not parse batch matching results, generating all images")
+            # print("⚠️ Could not parse batch matching results, generating all images")
             return image_requirements
             
     except Exception as e:
-        print(f"⚠️ Batch matching failed: {e}, generating all images")
+        # print(f"⚠️ Batch matching failed: {e}, generating all images")
         return image_requirements
 
 def _generate_and_save_new_images(needed_images: List[Dict[str, Any]]):
     """
     Generate new images using Pexels API and save them to CSV.
     """
-    print(f"🖼️ Generating {len(needed_images)} new images...")
+    # print(f"🖼️ Generating {len(needed_images)} new images...")
     
     for req in needed_images:
         description = req["description"]
@@ -401,7 +428,7 @@ def _generate_and_save_new_images(needed_images: List[Dict[str, Any]]):
         if image_urls:
             # Save to CSV
             _save_image_to_csv(description, website_type, context, category, image_urls)
-            print(f"✅ Generated and saved {len(image_urls)} images for: {description} ({category})")
+            # print(f"✅ Generated and saved {len(image_urls)} images for: {description} ({category})")
         else:
             print(f"❌ Failed to generate images for: {description} ({category})")
 
@@ -437,7 +464,7 @@ def _generate_high_quality_images_from_pexels(description: str, context: str, ca
                     # Use large2x for ultra HD quality
                     image_urls.append(photo["src"]["large2x"])
                 
-                print(f"✅ Found {len(image_urls)} images with query: '{search_query}'")
+                # print(f"✅ Found {len(image_urls)} images with query: '{search_query}'")
                 return image_urls
             else:
                 print(f"⚠️ No results for query: '{search_query}'")

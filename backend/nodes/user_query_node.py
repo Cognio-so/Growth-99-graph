@@ -69,4 +69,83 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
     }
 
 def user_node(state: GraphState) -> GraphState:
+    """Enhanced user node that clears document information when file is removed or changed."""
+    print("--- Running User Node ---")
+    
+    # Check if document was removed or changed
+    current_doc = state.get("doc")
+    ctx = state.get("context", {})
+    previous_extraction = ctx.get("extraction", {})
+    previous_doc_path = previous_extraction.get("path")
+    
+    # Get current document path if available
+    current_doc_path = current_doc.get("path") if current_doc else None
+    
+    # Check if document was removed (no current doc but had previous extraction)
+    if not current_doc and previous_extraction.get("has_business_info"):
+        print("🗑️ Document removed - clearing all extracted information")
+        _clear_document_information(ctx)
+    
+    # Check if document was changed (different path than previous)
+    elif current_doc and previous_doc_path and current_doc_path != previous_doc_path:
+        print(f"�� Document changed - clearing old extraction information")
+        print(f"   Old: {previous_doc_path}")
+        print(f"   New: {current_doc_path}")
+        _clear_document_information(ctx)
+    
+    # Check if document is new (current doc but no previous extraction)
+    elif current_doc and not previous_extraction.get("has_business_info"):
+        print(f"📄 New document uploaded: {current_doc.get('name', 'unknown')}")
+    
+    # Check if same document is being reused
+    elif current_doc and previous_doc_path and current_doc_path == previous_doc_path:
+        print(f"📄 Same document being reused: {current_doc.get('name', 'unknown')}")
+    
+    elif current_doc:
+        print(f"📄 Document provided: {current_doc.get('name', 'unknown')}")
+    else:
+        print("📝 No document provided")
+    
+    state["context"] = ctx
     return state
+
+def _clear_document_information(ctx: Dict[str, Any]) -> None:
+    """Helper function to clear all document-related information from context."""
+    # Clear all extraction-related information
+    ctx["extraction"] = {
+        "ok": False,
+        "reason": "document_removed_or_changed",
+        "has_business_info": False,
+        "has_competitors": False
+    }
+    
+    # Clear any business information from generator input
+    gi = ctx.get("generator_input", {})
+    if gi:
+        # Remove all extracted business information
+        extracted_fields = [
+            "extracted_business_name", "extracted_brand_name", 
+            "extracted_unique_value_proposition", "extracted_color_palette",
+            "extracted_font_style", "extracted_logo_url", 
+            "extracted_competitor_websites", "has_extracted_business_info",
+            "extraction_priority"
+        ]
+        for field in extracted_fields:
+            gi.pop(field, None)
+        
+        # Reset extraction priority
+        gi["extraction_priority"] = "low"
+        gi["has_extracted_business_info"] = False
+        
+        ctx["generator_input"] = gi
+        print("✅ Cleared all extracted business information from generator input")
+    
+    # Clear competitor analysis if it exists
+    if "competitor_analysis" in ctx:
+        ctx["competitor_analysis"] = {
+            "ok": False,
+            "reason": "document_removed_or_changed"
+        }
+        print("✅ Cleared competitor analysis")
+    
+    print("🗑️ Document information cleanup complete")
