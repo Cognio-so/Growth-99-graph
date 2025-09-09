@@ -15,6 +15,12 @@ def _ensure_session(session_id: Optional[str], meta: Dict[str, Any] | None) -> s
         if session_id:
             existing = db.get(DBSess, session_id)
             if existing:
+                # PRESERVE existing metadata and only update new fields
+                existing_meta = existing.meta or {}
+                if meta:
+                    existing_meta.update(meta)  # Update with new meta but preserve existing
+                    existing.meta = existing_meta
+                    db.commit()  # Commit the metadata update
                 return session_id
         sid = session_id or str(uuid.uuid4())
         db.add(DBSess(id=sid, meta=meta or {}))
@@ -46,6 +52,58 @@ def _load_recent_messages(session_id: str) -> List[Dict[str, Any]]:
     rows = list(reversed(rows))
     return [{"role": r.role, "content": r.content, "created_at": r.created_at.isoformat(), "meta": r.meta} for r in rows]
 
+def _store_original_new_design_query(session_id: str, query: str):
+    """Store the original 'new design' query as a special message for regeneration."""
+    try:
+        with db_session() as db:
+            # Delete any existing original query for this session
+            existing = db.execute(
+                select(Message).where(
+                    Message.session_id == session_id,
+                    Message.role == "system",
+                    Message.content.like("ORIGINAL_QUERY:%")
+                )
+            ).scalar_one_or_none()
+            
+            if existing:
+                db.delete(existing)
+            
+            # Store as a special system message with prefix
+            db.add(Message(
+                id=uuid.uuid4().hex,
+                session_id=session_id,
+                role="system",
+                content=f"ORIGINAL_QUERY:{query}",
+                meta={"type": "original_new_design_query"}
+            ))
+            print(f"✅ Stored original new design query as message: '{query[:100]}...'")
+    except Exception as e:
+        print(f"⚠️ Error storing original new design query: {e}")
+
+def _get_original_new_design_query(session_id: str) -> Optional[str]:
+    """Retrieve the original 'new design' query from messages."""
+    try:
+        with db_session() as db:
+            result = db.execute(
+                select(Message).where(
+                    Message.session_id == session_id,
+                    Message.role == "system",
+                    Message.content.like("ORIGINAL_QUERY:%")
+                ).order_by(Message.created_at.desc()).limit(1)
+            ).scalar_one_or_none()
+            
+            if result:
+                # Remove the prefix to get the actual query
+                original_query = result.content.replace("ORIGINAL_QUERY:", "", 1)
+                print(f"✅ Retrieved original new design query from messages: '{original_query[:100]}...'")
+                return original_query
+            else:
+                print(f"⚠️ No original new design query found in messages")
+                return None
+    except Exception as e:
+        print(f"⚠️ Error retrieving original new design query: {e}")
+        return None
+
 def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
     ts = payload.get("timestamp") or datetime.now(timezone.utc).isoformat()
     text: str = payload["text"]
@@ -54,7 +112,30 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
     regenerate = bool(payload.get("regenerate", False))
 
     session_id = _ensure_session(payload.get("session_id"), meta={"llm_model": llm_model, "has_doc": bool(doc)})
-    _insert_user_message(session_id, text, {"doc": doc or None})
+    
+    # ENHANCED REGENERATION LOGIC
+    if regenerate:
+        print("🔄 REGENERATION MODE - Checking if text is provided...")
+        
+        # Check if frontend provided text
+        if text and text.strip() and text.strip() != "regenerate":
+            print(f"✅ Frontend provided text, using current text: '{text[:100]}...'")
+            # Use the current text from frontend
+            _insert_user_message(session_id, text, {"doc": doc or None, "regenerate": True})
+        else:
+            print("⚠️ No text from frontend, searching for stored original query...")
+            # No text from frontend, use stored original query
+            original_query = _get_original_new_design_query(session_id)
+            if original_query:
+                print(f"✅ Using stored original query for regeneration: '{original_query[:100]}...'")
+                text = original_query
+            else:
+                print("⚠️ No stored original query found, using current text for regeneration")
+                _insert_user_message(session_id, text, {"doc": doc or None, "regenerate": True})
+    else:
+        # Normal flow - insert the new message
+        _insert_user_message(session_id, text, {"doc": doc or None})
+    
     messages = _load_recent_messages(session_id)
 
     return {
@@ -88,7 +169,7 @@ def user_node(state: GraphState) -> GraphState:
     
     # Check if document was changed (different path than previous)
     elif current_doc and previous_doc_path and current_doc_path != previous_doc_path:
-        print(f"�� Document changed - clearing old extraction information")
+        print(f" Document changed - clearing old extraction information")
         print(f"   Old: {previous_doc_path}")
         print(f"   New: {current_doc_path}")
         _clear_document_information(ctx)
@@ -102,7 +183,7 @@ def user_node(state: GraphState) -> GraphState:
         print(f"📄 Same document being reused: {current_doc.get('name', 'unknown')}")
     
     elif current_doc:
-        print(f"📄 Document provided: {current_doc.get('name', 'unknown')}")
+        print(f" Document provided: {current_doc.get('name', 'unknown')}")
     else:
         print("📝 No document provided")
     

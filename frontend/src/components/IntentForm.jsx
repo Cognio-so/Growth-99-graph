@@ -306,7 +306,13 @@ function IntentForm() {
                       setSending(true); 
                       setError(""); 
                       try {
-                        const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, regenerate: true });
+                        // Send the actual text from frontend (even if empty)
+                        const json = await sendQuery({ 
+                          session_id: sessionId || undefined, 
+                          text: text, // Send actual text from frontend
+                          llm_model: model, 
+                          regenerate: true 
+                        });
                         setResp(json);
                         if (json?.session_id) { 
                           setSessionId(json.session_id); 
@@ -318,7 +324,7 @@ function IntentForm() {
                           console.log('Opening regenerated preview URL:', sandboxUrl);
                           setTimeout(() => {
                             window.open(sandboxUrl, '_blank');
-                          }, 1000); // Small delay to ensure the response is processed
+                          }, 1000);
                         }
                       } catch (err) {
                         setError(err?.message || String(err));
