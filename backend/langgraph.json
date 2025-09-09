@@ -1,7 +1,11 @@
 {
-  "dependencies":["."],
+  "dependencies": ["."],
   "graphs": {
-    "react_agent": "./graph.py:graph"
+    "lovable_orchestrator": "./graph.py:graph"
   },
-  "env":".env"
+  "env": ".env",
+  "checkpoint": {
+    "type": "sqlite",
+    "path": "checkpoints.db"
+  }
 }

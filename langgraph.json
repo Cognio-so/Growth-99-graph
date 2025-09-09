@@ -1,8 +1,0 @@
-{
-  "graphs": {
-    "my-graph": {
-      "path": "backend/graph.py",
-      "function": "graph"
-    }
-  }
-}

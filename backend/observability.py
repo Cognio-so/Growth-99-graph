@@ -39,26 +39,34 @@ def trace_node(node_func: Callable, node_name: str) -> Callable:
     """Decorator to trace individual nodes in the graph"""
     @wraps(node_func)
     def wrapper(state: dict[str, Any]) -> dict[str, Any]:
-        # Create a traceable wrapper with proper naming
+        
         @traceable(
             name=node_name,
-            run_type="chain",
-            tags=[node_name, "node"],
+            run_type="chain",  # Use "chain" for better Studio visualization
+            tags=[node_name, "node", "graph_execution"],
             metadata={
                 "node_name": node_name,
                 "session_id": state.get("session_id"),
-                "has_context": bool(state.get("context"))
+                "thread_id": state.get("session_id"),
+                "input_keys": list(state.keys()) if isinstance(state, dict) else [],
+                "timestamp": state.get("timestamp")
             }
         )
-        def _execute(s):
-            return node_func(s)
+        def _execute_node(input_state):
+            return node_func(input_state)
         
-        return _execute(state)
+        return _execute_node(state)
     
     return wrapper
 
-# Helper to trace LLM calls specifically
-@traceable(name="llm_call", run_type="llm")
 def trace_llm_call(func: Callable) -> Callable:
     """Decorator specifically for LLM calls within nodes"""
-    return func
+    @wraps(func)
+    @traceable(
+        run_type="llm",
+        tags=["llm_call"]
+    )
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    
+    return wrapper
