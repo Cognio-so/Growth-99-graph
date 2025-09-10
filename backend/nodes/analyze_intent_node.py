@@ -169,4 +169,3 @@ def analyze_intent(state: GraphState) -> GraphState:
 def route_from_intent(state: GraphState) -> str:
     return ((state.get("context") or {}).get("intent") or {}).get("route", "schema_extraction")
 
-
