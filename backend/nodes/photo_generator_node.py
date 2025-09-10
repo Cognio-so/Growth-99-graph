@@ -17,6 +17,7 @@ IMAGES_CSV_PATH = Path(__file__).parent.parent / "generated_images.csv"
 def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generate images using intelligent LLM analysis, CSV storage, and Pexels API.
+    Now includes uploaded logos with highest priority.
     """
     print("--- Running Photo Generator Node ---")
     
@@ -33,7 +34,7 @@ def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # Step 3: Generate new images only for those that are needed
     if needed_images:
-        print(f" Need to generate {len(needed_images)} new images")
+        print(f"🔄 Need to generate {len(needed_images)} new images")
         _generate_and_save_new_images(needed_images)
     else:
         print("✅ All required images already exist in database")
@@ -41,14 +42,20 @@ def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     # Step 4: Load all relevant images from CSV for code generation
     final_images = _load_relevant_images_from_csv(image_requirements, state)
     
-    # Step 5: Store the images in the context
+    # Step 5: Add uploaded logo to images with highest priority
+    final_images = _add_uploaded_logo_to_images(gi, final_images)
+    
+    # Step 6: Store the images in the context
     gi["generated_images"] = final_images
     gi["has_images"] = len(final_images) > 0
     
     ctx["generator_input"] = gi
     state["context"] = ctx
     
-    # print(f"🖼️ Final result: {len(final_images)} images available for code generation")
+    print(f"🖼️ Final result: {len(final_images)} images available for code generation")
+    if gi.get("has_uploaded_logo"):
+        print("   ✅ Uploaded logo included with highest priority")
+    
     return state
 
 def _analyze_image_requirements_with_llm(user_text: str, json_schema: dict, state: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1035,3 +1042,32 @@ def photo_generator_route(state: Dict[str, Any]) -> str:
     Route after photo generation - always go to code generator.
     """
     return "generator"
+
+# Add this function to handle uploaded logos in the photo_generator_node.py
+
+def _add_uploaded_logo_to_images(gi: Dict[str, Any], final_images: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Add uploaded logo to the images list for code generation."""
+    
+    if not gi.get("has_uploaded_logo") or not gi.get("uploaded_logo_url"):
+        return final_images
+    
+    # Create logo image entry
+    logo_image = {
+        "id": "uploaded_logo",
+        "type": "uploaded company logo",
+        "description": "User uploaded company logo for branding",
+        "website_type": "company branding",
+        "context": "header, navbar, footer, branding",
+        "category": "logo",
+        "urls": [gi.get("uploaded_logo_url")],
+        "primary_url": gi.get("uploaded_logo_url"),
+        "alt_text": "Company logo",
+        "source": "user_upload",
+        "priority": "highest"  # Mark as highest priority
+    }
+    
+    # Add logo at the beginning of the images list (highest priority)
+    final_images.insert(0, logo_image)
+    print(f"🖼️ Added uploaded logo to images: {gi.get('uploaded_logo_url')}")
+    
+    return final_images

@@ -1,9 +1,10 @@
-# main.py - Complete version with proper LangSmith integration
+# main.py - Complete version with proper LangSmith integration and logo upload
 import os
 import uvicorn
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -22,7 +23,7 @@ from models import Base
 from schemas import UserQueryOut
 from nodes.user_query_node import user_node_init_state
 from graph import graph
-from utlis.docs import save_upload_to_disk
+from utlis.docs import save_upload_to_disk, save_logo_to_disk
 
 # LangGraph imports
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -46,29 +47,55 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Update CORS to allow your Vercel domain
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Local development
-        "http://localhost:5173",  # Local Vite
-        "https://growth-99-graph.vercel.app",  # Your Vercel domain
-        "https://*.vercel.app",  # All Vercel subdomains
-        "*"  # Allow all origins (for testing, remove in production)
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-from uuid import UUID, uuid4
 
+# Mount static files for logo serving
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Create database tables
+Base.metadata.create_all(bind=engine)
 def _as_uuid(s: str | None) -> str:
-    try:
-        UUID(str(s))
-        return str(s)
-    except Exception:
+    """Convert string to UUID format for LangGraph."""
+    if not s:
+        from uuid import uuid4
         return str(uuid4())
-        
+    
+    # If already looks like a UUID, return as-is
+    if len(s) == 36 and s.count('-') == 4:
+        return s
+    
+    # Convert session string to UUID format
+    import hashlib
+    hash_obj = hashlib.md5(s.encode())
+    hex_dig = hash_obj.hexdigest()
+    
+    # Format as UUID: 8-4-4-4-12
+    uuid_str = f"{hex_dig[:8]}-{hex_dig[8:12]}-{hex_dig[12:16]}-{hex_dig[16:20]}-{hex_dig[20:32]}"
+    return uuid_str
+
+def setup_checkpointer():
+    # Use absolute path to ensure both services find the same file
+    import os
+    from pathlib import Path
+    
+    db_path = Path(__file__).parent / "checkpoints.db"
+    print(f"📁 Using checkpointer database: {db_path}")
+    
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
+    return SqliteSaver(conn)
+
+# Create shared checkpointer
+checkpointer = setup_checkpointer()
+
+# Compile the graph with shared checkpointer
+compiled_graph = graph.compile(checkpointer=checkpointer)
+
 @app.on_event("startup")
 def _startup():
     Base.metadata.create_all(bind=engine)
@@ -81,31 +108,13 @@ def _startup():
         print(f"⚠️  LangSmith connection issue: {e}")
         print("Make sure LANGCHAIN_API_KEY is set in your .env file")
 
-# FIXED: Use SQLite checkpointer that can be shared between services
-def setup_checkpointer():
-    # Use absolute path to ensure both services find the same file
-    import os
-    db_path = os.path.abspath("./checkpoints.db")
-    print(f"📁 Using SQLite checkpointer at: {db_path}")
-    
-    # Ensure the directory exists
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    return SqliteSaver(conn)
-
-# Create shared checkpointer
-checkpointer = setup_checkpointer()
-
-# Compile the graph with shared checkpointer
-compiled_graph = graph.compile(checkpointer=checkpointer)
-
 @app.post("/api/query", response_model=UserQueryOut)
 async def accept_query(
     session_id: str | None = Form(None),
     text: str = Form(...),
     llm_model: str | None = Form(None),
     file: UploadFile | None = File(None),
+    logo: UploadFile | None = File(None),  # Add logo parameter
     regenerate: bool = Form(False),
 ):
     try:
@@ -113,12 +122,18 @@ async def accept_query(
         if file is not None:
             doc = await save_upload_to_disk(file)
 
+        logo_data = None
+        if logo is not None:
+            logo_data = await save_logo_to_disk(logo, session_id)
+            print(f"🖼️ Logo uploaded: {logo_data.get('filename')} -> {logo_data.get('url')}")
+
         payload = {
             "session_id": session_id or None,
             "timestamp": datetime.utcnow().isoformat(),
             "text": text,
             "llm_model": llm_model,
             "doc": doc,
+            "logo": logo_data,  # Add logo to payload
             "regenerate": regenerate,
         }
 
@@ -139,6 +154,7 @@ async def accept_query(
                 "session_id": thread_id,
                 "model": llm_model,
                 "has_doc": bool(doc),
+                "has_logo": bool(logo_data),  # Add logo metadata
                 "text_preview": text[:100] if text else "",
                 "run_name": f"query_{thread_id[:8]}",  # Add run name for Studio
                 "project_name": os.getenv("LANGCHAIN_PROJECT", "lovable-orchestrator")
@@ -257,7 +273,9 @@ async def debug_checkpointer():
     """Debug endpoint to check checkpointer status"""
     try:
         import os
-        db_path = os.path.abspath("./checkpoints.db")
+        from pathlib import Path
+        
+        db_path = Path(__file__).parent / "checkpoints.db"
         
         # Try to get some threads from the checkpointer
         threads = []
@@ -271,9 +289,9 @@ async def debug_checkpointer():
         
         return {
             "checkpointer_type": type(checkpointer).__name__,
-            "db_exists": os.path.exists(db_path),
-            "db_size": os.path.getsize(db_path) if os.path.exists(db_path) else 0,
-            "db_path": db_path,
+            "db_exists": os.path.exists(str(db_path)),
+            "db_size": os.path.getsize(str(db_path)) if os.path.exists(str(db_path)) else 0,
+            "db_path": str(db_path),
             "recent_threads": threads[:5],  # Show first 5 threads
             "total_threads": len(threads)
         }

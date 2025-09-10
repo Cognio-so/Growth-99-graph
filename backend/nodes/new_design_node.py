@@ -1,5 +1,6 @@
 # nodes/new_design.py
 from typing import Dict, Any
+import os
 
 def new_design(state: Dict[str, Any]) -> Dict[str, Any]:
     print("--- Running Enhanced New Design Node ---")
@@ -18,6 +19,21 @@ def new_design(state: Dict[str, Any]) -> Dict[str, Any]:
         gi["json_schema"] = json_schema
     else:
         gi["schema_source"] = "none"
+    
+    # CRITICAL: Process logo upload if available
+    logo = state.get("logo")
+    if logo:
+        print("🖼️ Processing uploaded logo...")
+        logo_url = _process_uploaded_logo(logo)
+        if logo_url:
+            gi["uploaded_logo_url"] = logo_url
+            gi["has_uploaded_logo"] = True
+            print(f"✅ Logo processed successfully: {logo_url}")
+        else:
+            print("❌ Failed to process uploaded logo")
+            gi["has_uploaded_logo"] = False
+    else:
+        gi["has_uploaded_logo"] = False
     
     # CRITICAL: Pass ALL extracted business information to code generator
     # But only if document information is still valid (not cleared)
@@ -46,7 +62,7 @@ def new_design(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"✅ Business info passed to generator:")
         print(f"   - Business name: {gi['extracted_business_name']}")
         print(f"   - Brand name: {gi['extracted_brand_name']}")
-        print(f"   - Value proposition: {gi['extracted_unique_value_proposition'][:50]}...")
+        print(f"   - Value proposition: {gi['extracted_unique_value_proposition'][:50] if gi['extracted_unique_value_proposition'] else 'None'}...")
         print(f"   - Color palette: {gi['extracted_color_palette']}")
         print(f"   - Font style: {gi['extracted_font_style']}")
         print(f"   - Competitors: {len(gi['extracted_competitor_websites'])}")
@@ -62,6 +78,22 @@ def new_design(state: Dict[str, Any]) -> Dict[str, Any]:
     ctx["generator_input"] = gi
     state["context"] = ctx
     return state
+
+def _process_uploaded_logo(logo: Dict[str, Any]) -> str:
+    """Process uploaded logo and return its URL."""
+    try:
+        # Get the logo URL from the saved file
+        logo_url = logo.get("url")
+        if logo_url:
+            # Convert to full URL (assuming we have a base URL or use relative)
+            # For now, return the relative URL as stored
+            return logo_url
+        else:
+            print("❌ No URL found in logo data")
+            return None
+    except Exception as e:
+        print(f"❌ Error processing logo: {e}")
+        return None
 
 def new_design_route(state: Dict[str, Any]) -> str:
     ctx = state.get("context") or {}

@@ -342,6 +342,7 @@ def edit_analyzer(state: GraphState) -> GraphState:
     ctx = state.get("context", {})
     user_text = state.get("text", "")
     doc = state.get("doc")  # Check if document is provided for editing
+    logo = state.get("logo")  # Check if logo is provided for editing
     
     if not user_text:
         print("❌ No user text provided for edit analysis")
@@ -365,20 +366,26 @@ def edit_analyzer(state: GraphState) -> GraphState:
         
         if has_document_info:
             print("📄 Document provided for editing - including extracted business information")
-            # Add document information to the prompt
-            doc_info = f"""
-## DOCUMENT EXTRACTION INFORMATION (HIGH PRIORITY):
-- Business Name: {extraction.get('business_name', 'Not specified')}
-- Brand Name: {extraction.get('brand_name', 'Not specified')}
-- Unique Value Proposition: {extraction.get('unique_value_proposition', 'Not specified')}
-- Color Palette: {extraction.get('color_palette', 'Not specified')}
-- Preferred Font Style: {extraction.get('preferred_font_style', 'Not specified')}
-- Logo URL: {extraction.get('logo_url', 'Not specified')}
-
-IMPORTANT: Use this document information as the PRIMARY source for design decisions.
-The user wants to apply these document specifications to the existing design.
-"""
-            user_prompt = doc_info + "\n\n" + user_prompt
+            user_prompt += f"\n\nDocument Business Information:\n"
+            user_prompt += f"- Business Name: {extraction.get('business_name', 'Not specified')}\n"
+            user_prompt += f"- Brand Name: {extraction.get('brand_name', 'Not specified')}\n"
+            user_prompt += f"- Value Proposition: {extraction.get('unique_value_proposition', 'Not specified')}\n"
+            user_prompt += f"- Color Palette: {extraction.get('color_palette', 'Not specified')}\n"
+            user_prompt += f"- Font Style: {extraction.get('preferred_font_style', 'Not specified')}\n"
+            user_prompt += f"- Logo URL: {extraction.get('logo_url', 'Not specified')}\n"
+        
+        # CRITICAL: Process logo upload if available for editing
+        if logo:
+            print("🖼️ Processing uploaded logo for edit...")
+            logo_url = _process_uploaded_logo_for_edit(logo)
+            if logo_url:
+                user_prompt += f"\n\nUploaded Logo Information:\n"
+                user_prompt += f"- Logo URL: {logo_url}\n"
+                user_prompt += f"- Logo Filename: {logo.get('filename', 'logo')}\n"
+                user_prompt += f"- IMPORTANT: Use this uploaded logo in the design. Replace any existing logo or add it if no logo exists.\n"
+                print(f"✅ Logo processed for edit: {logo_url}")
+            else:
+                print("❌ Failed to process uploaded logo for edit")
         
         # Call LLM for ENHANCED analysis
         print("🔍 Analyzing edit request with ENHANCED LLM analysis...")
@@ -438,6 +445,21 @@ The user wants to apply these document specifications to the existing design.
             "generated_images": generated_images  # Pass generated images to generator
         })
         
+        # CRITICAL: Include uploaded logo in generator input for editing
+        if logo:
+            logo_url = _process_uploaded_logo_for_edit(logo)
+            if logo_url:
+                gi.update({
+                    "uploaded_logo_url": logo_url,
+                    "has_uploaded_logo": True,
+                    "logo_filename": logo.get("filename", "logo")
+                })
+                print(f"✅ Logo included in edit generator input: {logo_url}")
+            else:
+                gi["has_uploaded_logo"] = False
+        else:
+            gi["has_uploaded_logo"] = False
+        
         # ENHANCED: Include document extraction information in generator input
         if has_document_info:
             print("📋 Including document business information in edit request")
@@ -495,3 +517,19 @@ The user wants to apply these document specifications to the existing design.
     
     state["context"] = ctx
     return state
+
+def _process_uploaded_logo_for_edit(logo: Dict[str, Any]) -> str:
+    """Process uploaded logo for edit mode and return its URL."""
+    try:
+        # Get the logo URL from the saved file
+        logo_url = logo.get("url")
+        if logo_url:
+            # Convert to full URL (assuming we have a base URL or use relative)
+            # For now, return the relative URL as stored
+            return logo_url
+        else:
+            print("❌ No URL found in logo data for edit")
+            return None
+    except Exception as e:
+        print(f"❌ Error processing logo for edit: {e}")
+        return None

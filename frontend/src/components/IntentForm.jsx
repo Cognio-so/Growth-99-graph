@@ -38,6 +38,7 @@ function IntentForm() {
   const [model, setModel] = React.useState("k2"); // Default to K2
   const [text, setText] = React.useState("");
   const [file, setFile] = React.useState(null);
+  const [logo, setLogo] = React.useState(null); // Add logo state
   const [sending, setSending] = React.useState(false);
   const [resp, setResp] = React.useState(null);
   const [error, setError] = React.useState("");
@@ -45,9 +46,13 @@ function IntentForm() {
 
   // Update the file input to properly clear
   const onFile = (e) => setFile(e.target.files?.[0] || null);
+  
+  // Add logo file handler
+  const onLogo = (e) => setLogo(e.target.files?.[0] || null);
 
   // Add a ref to the file input for programmatic clearing
   const fileInputRef = React.useRef(null);
+  const logoInputRef = React.useRef(null); // Add logo input ref
 
   const clearSession = () => { 
     setSessionId(""); 
@@ -91,7 +96,7 @@ function IntentForm() {
     setError(""); 
     setResp(null);
     try {
-      const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file });
+      const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file, logo });
       setResp(json);
       if (json?.session_id) { 
         setSessionId(json.session_id); 
@@ -102,11 +107,49 @@ function IntentForm() {
         console.log('Clearing form after edit operation with document');
         setText(""); // Clear text input
         setFile(null); // Clear file input
-        // Clear the actual file input element
+        setLogo(null); // Clear logo input
+        // Clear the actual file input elements
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+        if (logoInputRef.current) {
+          logoInputRef.current.value = '';
+        }
         // Note: We don't clear sessionId as it should persist for the session
+      }
+      
+      // Automatically open preview in new tab when design is ready
+      const sandboxUrl = json?.state?.context?.sandbox_result?.url;
+      if (sandboxUrl) {
+        console.log('Opening preview URL:', sandboxUrl);
+        setTimeout(() => {
+          window.open(sandboxUrl, '_blank');
+        }, 1000); // Small delay to ensure the response is processed
+      }
+    } catch (err) {
+      setError(err?.message || String(err));
+    } finally { 
+      setSending(false); 
+    }
+  }
+
+  // Add regenerate function
+  async function onRegenerate() {
+    setSending(true); 
+    setError(""); 
+    setResp(null);
+    try {
+      const json = await sendQuery({ 
+        session_id: sessionId || undefined, 
+        text: text || "regenerate", 
+        llm_model: model, 
+        file, 
+        logo,
+        regenerate: true 
+      });
+      setResp(json);
+      if (json?.session_id) { 
+        setSessionId(json.session_id); 
       }
       
       // Automatically open preview in new tab when design is ready
@@ -216,7 +259,7 @@ function IntentForm() {
 
           <div className="bg-slate-800/50 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
             <form onSubmit={onSubmit} className="space-y-6">
-              {/* Text Input with File Upload */}
+              {/* Text Input with Upload Buttons */}
               <div>
                 <div className="relative">
                   <textarea
@@ -225,42 +268,90 @@ function IntentForm() {
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Describe the UI/UX you want to create. Be specific about layout, components, and functionality."
                     required
-                    className="w-full px-4 py-4 pr-12 bg-slate-700/50 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none text-lg"
+                    className="w-full px-4 py-4 pr-20 bg-slate-700/50 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none text-lg"
                   />
-                  {/* File Upload Button */}
-                  <label className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      onChange={onFile}
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                    />
-                    <div className="w-8 h-8 bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center justify-center transition-colors">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                    </div>
-                  </label>
-                </div>
-                {/* File name display */}
-                {file && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-white/70">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>{file.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setFile(null)}
-                      className="text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                  {/* Upload Buttons Container */}
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex gap-2">
+                    {/* Logo Upload Button */}
+                    <label className="cursor-pointer" title="Upload Logo">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        onChange={onLogo}
+                        className="hidden"
+                        accept=".png,.jpg,.jpeg,.svg,.webp"
+                      />
+                      <div className="w-8 h-8 bg-orange-600 hover:bg-orange-700 rounded-lg flex items-center justify-center transition-colors">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </label>
+                    
+                    {/* Document Upload Button */}
+                    <label className="cursor-pointer" title="Upload Document">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={onFile}
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                      />
+                      <div className="w-8 h-8 bg-purple-600 hover:bg-purple-700 rounded-lg flex items-center justify-center transition-colors">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </div>
+                    </label>
                   </div>
-                )}
+                </div>
+                
+                {/* Upload Status Display */}
+                <div className="mt-2 space-y-2">
+                  {/* Logo name display */}
+                  {logo && (
+                    <div className="flex items-center gap-2 text-sm text-orange-300">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Logo: {logo.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLogo(null);
+                          if (logoInputRef.current) logoInputRef.current.value = '';
+                        }}
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* File name display */}
+                  {file && (
+                    <div className="flex items-center gap-2 text-sm text-white/70">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Document: {file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Model Selection - Centered below text area */}
@@ -280,60 +371,34 @@ function IntentForm() {
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-center pt-4 gap-4">
+              {/* Submit and Regenerate Buttons - Centered */}
+              <div className="flex justify-center gap-4">
                 <button
                   type="submit"
                   disabled={sending}
-                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:cursor-not-allowed disabled:transform-none text-lg"
+                  className="px-8 py-4 bg-gradient-to-r from-purple-500 via-orange-500 to-pink-500 text-white font-semibold rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg"
                 >
                   {sending ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      Generating...
+                      <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      <span>Creating...</span>
                     </div>
                   ) : (
-                    "Generate Design"
+                    "Create Design"
                   )}
                 </button>
-
-                {/* Regenerate Button */}
-                {sandboxResult?.url && (
+                
+                {/* Regenerate Button - Only show if there's a previous result */}
+                {sandboxResult?.url && !sending && (
                   <button
                     type="button"
+                    onClick={onRegenerate}
                     disabled={sending}
-                    onClick={async () => {
-                      setSending(true); 
-                      setError(""); 
-                      try {
-                        // Send the actual text from frontend (even if empty)
-                        const json = await sendQuery({ 
-                          session_id: sessionId || undefined, 
-                          text: text, // Send actual text from frontend
-                          llm_model: model, 
-                          regenerate: true 
-                        });
-                        setResp(json);
-                        if (json?.session_id) { 
-                          setSessionId(json.session_id); 
-                        }
-                        
-                        // Automatically open preview in new tab when regenerated design is ready
-                        const sandboxUrl = json?.state?.context?.sandbox_result?.url;
-                        if (sandboxUrl) {
-                          console.log('Opening regenerated preview URL:', sandboxUrl);
-                          setTimeout(() => {
-                            window.open(sandboxUrl, '_blank');
-                          }, 1000);
-                        }
-                      } catch (err) {
-                        setError(err?.message || String(err));
-                      } finally { 
-                        setSending(false); 
-                      }
-                    }}
-                    className="px-8 py-4 bg-slate-700/60 hover:bg-slate-700 text-white font-semibold rounded-xl border border-white/20 shadow hover:shadow-md transition-all text-lg"
+                    className="px-6 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg flex items-center gap-2"
                   >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
                     Regenerate
                   </button>
                 )}
@@ -394,38 +459,10 @@ function IntentForm() {
               </button>
             </div>
             
-            {sandboxResult?.url ? (
-              <div className="space-y-4">
-                <div className="aspect-video bg-slate-800 border border-white/20 rounded-lg overflow-hidden">
-                  <iframe
-                    src={sandboxResult.url}
-                    className="w-full h-full"
-                    title="Live Preview"
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                  />
-                </div>
-                <a
-                  href={sandboxResult.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg text-center transition-colors"
-                >
-                  Open in New Tab
-                </a>
-              </div>
-            ) : (
-              <div className="aspect-video bg-slate-800 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-white/60">Generate a design to see the preview</p>
-                </div>
-              </div>
-            )}
+            {/* Preview content would go here */}
+            <div className="text-white/60 text-sm">
+              Preview will appear here when available
+            </div>
           </div>
         </div>
       )}
