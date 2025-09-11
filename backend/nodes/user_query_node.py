@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy import select
 
 from db import db_session
-from models import Session as DBSess, Message
+from models import Session as DBSess, Message, ConversationHistory, SessionGeneratedLinks
 from graph_types import GraphState
 
 RECENT_LIMIT = 30
@@ -15,6 +15,7 @@ def _ensure_session(session_id: Optional[str], meta: Dict[str, Any] | None) -> s
         if session_id:
             existing = db.get(DBSess, session_id)
             if existing:
+                print(f"✅ Found existing session: {session_id}")
                 # PRESERVE existing metadata and only update new fields
                 existing_meta = existing.meta or {}
                 if meta:
@@ -22,8 +23,13 @@ def _ensure_session(session_id: Optional[str], meta: Dict[str, Any] | None) -> s
                     existing.meta = existing_meta
                     db.commit()  # Commit the metadata update
                 return session_id
+        
         sid = session_id or str(uuid.uuid4())
-        db.add(DBSess(id=sid, meta=meta or {}))
+        print(f"🆕 Creating new session: {sid}")
+        new_session = DBSess(id=sid, meta=meta or {})
+        db.add(new_session)
+        db.commit()  # Make sure to commit
+        print(f"✅ Session created and committed: {sid}")
         return sid
 
 def _insert_user_message(session_id: str, content: str, meta: Dict[str, Any] | None):

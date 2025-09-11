@@ -13,6 +13,7 @@ from nodes.apply_to_Sandbox_node import apply_sandbox
 from nodes.validation_node import validate_generated_code
 from nodes.code_analysis_node import analyze_and_fix_code, route_after_analysis
 from nodes.output_node import output_result
+from nodes.restore_code_node import restore_code_from_session
 from observability import trace_node
 from nodes.photo_generator_node import photo_generator
 
@@ -48,16 +49,30 @@ def route_after_validation_local(state: GraphState) -> str:
         return "schema_extraction"
 
 def route_after_user(state: GraphState) -> str:
+    """Route after user node - check if this is a restore operation"""
+    ctx = state.get("context", {})
+    if ctx.get("restore_link_id"):
+        return "restore_code"
     return "doc_extraction" if state.get("doc") else "analyze_intent"
 
 def route_after_doc_extraction(state: GraphState) -> str:
     """Route after doc extraction - go directly to analyze intent."""
     return "analyze_intent"
 
+def route_after_restore(state: GraphState) -> str:
+    """Route after restore - go directly to apply sandbox with restored code"""
+    ctx = state.get("context", {})
+    restore_result = ctx.get("restore_result", {})
+    
+    if restore_result.get("success"):
+        return "apply_sandbox"
+    else:
+        return "output"  # If restore failed, end the flow
+
 def build_graph():
     g = StateGraph(GraphState)
 
-    # Add all nodes (removed competitor_analysis)
+    # Add all nodes (including restore_code)
     g.add_node("user_node",          trace_node(user_node, "user_node"))
     g.add_node("doc_extraction",     trace_node(doc_extraction, "doc_extraction"))
     g.add_node("analyze_intent",     trace_node(analyze_intent, "analyze_intent"))
@@ -68,6 +83,7 @@ def build_graph():
     g.add_node("edit_analyzer",      trace_node(edit_analyzer, "edit_analyzer"))
     g.add_node("generator",          trace_node(generator, "generator"))
     g.add_node("apply_sandbox",      trace_node(apply_sandbox, "apply_sandbox"))
+    g.add_node("restore_code",       trace_node(restore_code_from_session, "restore_code"))
     
     # Validation loop nodes
     g.add_node("validation",         trace_node(validate_generated_code, "validation"))
@@ -76,9 +92,12 @@ def build_graph():
 
     g.set_entry_point("user_node")
     
-    # Simplified flow without competitor analysis
-    g.add_conditional_edges("user_node", route_after_user,
-                            {"doc_extraction":"doc_extraction","analyze_intent":"analyze_intent"})
+    # Enhanced flow with restore functionality
+    g.add_conditional_edges("user_node", route_after_user, {
+        "doc_extraction": "doc_extraction",
+        "analyze_intent": "analyze_intent",
+        "restore_code": "restore_code"
+    })
     g.add_edge("doc_extraction", "analyze_intent")  # Direct route, no competitor analysis
 
     g.add_conditional_edges("analyze_intent", route_from_intent, {
@@ -99,6 +118,12 @@ def build_graph():
     
     # ENHANCED: Edit analyzer now goes to generator for targeted changes
     g.add_edge("edit_analyzer", "generator")
+    
+    # Restore code flow
+    g.add_conditional_edges("restore_code", route_after_restore, {
+        "apply_sandbox": "apply_sandbox",
+        "output": "output"
+    })
     
     # Validation loop implementation
     g.add_edge("generator", "apply_sandbox")
