@@ -6,7 +6,7 @@ import { sendQuery } from "../api";
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) ||
-  "https://your-railway-url.railway.app"; // Update this line
+  "https://growth-99-graph-production.up.railway.app"; // Update this line
 
 const MODELS = [
   "k2",  // Single K2 option with automatic fallback
@@ -87,7 +87,7 @@ function IntentForm() {
   const loadSessions = async () => {
     try {
       console.log('Loading sessions...');
-      const response = await fetch(`${API_BASE}/api/sessions`);
+      const response = await fetch(`${API_BASE}api/sessions`);
       const data = await response.json();
       console.log('Sessions loaded:', data);
       setSessions(data.sessions || []);
