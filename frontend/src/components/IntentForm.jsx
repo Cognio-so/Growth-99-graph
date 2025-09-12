@@ -87,7 +87,9 @@ function IntentForm() {
   const loadSessions = async () => {
     try {
       console.log('Loading sessions...');
-      const response = await fetch(`${API_BASE}api/sessions`);
+      // FIX: Ensure no double slashes
+      const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/sessions`;
+      const response = await fetch(apiUrl);
       const data = await response.json();
       console.log('Sessions loaded:', data);
       setSessions(data.sessions || []);
@@ -99,7 +101,9 @@ function IntentForm() {
 
   const loadSessionDetails = async (sessionId) => {
     try {
-      const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`);
+      // FIX: Ensure no double slashes
+      const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/sessions/${sessionId}`;
+      const response = await fetch(apiUrl);
       const data = await response.json();
       setSessionDetails(data);
       setShowSessionDetails(true);
@@ -117,7 +121,9 @@ function IntentForm() {
     }
     
     try {
-      const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+      // FIX: Ensure no double slashes
+      const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/sessions/${sessionId}`;
+      const response = await fetch(apiUrl, {
         method: 'DELETE'
       });
       
@@ -182,7 +188,9 @@ function IntentForm() {
     // Load session details and conversation history
     try {
       console.log('Fetching session details for:', session.id);
-      const response = await fetch(`${API_BASE}/api/sessions/${session.id}`);
+      // FIX: Ensure no double slashes
+      const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/sessions/${session.id}`;
+      const response = await fetch(apiUrl);
       const data = await response.json();
       console.log('Session details received:', data);
       setSessionDetails(data);
@@ -261,7 +269,9 @@ function IntentForm() {
       formData.append("link_id", linkId);
       formData.append("text", "restore");
       
-      const response = await fetch(`${API_BASE}/api/sessions/${selectedSession.id}/restore`, {
+      // FIX: Ensure no double slashes
+      const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/sessions/${selectedSession.id}/restore`;
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
       });
@@ -580,7 +590,9 @@ function IntentForm() {
       console.log('Using session ID:', correctSessionId);
       console.log('Conversation ID:', conversationId);
       
-      const restoreResponse = await fetch(`${API_BASE}/api/sessions/${correctSessionId}/conversations/${conversationId}/restore`, {
+      // FIX: Ensure no double slashes
+      const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/sessions/${correctSessionId}/conversations/${conversationId}/restore`;
+      const restoreResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
