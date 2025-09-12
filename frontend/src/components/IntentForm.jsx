@@ -2,6 +2,12 @@
 import React from "react";
 import { sendQuery } from "../api";
 
+// Add API_BASE configuration
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) ||
+  "https://your-railway-url.railway.app"; // Update this line
+
 const MODELS = [
   "k2",  // Single K2 option with automatic fallback
   "gpt-4o",
@@ -81,7 +87,7 @@ function IntentForm() {
   const loadSessions = async () => {
     try {
       console.log('Loading sessions...');
-      const response = await fetch('http://localhost:8000/api/sessions');
+      const response = await fetch(`${API_BASE}/api/sessions`);
       const data = await response.json();
       console.log('Sessions loaded:', data);
       setSessions(data.sessions || []);
@@ -93,7 +99,7 @@ function IntentForm() {
 
   const loadSessionDetails = async (sessionId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}`);
+      const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`);
       const data = await response.json();
       setSessionDetails(data);
       setShowSessionDetails(true);
@@ -111,7 +117,7 @@ function IntentForm() {
     }
     
     try {
-      const response = await fetch(`http://localhost:8000/api/sessions/${sessionId}`, {
+      const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
         method: 'DELETE'
       });
       
@@ -176,7 +182,7 @@ function IntentForm() {
     // Load session details and conversation history
     try {
       console.log('Fetching session details for:', session.id);
-      const response = await fetch(`http://localhost:8000/api/sessions/${session.id}`);
+      const response = await fetch(`${API_BASE}/api/sessions/${session.id}`);
       const data = await response.json();
       console.log('Session details received:', data);
       setSessionDetails(data);
@@ -255,7 +261,7 @@ function IntentForm() {
       formData.append("link_id", linkId);
       formData.append("text", "restore");
       
-      const response = await fetch(`http://localhost:8000/api/sessions/${selectedSession.id}/restore`, {
+      const response = await fetch(`${API_BASE}/api/sessions/${selectedSession.id}/restore`, {
         method: 'POST',
         body: formData
       });
@@ -299,7 +305,7 @@ function IntentForm() {
     const handleBeforeUnload = async () => {
       try {
         // Send immediate cleanup request (don't wait for response)
-        fetch('/api/cleanup', {
+        fetch(`${API_BASE}/api/cleanup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           keepalive: true  // Ensures request completes even if page closes
@@ -574,7 +580,7 @@ function IntentForm() {
       console.log('Using session ID:', correctSessionId);
       console.log('Conversation ID:', conversationId);
       
-      const restoreResponse = await fetch(`http://localhost:8000/api/sessions/${correctSessionId}/conversations/${conversationId}/restore`, {
+      const restoreResponse = await fetch(`${API_BASE}/api/sessions/${correctSessionId}/conversations/${conversationId}/restore`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
