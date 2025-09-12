@@ -45,7 +45,10 @@ def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     # Step 5: Add uploaded logo to images with highest priority
     final_images = _add_uploaded_logo_to_images(gi, final_images)
     
-    # Step 6: Store the images in the context
+    # Step 6: Add uploaded image to images with high priority
+    final_images = _add_uploaded_image_to_images(gi, final_images)
+    
+    # Step 7: Store the images in the context
     gi["generated_images"] = final_images
     gi["has_images"] = len(final_images) > 0
     
@@ -1069,5 +1072,32 @@ def _add_uploaded_logo_to_images(gi: Dict[str, Any], final_images: List[Dict[str
     # Add logo at the beginning of the images list (highest priority)
     final_images.insert(0, logo_image)
     print(f"🖼️ Added uploaded logo to images: {gi.get('uploaded_logo_url')}")
+    
+    return final_images
+
+def _add_uploaded_image_to_images(gi: Dict[str, Any], final_images: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Add uploaded image to the images list for code generation."""
+    
+    if not gi.get("has_uploaded_image") or not gi.get("uploaded_image_url"):
+        return final_images
+    
+    # Create image entry
+    uploaded_image = {
+        "id": "uploaded_image",
+        "type": "uploaded user image",
+        "description": "User uploaded image for website content",
+        "website_type": "user content",
+        "context": "hero, about, gallery, portfolio, service, product, contact, testimonials, blog",
+        "category": "photo",
+        "urls": [gi.get("uploaded_image_url")],
+        "primary_url": gi.get("uploaded_image_url"),
+        "alt_text": "User uploaded image",
+        "source": "user_upload",
+        "priority": "high"  # Mark as high priority
+    }
+    
+    # Add image at the beginning of the images list (high priority, after logo)
+    final_images.insert(0, uploaded_image)
+    print(f"🖼️ Added uploaded image to images: {gi.get('uploaded_image_url')}")
     
     return final_images

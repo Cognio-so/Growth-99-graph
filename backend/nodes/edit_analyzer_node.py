@@ -343,6 +343,7 @@ def edit_analyzer(state: GraphState) -> GraphState:
     user_text = state.get("text", "")
     doc = state.get("doc")  # Check if document is provided for editing
     logo = state.get("logo")  # Check if logo is provided for editing
+    image = state.get("image")  # Check if image is provided for editing
     
     if not user_text:
         print("❌ No user text provided for edit analysis")
@@ -421,18 +422,25 @@ def edit_analyzer(state: GraphState) -> GraphState:
         existing_code = _capture_existing_code_context(state)
         ctx["existing_code"] = existing_code
         
-        # NEW: Check for image requirements and generate images if needed
+        # SMART IMAGE HANDLING: Only generate images if user hasn't uploaded one
         image_requirements = result.get("image_requirements", [])
         if not image_requirements:
             # Fallback: detect image requirements from user text
             image_requirements = _detect_image_requirements(user_text, existing_code)
         
         generated_images = []
-        if image_requirements:
-            print(f"🖼️ Detected {len(image_requirements)} image requirements")
+        # Only generate images if user hasn't uploaded an image but needs images
+        if image_requirements and not image:
+            print(f"🖼️ No uploaded image detected, generating {len(image_requirements)} images for edit request")
             generated_images = _generate_images_for_edit(image_requirements, state)
             edit_analysis["image_requirements"] = image_requirements
             edit_analysis["generated_images"] = generated_images
+        elif image_requirements and image:
+            print(f"🖼️ User has uploaded image, using uploaded image instead of generating new ones")
+            edit_analysis["image_requirements"] = image_requirements
+            edit_analysis["generated_images"] = []  # No generated images needed
+        elif not image_requirements:
+            print(f"🖼️ No image requirements detected in edit request")
         
         # ENHANCED: Prepare generator input for editing mode with document information
         gi = ctx.get("generator_input", {})
@@ -457,8 +465,21 @@ def edit_analyzer(state: GraphState) -> GraphState:
                 print(f"✅ Logo included in edit generator input: {logo_url}")
             else:
                 gi["has_uploaded_logo"] = False
+        
+        # CRITICAL: Include uploaded image in generator input for editing
+        if image:
+            image_url = _process_uploaded_image_for_edit(image)
+            if image_url:
+                gi.update({
+                    "uploaded_image_url": image_url,
+                    "has_uploaded_image": True,
+                    "image_filename": image.get("filename", "image")
+                })
+                print(f"✅ Image included in edit generator input: {image_url}")
+            else:
+                gi["has_uploaded_image"] = False
         else:
-            gi["has_uploaded_logo"] = False
+            gi["has_uploaded_image"] = False
         
         # ENHANCED: Include document extraction information in generator input
         if has_document_info:
@@ -532,4 +553,20 @@ def _process_uploaded_logo_for_edit(logo: Dict[str, Any]) -> str:
             return None
     except Exception as e:
         print(f"❌ Error processing logo for edit: {e}")
+        return None
+
+def _process_uploaded_image_for_edit(image: Dict[str, Any]) -> str:
+    """Process uploaded image for edit mode and return its URL."""
+    try:
+        # Get the image URL from the saved file
+        image_url = image.get("url")
+        if image_url:
+            # Convert to full URL (assuming we have a base URL or use relative)
+            # For now, return the relative URL as stored
+            return image_url
+        else:
+            print("❌ No URL found in image data for edit")
+            return None
+    except Exception as e:
+        print(f"❌ Error processing image for edit: {e}")
         return None

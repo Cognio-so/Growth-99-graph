@@ -97,3 +97,70 @@ async def save_logo_to_disk(upload_file, session_id: str = None) -> dict:
             print(f"⚠️ Failed to save logo to database: {e}")
     
     return logo_data
+
+async def save_image_to_disk(upload_file, session_id: str = None) -> dict:
+    """Save image file to uploads directory, create URL, and store in database."""
+    ext = Path(upload_file.filename or "").suffix or ""
+    fname = f"image_{uuid4().hex}{ext}"
+    fpath = UPLOAD_DIR / fname  # Save to main uploads directory
+
+    with fpath.open("wb") as out:
+        while True:
+            chunk = await upload_file.read(1024 * 1024)
+            if not chunk:
+                break
+            out.write(chunk)
+
+    # Create URL for the image
+    if os.getenv("RAILWAY_PUBLIC_DOMAIN"):
+        base_url = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}"
+    elif os.getenv("RAILWAY_STATIC_URL"):
+        base_url = os.getenv("RAILWAY_STATIC_URL")
+    else:
+        base_url = "http://localhost:8000"
+    
+    image_url = f"{base_url}/uploads/{fname}"
+    
+    print(f"🖼️ Image URL generated: {image_url}")
+    
+    # Save image information to database
+    image_data = {
+        "name": upload_file.filename,
+        "mime": upload_file.content_type or "application/octet-stream",
+        "size": fpath.stat().st_size,
+        "path": str(fpath),
+        "url": image_url,
+        "filename": fname
+    }
+    
+    # Store in database if session_id is provided
+    if session_id:
+        try:
+            from datetime import datetime
+            from sqlalchemy.orm import sessionmaker
+            from db import engine
+            from models import Image
+            import uuid
+
+            # Create a session factory
+            SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+            with SessionLocal() as db:
+                image_record = Image(
+                    id=f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}",
+                    session_id=session_id,
+                    filename=fname,
+                    original_name=upload_file.filename or "unknown",
+                    file_path=str(fpath),
+                    url=image_url,
+                    mime_type=upload_file.content_type or "application/octet-stream",
+                    file_size=fpath.stat().st_size,
+                    meta={"upload_timestamp": datetime.now().isoformat()}
+                )
+                db.add(image_record)
+                db.commit()
+                print(f"✅ Image saved to database: {fname}")
+        except Exception as e:
+            print(f"⚠️ Failed to save image to database: {e}")
+    
+    return image_data

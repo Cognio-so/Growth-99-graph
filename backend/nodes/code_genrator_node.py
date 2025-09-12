@@ -47,6 +47,10 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     has_uploaded_logo = gi.get("has_uploaded_logo", False)
     uploaded_logo_url = gi.get("uploaded_logo_url")
     
+    # Get uploaded image information
+    has_uploaded_image = gi.get("has_uploaded_image", False)
+    uploaded_image_url = gi.get("uploaded_image_url")
+    
     prompt_parts = [
         "## USER PROMPT - YOUR DESIGN DIRECTION",
         f"{user_text}",
@@ -123,7 +127,107 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             ""
         ])
     
-    # SECOND HIGHEST PRIORITY: Business information from document
+    # SECOND HIGHEST PRIORITY: Uploaded Image (intelligent placement based on user query)
+    if has_uploaded_image and uploaded_image_url:
+        prompt_parts.extend([
+            "## 🖼️ UPLOADED IMAGE - INTELLIGENT PLACEMENT",
+            "**CRITICAL**: The user has uploaded an image file. You must analyze their query and use this image appropriately.",
+            "",
+            f"**UPLOADED IMAGE URL**: {uploaded_image_url}",
+            "",
+            "**INTELLIGENT IMAGE PLACEMENT ANALYSIS**:",
+            "1. **ANALYZE USER QUERY**: Read the user's request carefully and understand:",
+            "   - What type of website/page they want to create",
+            "   - Any specific mentions of where they want the image placed",
+            "   - The context and purpose of the image",
+            "   - The overall design intent",
+            "",
+            "2. **CONTEXT-AWARE DECISION MAKING**:",
+            "   - If user mentions specific placement (hero, about, gallery, etc.) → Use it there",
+            "   - If user doesn't specify → Use your intelligence to place it optimally",
+            "   - Consider the page type and user's overall request",
+            "   - Think about user experience and visual impact",
+            "",
+            "3. **PLACEMENT OPTIONS**:",
+            "   - **Hero Section**: Main visual, banner, header background",
+            "   - **About Section**: Team photos, company images, profile pictures",
+            "   - **Gallery/Portfolio**: Showcase images, work samples, product photos",
+            "   - **Service/Product**: Feature images, service illustrations, product shots",
+            "   - **Contact**: Background images, location photos, office images",
+            "   - **Testimonials**: Customer photos, review images",
+            "   - **Blog/Content**: Featured images, article headers",
+            "",
+            "4. **RESPONSIVE IMAGE STYLING**:",
+            "```css",
+            ".uploaded-image {",
+            "  width: 100%;",
+            "  height: auto;",
+            "  object-fit: cover;",
+            "  border-radius: 8px;",
+            "  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);",
+            "  transition: transform 0.3s ease;",
+            "}",
+            "",
+            ".uploaded-image:hover {",
+            "  transform: scale(1.02);",
+            "}",
+            "",
+            "/* Hero section styling */",
+            ".hero .uploaded-image {",
+            "  max-height: 500px;",
+            "  object-fit: cover;",
+            "  width: 100%;",
+            "}",
+            "",
+            "/* About section styling */",
+            ".about .uploaded-image {",
+            "  max-width: 400px;",
+            "  height: auto;",
+            "}",
+            "",
+            "/* Gallery/Portfolio styling */",
+            ".gallery .uploaded-image, .portfolio .uploaded-image {",
+            "  width: 100%;",
+            "  height: 250px;",
+            "  object-fit: cover;",
+            "}",
+            "",
+            "/* Product/Service styling */",
+            ".product .uploaded-image, .service .uploaded-image {",
+            "  width: 100%;",
+            "  max-height: 300px;",
+            "  object-fit: cover;",
+            "}",
+            "",
+            "/* Contact section styling */",
+            ".contact .uploaded-image {",
+            "  width: 100%;",
+            "  height: 300px;",
+            "  object-fit: cover;",
+            "}",
+            "```",
+            "",
+            "**MANDATORY REQUIREMENTS**:",
+            "1. **ALWAYS USE THE UPLOADED IMAGE** - Never skip it or create placeholder images",
+            "2. **ANALYZE USER INTENT** - Understand where they want it based on their query",
+            "3. **INTELLIGENT PLACEMENT** - If no specific location mentioned, use your best judgment",
+            "4. **CONTEXTUAL RELEVANCE** - Place it where it makes the most sense for the page type",
+            "5. **PROPER STYLING** - Apply responsive CSS and appropriate sizing",
+            "6. **ACCESSIBILITY** - Add proper alt text describing the image",
+            "",
+            "**EXAMPLES OF INTELLIGENT PLACEMENT**:",
+            "- User says 'create a landing page' → Use in hero section",
+            "- User says 'create an about page' → Use in about section or as team photo",
+            "- User says 'create a portfolio' → Use in gallery or showcase section",
+            "- User says 'create a product page' → Use as main product image",
+            "- User says 'add this image to the hero' → Use exactly in hero section",
+            "- User says 'use this in the gallery' → Use exactly in gallery section",
+            "",
+            "**CRITICAL**: Analyze the user's query intelligently and place this image where it makes the most sense!",
+            ""
+        ])
+    
+    # THIRD HIGHEST PRIORITY: Business information from document
     if has_extracted_business_info and extraction_priority == "high":
         prompt_parts.extend([
             "## 🎨 SECOND HIGHEST PRIORITY - BUSINESS INFORMATION FROM DOCUMENT",
@@ -195,7 +299,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     # Add theme application rules (with logo and business info priority)
     prompt_parts.extend([
         "## 🎨 THEME APPLICATION RULES:",
-        "**PRIORITY ORDER**: Uploaded logo > Document info > User theme > JSON schema > UI guidelines",
+        "**PRIORITY ORDER**: Uploaded logo > Uploaded image > Document info > User theme > JSON schema > UI guidelines",
         "**LOGO INTEGRATION**: If logo is uploaded, extract its colors and use them as primary theme colors",
         "**GLOBAL THEME**: When user mentions a theme, apply it to the ENTIRE application while respecting logo colors",
         "**COLOR HARMONY**: Ensure uploaded logo colors harmonize with the chosen theme",
@@ -209,7 +313,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
         "4. **Ensure contrast** - maintain proper readability and accessibility",
         "5. **Harmonious design** - create cohesive visual experience",
         "",
-        "**IMPORTANT**: Uploaded logo and document business information take ABSOLUTE PRIORITY!",
+        "**IMPORTANT**: Uploaded logo, uploaded image, and document business information take ABSOLUTE PRIORITY!",
         ""
     ])
     

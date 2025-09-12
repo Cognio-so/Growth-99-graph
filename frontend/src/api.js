@@ -4,13 +4,14 @@ const API_BASE =
   (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) ||
   "https://your-railway-url.railway.app"; // Update this line
 
-export async function sendQuery({ session_id, text, llm_model, file, logo, regenerate }) {
+export async function sendQuery({ session_id, text, llm_model, file, logo, image, regenerate }) {
   const form = new FormData();
   if (session_id) form.append("session_id", session_id);
   form.append("text", text);
   if (llm_model) form.append("llm_model", llm_model);
   if (file) form.append("file", file, file.name);
   if (logo) form.append("logo", logo, logo.name); // Add logo upload
+  if (image) form.append("image", image, image.name); // Add image upload
   if (typeof regenerate !== "undefined") form.append("regenerate", String(!!regenerate));
 
   // FIX: Ensure no double slashes

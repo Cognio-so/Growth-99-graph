@@ -35,6 +35,21 @@ def new_design(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         gi["has_uploaded_logo"] = False
     
+    # CRITICAL: Process image upload if available
+    image = state.get("image")
+    if image:
+        print("️ Processing uploaded image...")
+        image_url = _process_uploaded_image(image)
+        if image_url:
+            gi["uploaded_image_url"] = image_url
+            gi["has_uploaded_image"] = True
+            print(f"✅ Image processed successfully: {image_url}")
+        else:
+            print("❌ Failed to process uploaded image")
+            gi["has_uploaded_image"] = False
+    else:
+        gi["has_uploaded_image"] = False
+    
     # CRITICAL: Pass ALL extracted business information to code generator
     # But only if document information is still valid (not cleared)
     if extraction.get("has_business_info") and extraction.get("ok") != False:
@@ -93,6 +108,20 @@ def _process_uploaded_logo(logo: Dict[str, Any]) -> str:
             return None
     except Exception as e:
         print(f"❌ Error processing logo: {e}")
+        return None
+
+def _process_uploaded_image(image: Dict[str, Any]) -> str:
+    """Process uploaded image and return its URL."""
+    try:
+        # Get the image URL from the saved file
+        image_url = image.get("url")
+        if image_url:
+            return image_url
+        else:
+            print("❌ No URL found in image data")
+            return None
+    except Exception as e:
+        print(f"❌ Error processing image: {e}")
         return None
 
 def new_design_route(state: Dict[str, Any]) -> str:

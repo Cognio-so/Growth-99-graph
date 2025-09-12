@@ -24,7 +24,7 @@ from models import Base
 from schemas import UserQueryOut
 from nodes.user_query_node import user_node_init_state
 from graph import graph
-from utlis.docs import save_upload_to_disk, save_logo_to_disk
+from utlis.docs import save_upload_to_disk, save_logo_to_disk, save_image_to_disk
 
 # LangGraph imports
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -201,6 +201,7 @@ async def accept_query(
     llm_model: str | None = Form(None),
     file: UploadFile | None = File(None),
     logo: UploadFile | None = File(None),  # Add logo parameter
+    image: UploadFile | None = File(None),  # Add image parameter
     regenerate: bool = Form(False),
 ):
     try:
@@ -213,6 +214,11 @@ async def accept_query(
             logo_data = await save_logo_to_disk(logo, session_id)
             print(f"🖼️ Logo uploaded: {logo_data.get('filename')} -> {logo_data.get('url')}")
 
+        image_data = None
+        if image is not None:
+            image_data = await save_image_to_disk(image, session_id)
+            print(f"️ Image uploaded: {image_data.get('filename')} -> {image_data.get('url')}")
+
         payload = {
             "session_id": session_id or None,
             "timestamp": datetime.utcnow().isoformat(),
@@ -220,6 +226,7 @@ async def accept_query(
             "llm_model": llm_model,
             "doc": doc,
             "logo": logo_data,  # Add logo to payload
+            "image": image_data,  # Add image to payload
             "regenerate": regenerate,
         }
 

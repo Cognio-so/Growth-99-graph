@@ -116,9 +116,10 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
     llm_model: Optional[str] = payload.get("llm_model")
     doc = payload.get("doc")  # {name,mime,size,path} or None
     logo = payload.get("logo")  # {name,mime,size,path,url,filename} or None
+    image = payload.get("image")  # {name,mime,size,path,url,filename} or None
     regenerate = bool(payload.get("regenerate", False))
 
-    session_id = _ensure_session(payload.get("session_id"), meta={"llm_model": llm_model, "has_doc": bool(doc), "has_logo": bool(logo)})
+    session_id = _ensure_session(payload.get("session_id"), meta={"llm_model": llm_model, "has_doc": bool(doc), "has_logo": bool(logo), "has_image": bool(image)})
     
     # ENHANCED REGENERATION LOGIC
     if regenerate:
@@ -128,7 +129,7 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
         if text and text.strip() and text.strip() != "regenerate":
             print(f"✅ Frontend provided text, using current text: '{text[:100]}...'")
             # Use the current text from frontend
-            _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "regenerate": True})
+            _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None, "regenerate": True})
         else:
             print("⚠️ No text from frontend, searching for stored original query...")
             # No text from frontend, use stored original query
@@ -138,10 +139,10 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
                 text = original_query
             else:
                 print("⚠️ No stored original query found, using current text for regeneration")
-                _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "regenerate": True})
+                _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None, "regenerate": True})
     else:
         # Normal flow - insert the new message
-        _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None})
+        _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None})
     
     messages = _load_recent_messages(session_id)
 
@@ -152,6 +153,7 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
         "llm_model": llm_model,
         "doc": doc or None,
         "logo": logo or None,  # Add logo to state
+        "image": image or None,  # Add image to state
         "messages": messages,
         "metadata": {"regenerate": regenerate},
         "context": {},

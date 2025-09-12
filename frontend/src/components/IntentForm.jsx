@@ -39,6 +39,7 @@ function IntentForm() {
   const [text, setText] = React.useState("");
   const [file, setFile] = React.useState(null);
   const [logo, setLogo] = React.useState(null); // Add logo state
+  const [image, setImage] = React.useState(null); // Add image state
   const [sending, setSending] = React.useState(false);
   const [resp, setResp] = React.useState(null);
   const [error, setError] = React.useState("");
@@ -63,9 +64,13 @@ function IntentForm() {
   // Add logo file handler
   const onLogo = (e) => setLogo(e.target.files?.[0] || null);
 
+  // Add image file handler
+  const onImage = (e) => setImage(e.target.files?.[0] || null);
+
   // Add a ref to the file input for programmatic clearing
   const fileInputRef = React.useRef(null);
   const logoInputRef = React.useRef(null); // Add logo input ref
+  const imageInputRef = React.useRef(null); // Add image input ref
 
   const clearSession = () => { 
     setSessionId(""); 
@@ -335,7 +340,7 @@ function IntentForm() {
     }]);
     
     try {
-      const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file, logo });
+      const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file, logo, image });
       setResp(json);
       if (json?.session_id) { 
         setSessionId(json.session_id); 
@@ -347,12 +352,16 @@ function IntentForm() {
         setText(""); // Clear text input
         setFile(null); // Clear file input
         setLogo(null); // Clear logo input
+        setImage(null); // Clear image input
         // Clear the actual file input elements
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
         if (logoInputRef.current) {
           logoInputRef.current.value = '';
+        }
+        if (imageInputRef.current) {
+          imageInputRef.current.value = '';
         }
         // Note: We don't clear sessionId as it should persist for the session
       }
@@ -401,6 +410,7 @@ function IntentForm() {
         llm_model: model, 
         file, 
         logo,
+        image,
         regenerate: true 
       });
       setResp(json);
@@ -450,7 +460,8 @@ function IntentForm() {
         text: chatInput, 
         llm_model: model, 
         file, 
-        logo 
+        logo,
+        image
       });
       setResp(json);
       
@@ -760,6 +771,22 @@ function IntentForm() {
                           </svg>
                         </div>
                       </label>
+                      
+                      {/* Image Upload Button */}
+                      <label className="cursor-pointer" title="Upload Image">
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          onChange={onImage}
+                          className="hidden"
+                          accept=".png,.jpg,.jpeg,.svg,.webp,.gif"
+                        />
+                        <div className="w-8 h-8 bg-green-600 hover:bg-green-700 rounded-lg flex items-center justify-center transition-colors">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </label>
                     </div>
                   </div>
                   
@@ -799,6 +826,28 @@ function IntentForm() {
                           onClick={() => {
                             setFile(null);
                             if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Image name display */}
+                    {image && (
+                      <div className="flex items-center gap-2 text-sm text-green-300">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>Image: {image.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImage(null);
+                            if (imageInputRef.current) imageInputRef.current.value = '';
                           }}
                           className="text-red-400 hover:text-red-300 transition-colors"
                         >
@@ -1076,6 +1125,21 @@ function IntentForm() {
                     Doc
                   </label>
                   
+                  {/* Image Upload */}
+                  <label className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 rounded-lg transition-colors text-green-300 text-sm" title="Upload Image">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      onChange={onImage}
+                      className="hidden"
+                      accept=".png,.jpg,.jpeg,.svg,.webp,.gif"
+                    />
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Image
+                  </label>
+                  
                   {/* Model Selection */}
                   <select
                     value={model}
@@ -1091,7 +1155,7 @@ function IntentForm() {
                 </div>
                 
                 {/* Upload Status Display */}
-                {(logo || file) && (
+                {(logo || file || image) && (
                   <div className="space-y-1">
                     {logo && (
                       <div className="flex items-center gap-2 text-xs text-orange-300">
@@ -1125,6 +1189,27 @@ function IntentForm() {
                           onClick={() => {
                             setFile(null);
                             if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+
+                    {image && (
+                      <div className="flex items-center gap-2 text-xs text-green-300">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>Image: {image.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImage(null);
+                            if (imageInputRef.current) imageInputRef.current.value = '';
                           }}
                           className="text-red-400 hover:text-red-300 transition-colors"
                         >
