@@ -24,3 +24,15 @@ export async function sendQuery({ session_id, text, llm_model, file, logo, image
   }
   return res.json();
 }
+
+export async function downloadProjectFiles(conversationId) {
+  const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/conversations/${conversationId}/download`;
+  const res = await fetch(apiUrl, { method: "GET" });
+  
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.statusText);
+    throw new Error(msg || "Download failed");
+  }
+  
+  return res.blob();
+}

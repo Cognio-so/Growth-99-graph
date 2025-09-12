@@ -132,13 +132,14 @@ def analyze_intent(state: GraphState) -> GraphState:
         state["existing_code"] = None
 
     # ENHANCED: Store original query when it's detected as "new design"
-    if is_new and not (state.get("metadata") or {}).get("regenerate"):
+    # Store the query for regeneration regardless of whether it's a regeneration or not
+    if is_new:
         user_text = state.get("text", "")
         session_id = state.get("session_id")
         if user_text and session_id:
             from nodes.user_query_node import _store_original_new_design_query
             _store_original_new_design_query(session_id, user_text)
-            print(f"✅ Stored original new design query for regeneration: '{user_text[:100]}...'")
+            print(f"✅ Stored new design query for regeneration: '{user_text[:100]}...'")
 
     ctx = state.get("context") or {}
     ctx["intent"] = {

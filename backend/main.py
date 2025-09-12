@@ -4,9 +4,13 @@ import uvicorn
 import json
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+import zipfile
+import io
+import tempfile
 
 # Load environment variables
 load_dotenv()
@@ -31,6 +35,14 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langserve import add_routes
 from contextlib import asynccontextmanager
 import sqlite3
+
+# Import download functionality
+# try:
+#     from download_code import download_conversation_files
+#     print("✅ Successfully imported download_conversation_files")
+# except ImportError as e:
+#     print(f"❌ Failed to import download_conversation_files: {e}")
+#     download_conversation_files = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -736,6 +748,104 @@ async def delete_session(session_id: str):
     except Exception as e:
         print(f"Error deleting session {session_id}: {e}")
         return {"error": "Failed to delete session"}, 500
+
+@app.get("/api/conversations/{conversation_id}/download")
+async def download_conversation_files(conversation_id: str):
+    """Download all project files as a zip archive - EXCEPT NODE_MODULES"""
+    try:
+        print(f"🔄 Starting download for conversation: {conversation_id}")
+        
+        # Get files directly from active sandbox - much faster
+        from nodes.apply_to_Sandbox_node import _global_sandbox
+        
+        if not _global_sandbox:
+            raise HTTPException(status_code=404, detail="No active sandbox found")
+        
+        print("✅ Active sandbox found, scanning for all files (except node_modules)...")
+        
+        files_to_download = {}
+        
+        # DYNAMIC APPROACH: Use E2B SDK's list_files method
+        def scan_directory_recursive(directory_path=""):
+            """Recursively scan directory using E2B SDK"""
+            try:
+                # Use the correct E2B SDK method to list files
+                items = _global_sandbox.files.list(directory_path)
+                
+                for item in items:
+                    # Build the full path
+                    item_path = f"{directory_path}/{item.name}" if directory_path else item.name
+                    
+                    # Skip node_modules directory
+                    if item.name == 'node_modules':
+                        print(f"⏭️ Skipping node_modules directory: {item_path}")
+                        continue
+                    
+                    # Check if it's a directory by trying to list its contents
+                    try:
+                        # Try to list contents - if it works, it's a directory
+                        sub_items = _global_sandbox.files.list(item_path)
+                        print(f"📁 Found directory: {item_path}")
+                        # Recursively scan the subdirectory
+                        scan_directory_recursive(item_path)
+                    except:
+                        # If listing fails, it's a file
+                        try:
+                            content = _global_sandbox.files.read(item_path)
+                            if content and content.strip():
+                                # Clean the path (remove my-app/ prefix if present)
+                                clean_path = item_path.replace('my-app/', '')
+                                files_to_download[clean_path] = content
+                                print(f"  ✅ Found file: {clean_path}")
+                        except Exception as e:
+                            print(f"  ⚠️ Could not read {item_path}: {e}")
+                            continue
+                            
+            except Exception as e:
+                print(f"⚠️ Could not scan directory {directory_path}: {e}")
+        
+        # Start scanning from the root
+        print("🔍 Scanning project structure...")
+        scan_directory_recursive("my-app")
+        
+        # If my-app directory doesn't exist, try scanning from root
+        if not files_to_download:
+            print("🔍 my-app not found, scanning from root...")
+            scan_directory_recursive("")
+        
+        print(f"📦 Found {len(files_to_download)} files total")
+        
+        if not files_to_download:
+            raise HTTPException(status_code=404, detail="No files found in sandbox")
+        
+        # Create zip quickly
+        print("🔄 Creating zip...")
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for file_path, content in files_to_download.items():
+                zip_file.writestr(file_path, content)
+        
+        zip_buffer.seek(0)
+        
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"project_{conversation_id[:8]}_{timestamp}.zip"
+        
+        print(f"✅ Download ready: {filename}")
+        
+        # Return zip
+        return StreamingResponse(
+            io.BytesIO(zip_buffer.read()),
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Download error: {e}")
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

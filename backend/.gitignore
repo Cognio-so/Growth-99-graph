@@ -10,3 +10,6 @@ __pycache__/
 temp_uploads/
 
 tutor_session_data/
+checkpoints.db
+
+.langgraph_api/

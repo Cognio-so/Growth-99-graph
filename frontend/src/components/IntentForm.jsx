@@ -1,6 +1,6 @@
 // src/components/IntentForm.jsx
 import React from "react";
-import { sendQuery } from "../api";
+import { sendQuery, downloadProjectFiles } from "../api";
 
 // Add API_BASE configuration
 const API_BASE =
@@ -64,6 +64,15 @@ function IntentForm() {
   // Add a state to store the original current session ID:
   const [originalCurrentSessionId, setOriginalCurrentSessionId] = React.useState(null);
 
+  // Add downloading state for the download button
+  const [downloading, setDownloading] = React.useState(false);
+
+  // Add state to track currently active conversation for download
+  const [activeConversationId, setActiveConversationId] = React.useState(null);
+
+  // Add state for design restoration loading
+  const [restoringDesign, setRestoringDesign] = React.useState(false);
+
   // Update the file input to properly clear
   const onFile = (e) => setFile(e.target.files?.[0] || null);
   
@@ -77,6 +86,49 @@ function IntentForm() {
   const fileInputRef = React.useRef(null);
   const logoInputRef = React.useRef(null); // Add logo input ref
   const imageInputRef = React.useRef(null); // Add image input ref
+
+  // Add download function
+  const handleDownloadCode = async () => {
+    console.log('=== handleDownloadCode called ===');
+    console.log('activeConversationId:', activeConversationId);
+    console.log('sessionId:', sessionId);
+    console.log('resp:', resp);
+    
+    if (!activeConversationId) {
+      console.log('❌ No activeConversationId available');
+      setError("No active design available for download");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      console.log(' Starting download for conversationId:', activeConversationId);
+      const blob = await downloadProjectFiles(activeConversationId);
+      console.log('✅ Download completed, blob size:', blob.size);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:\-T]/g, '');
+      a.download = `project_${activeConversationId.slice(0, 8)}_${timestamp}.zip`;
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('✅ Download initiated successfully');
+    } catch (error) {
+      console.error('❌ Download failed:', error);
+      setError(`Download failed: ${error.message}`);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const clearSession = () => { 
     setSessionId(""); 
@@ -243,6 +295,8 @@ function IntentForm() {
               }
             }
           });
+          // Set the active conversation ID for download
+          setActiveConversationId(latestConversation.id);
         }
       } else {
         console.log('No conversation history found');
@@ -402,9 +456,18 @@ function IntentForm() {
           content: "I've created your design! Check the preview below.",
           timestamp: new Date(),
           sandboxUrl: json.state.context.sandbox_result.url,
+          conversationId: json.state.context.conversation_id, // Add conversationId
           generationResult: json.state.context.generation_result
         };
         setChatMessages(prev => [...prev, aiMessage]);
+        
+        // Set the active conversation ID for download
+        if (json.state.context.conversation_id) {
+          console.log('✅ Setting activeConversationId in onSubmit:', json.state.context.conversation_id);
+          setActiveConversationId(json.state.context.conversation_id);
+        } else {
+          console.log('❌ No conversation_id in response:', json.state.context);
+        }
       }
       
     } catch (err) {
@@ -422,7 +485,7 @@ function IntentForm() {
     try {
       const json = await sendQuery({ 
         session_id: sessionId || undefined, 
-        text: text || "regenerate", 
+        text: "", // Let backend use stored original query instead of current form input
         llm_model: model, 
         file, 
         logo,
@@ -469,6 +532,7 @@ function IntentForm() {
     setChatInput("");
     setSending(true);
     setError("");
+    setResp(null); // Clear current preview to force iframe refresh
     
     try {
       const json = await sendQuery({ 
@@ -489,6 +553,7 @@ function IntentForm() {
         content: "I've updated your design based on your request. Check the preview!",
         timestamp: new Date(),
         sandboxUrl: json?.state?.context?.sandbox_result?.url || null, // Add this
+        conversationId: json?.state?.context?.conversation_id || null, // Add this
         generationResult: json?.state?.context?.generation_result || null // Add this
       };
       setChatMessages(prev => [...prev, aiMessage]);
@@ -503,6 +568,14 @@ function IntentForm() {
       
       // ADD THIS LINE:
       loadSessions();
+      
+      // Set the active conversation ID for download
+      if (json?.state?.context?.conversation_id) {
+        console.log('✅ Setting activeConversationId in onChatSubmit:', json.state.context.conversation_id);
+        setActiveConversationId(json.state.context.conversation_id);
+      } else {
+        console.log('❌ No conversation_id in response:', json?.state?.context);
+      }
       
     } catch (err) {
       setError(err?.message || String(err));
@@ -523,47 +596,82 @@ function IntentForm() {
     console.log('sessionDetails:', sessionDetails);
     console.log('sessionDetails.conversations:', sessionDetails?.conversations);
     console.log('current sessionId:', sessionId);
-    console.log('originalCurrentSessionId:', originalCurrentSessionId);
-    console.log('selectedSession:', selectedSession);
     
     if (!conversationId) {
       console.log('❌ No conversation ID available');
       return;
     }
     
-    // Check if this is from the current active session or a historical session
-    // Compare with the original current session ID, not the current sessionId
-    const isCurrentActiveSession = selectedSession?.id === originalCurrentSessionId;
-    console.log('isCurrentActiveSession (comparing with original):', isCurrentActiveSession);
+    // Set restoring state to show loading immediately
+    setRestoringDesign(true);
     
-    if (isCurrentActiveSession) {
-      // This is from the current active session - check if it's the latest
-      const latestConversation = sessionDetails?.conversations?.[sessionDetails.conversations.length - 1];
-      const isLatestConversation = latestConversation?.id === conversationId;
-      console.log('latestConversation:', latestConversation);
-      console.log('isLatestConversation:', isLatestConversation);
+    // Clear the current preview URL so loading spinner shows instead of old sandbox
+    setResp(null);
+    
+    try {
+      // Check if this is from the current active session or a historical session
+      const isCurrentActiveSession = selectedSession?.id === originalCurrentSessionId;
+      console.log('isCurrentActiveSession (comparing with original):', isCurrentActiveSession);
       
-      if (isLatestConversation) {
-        // For the latest conversation in current session, use the current active sandbox
-        console.log('✅ Opening latest design in current sandbox');
-        window.open(sandboxUrl, '_blank');
+      if (isCurrentActiveSession) {
+        // This is from the current active session
+        console.log('🔄 This is current active session');
+        
+        // Load session details if not already loaded
+        if (!sessionDetails) {
+          console.log(' Loading session details for current session');
+          await loadSessionDetails(sessionId);
+        }
+        
+        // Check if it's the latest conversation
+        const latestConversation = sessionDetails?.conversations?.[sessionDetails.conversations.length - 1];
+        const isLatestConversation = latestConversation?.id === conversationId;
+        console.log('latestConversation:', latestConversation);
+        console.log('isLatestConversation:', isLatestConversation);
+        
+        if (isLatestConversation) {
+          // For the latest conversation in current session, use the current active sandbox
+          console.log('✅ Opening latest design in current sandbox');
+          window.open(sandboxUrl, '_blank');
+        } else {
+          // For older conversations in current session, apply the stored code
+          console.log('🔄 Applying current session historical design to current sandbox');
+          await applyStoredCodeToCurrentSandbox(conversationId);
+        }
       } else {
-        // For older conversations in current session, apply the stored code
-        console.log('🔄 Applying current session historical design to current sandbox');
+        // This is from a historical session - always apply the stored code
+        console.log('🔄 Applying historical session design to current sandbox');
         await applyStoredCodeToCurrentSandbox(conversationId);
       }
-    } else {
-      // This is from a historical session - always apply the stored code
-      console.log(' Applying historical session design to current sandbox');
-      await applyStoredCodeToCurrentSandbox(conversationId);
+    } catch (error) {
+      console.error('❌ Error in handleViewConversationDesign:', error);
+    } finally {
+      // Clear restoring state after a delay to allow the preview to load
+      setTimeout(() => {
+        setRestoringDesign(false);
+      }, 5000); // Increased to 5 seconds to give more time
     }
   };
 
   // Update the applyStoredCodeToCurrentSandbox function to use the restore endpoint:
   const applyStoredCodeToCurrentSandbox = async (conversationId) => {
-    // Get the stored conversation data
-    const conversation = sessionDetails?.conversations?.find(conv => conv.id === conversationId);
-    console.log('Found conversation:', conversation);
+    console.log('🔄 applyStoredCodeToCurrentSandbox called with conversationId:', conversationId);
+    
+    // First try to get conversation from sessionDetails
+    let conversation = sessionDetails?.conversations?.find(conv => conv.id === conversationId);
+    console.log('Found conversation in sessionDetails:', conversation);
+    
+    // If not found in sessionDetails, try to get it from chat messages
+    if (!conversation) {
+      console.log('🔄 Conversation not found in sessionDetails, trying to load session details');
+      try {
+        await loadSessionDetails(sessionId);
+        conversation = sessionDetails?.conversations?.find(conv => conv.id === conversationId);
+        console.log('Found conversation after loading session details:', conversation);
+      } catch (error) {
+        console.error('❌ Error loading session details:', error);
+      }
+    }
     
     if (!conversation) {
       console.log('❌ No conversation found with ID:', conversationId);
@@ -584,14 +692,16 @@ function IntentForm() {
     console.log('✅ Found stored code, length:', conversation.generated_code.length);
     
     try {
-      // FIX: Use the correct session ID (the one that contains this conversation)
-      const correctSessionId = selectedSession.id; // Use the session that contains this conversation
-      console.log('🚀 Restoring historical design to new sandbox...');
+      // Use the current session ID
+      const correctSessionId = sessionId;
+      console.log('🚀 Restoring design to current sandbox...');
       console.log('Using session ID:', correctSessionId);
       console.log('Conversation ID:', conversationId);
       
-      // FIX: Ensure no double slashes
+      // Call the restore endpoint
       const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/sessions/${correctSessionId}/conversations/${conversationId}/restore`;
+      console.log('API URL:', apiUrl);
+      
       const restoreResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -603,7 +713,7 @@ function IntentForm() {
       
       if (restoreResponse.ok) {
         const restoreData = await restoreResponse.json();
-        console.log('✅ Restored historical design to new sandbox');
+        console.log('✅ Restored design to current sandbox');
         console.log('Restore data:', restoreData);
         
         // Update the current preview to show the restored design
@@ -612,7 +722,8 @@ function IntentForm() {
             context: {
               sandbox_result: {
                 url: restoreData.sandbox_url
-              }
+              },
+              generation_result: conversation.generated_code ? JSON.parse(conversation.generated_code) : null
             }
           }
         });
@@ -623,7 +734,7 @@ function IntentForm() {
           window.open(restoreData.sandbox_url, '_blank');
         }
       } else {
-        console.error('❌ Failed to restore historical design, status:', restoreResponse.status);
+        console.error('❌ Failed to restore design, status:', restoreResponse.status);
         const errorText = await restoreResponse.text();
         console.error('Error response:', errorText);
         // Fallback to current preview
@@ -633,12 +744,62 @@ function IntentForm() {
         }
       }
     } catch (error) {
-      console.error('❌ Error restoring historical design:', error);
+      console.error('❌ Error restoring design:', error);
       // Fallback to current preview
       const currentUrl = resp?.state?.context?.sandbox_result?.url;
       if (currentUrl) {
         window.open(currentUrl, '_blank');
       }
+    }
+  };
+
+  // Add this new function for current session conversations
+  const applyCurrentSessionDesign = async (conversationId) => {
+    console.log('🔄 Applying current session design:', conversationId);
+    
+    // Get the stored conversation data
+    const conversation = sessionDetails?.conversations?.find(conv => conv.id === conversationId);
+    console.log('Found conversation:', conversation);
+    
+    if (!conversation) {
+      console.log('❌ No conversation found with ID:', conversationId);
+      return;
+    }
+    
+    if (!conversation.generated_code) {
+      console.log('❌ No stored code found for this conversation');
+      return;
+    }
+    
+    try {
+      // Set restoring state
+      setRestoringDesign(true);
+      setResp(null);
+      
+      // Send the stored code as an edit request to apply it to current sandbox
+      const json = await sendQuery({ 
+        session_id: sessionId || undefined, 
+        text: `restore_design:${conversationId}`, // Special command to restore design
+        llm_model: model, 
+        file: null,
+        logo: null,
+        image: null
+      });
+      
+      setResp(json);
+      
+      // Update the preview
+      const sandboxUrl = json?.state?.context?.sandbox_result?.url;
+      if (sandboxUrl) {
+        console.log('✅ Applied current session design to sandbox');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error applying current session design:', error);
+    } finally {
+      setTimeout(() => {
+        setRestoringDesign(false);
+      }, 3000);
     }
   };
 
@@ -1299,6 +1460,20 @@ function IntentForm() {
             
             {sandboxResult?.url && (
               <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleDownloadCode}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm flex items-center gap-2"
+                  disabled={downloading}
+                >
+                  {downloading ? (
+                    <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                  {downloading ? "Downloading..." : "Download Code"}
+                </button>
                 <a
                   href={sandboxResult.url}
                   target="_blank"
@@ -1322,6 +1497,7 @@ function IntentForm() {
                   src={sandboxResult.url}
                   className="w-full h-full border-0"
                   title="Design Preview"
+                  key={sandboxResult.url}
                 />
               </div>
             ) : (
@@ -1329,6 +1505,8 @@ function IntentForm() {
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                   {sending ? (
                     <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                  ) : restoringDesign ? (
+                    <div className="w-8 h-8 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
                   ) : (
                     <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1336,10 +1514,10 @@ function IntentForm() {
                   )}
                 </div>
                 <p className="text-lg font-medium mb-2">
-                  {sending ? "Creating your design..." : "Preview will appear here"}
+                  {sending ? "Creating your design..." : restoringDesign ? "Restoring your design..." : "Preview will appear here"}
                 </p>
                 <p className="text-sm">
-                  {sending ? "Please wait while we generate your design" : "Your generated design will be displayed in this area"}
+                  {sending ? "Please wait while we generate your design" : restoringDesign ? "Your design is being restored from history" : "Your generated design will be displayed in this area"}
                 </p>
               </div>
             )}

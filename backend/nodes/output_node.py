@@ -121,6 +121,13 @@ def output_result(state: Dict[str, Any]) -> Dict[str, Any]:
             sandbox_result=sandbox_result
         )
         
+        # Add conversationId to the state so frontend can access it
+        if conversation_id:
+            ctx = state.get("context") or {}
+            ctx["conversation_id"] = conversation_id
+            state["context"] = ctx
+            print(f"✅ Added conversationId to state: {conversation_id}")
+        
         # Store generated code and sandbox URL
         if conversation_id and sandbox_result.get('url'):
             try:
