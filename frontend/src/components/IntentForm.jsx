@@ -84,6 +84,9 @@ function IntentForm() {
   // Add state for design restoration loading
   const [restoringDesign, setRestoringDesign] = React.useState(false);
 
+  // Add schema type state
+  const [schemaType, setSchemaType] = React.useState("medspa");
+
   // Update the file input to properly clear
   const onFile = (e) => setFile(e.target.files?.[0] || null);
   
@@ -209,13 +212,7 @@ function IntentForm() {
     }
   };
 
-  // Load existing session ID from localStorage on component mount
-  React.useEffect(() => {
-    const savedSessionId = localStorage.getItem('current_session_id');
-    if (savedSessionId) {
-      setSessionId(savedSessionId);
-    }
-  }, []);
+  // REMOVED: Redundant useEffect - session ID is now properly initialized above
 
   // Save session ID to localStorage when it changes
   React.useEffect(() => {
@@ -421,7 +418,16 @@ function IntentForm() {
     }]);
     
     try {
-      const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file, logo, image, color_palette: colorPalette });
+      const json = await sendQuery({ 
+        session_id: sessionId || undefined, 
+        text, 
+        llm_model: model, 
+        file, 
+        logo, 
+        image, 
+        color_palette: colorPalette,
+        schema_type: schemaType  // Add schema type to request
+      });
       setResp(json);
       if (json?.session_id) { 
         setSessionId(json.session_id); 
@@ -492,7 +498,7 @@ function IntentForm() {
     }
   }
 
-  // Add regenerate function
+  // Add regenerate function with schema type
   async function onRegenerate() {
     setSending(true); 
     setError(""); 
@@ -506,7 +512,8 @@ function IntentForm() {
         logo,
         image,
         color_palette: colorPalette,
-        regenerate: true 
+        regenerate: true,
+        schema_type: schemaType  // Add schema type to regenerate request
       });
       setResp(json);
       if (json?.session_id) { 
@@ -532,7 +539,7 @@ function IntentForm() {
     }
   }
 
-  // Chat function for design view
+  // Chat function for design view with schema type
   async function onChatSubmit(e) {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -558,7 +565,8 @@ function IntentForm() {
         file, 
         logo,
         image,
-        color_palette: colorPalette
+        color_palette: colorPalette,
+        schema_type: schemaType  // Add schema type to chat requests
       });
       setResp(json);
       
@@ -1074,6 +1082,21 @@ function IntentForm() {
                   />
                 </div>
 
+                {/* Schema Type Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">
+                    Design Schema
+                  </label>
+                  <select
+                    value={schemaType}
+                    onChange={(e) => setSchemaType(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  >
+                    <option value="medspa">Medspa & Beauty 💄</option>
+                    <option value="dental">Dental & Medical 🦷</option>
+                  </select>
+                </div>
+
                 {/* Model Selection - Centered below text area */}
                 <div className="flex justify-center">
                   <div className="w-64">
@@ -1368,6 +1391,16 @@ function IntentForm() {
                       </option>
                     ))}
                   </select>
+
+                  {/* Schema Type Selection */}
+                  <select
+                    value={schemaType}
+                    onChange={(e) => setSchemaType(e.target.value)}
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="medspa">Medspa 💄</option>
+                    <option value="dental">Dental 🦷</option>
+                  </select>
                 </div>
                 
                 {/* Upload Status Display */}
@@ -1497,6 +1530,19 @@ function IntentForm() {
             
             {sandboxResult?.url && (
               <div className="flex items-center space-x-2">
+                {/* Schema Type Selection in Preview Header */}
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-600 font-medium">Schema:</label>
+                  <select
+                    value={schemaType}
+                    onChange={(e) => setSchemaType(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="medspa">Medspa 💄</option>
+                    <option value="dental">Dental 🦷</option>
+                  </select>
+                </div>
+                
                 {/* Add Color Palette Input */}
                 <div className="flex items-center space-x-2">
                   <label className="text-sm text-gray-600 font-medium">Colors:</label>

@@ -5,7 +5,8 @@ from pathlib import Path
 
 # Schema file paths
 SCHEMA_CSV_PATH = Path(__file__).parent.parent / "schema.csv"
-SCHEMA2_CSV_PATH = Path(__file__).parent.parent / "schema2.csv"  # New priority schema
+SCHEMA2_CSV_PATH = Path(__file__).parent.parent / "schema2.csv"  # Medspa/Fashion & Beauty
+SCHEMA3_CSV_PATH = Path(__file__).parent.parent / "schema3.csv"  # Dental & Medical
 REGENERATION_COUNTER_FILE = Path(__file__).parent.parent / "regeneration_counter.json"
 
 # Maximum uses of schema2.csv before falling back to schema.csv
@@ -197,6 +198,40 @@ def _pick_random_schema_with_fallback(primary_schemas: list[dict], fallback_sche
     print("🔄 All schemas failed, using default schemas...")
     return _pick_random_schema(DEFAULT_ROWS, max_attempts=2)
 
+def _get_schema_by_type(schema_type: str, session_id: str = None) -> tuple[list[dict], str]:
+    """
+    Get schemas based on the selected schema type.
+    """
+    regen_count = _get_regeneration_count(session_id)
+    
+    if schema_type == "dental":
+        # Use schema3.csv for dental & medical
+        if SCHEMA3_CSV_PATH.exists():
+            schemas = _load_schemas_from_csv(SCHEMA3_CSV_PATH)
+            if schemas:
+                print(f"🦷 Using DENTAL schema (schema3.csv) for session {session_id}")
+                return schemas, "schema3.csv"
+    
+    elif schema_type == "medspa":
+        # Use schema2.csv for medspa/fashion & beauty with priority system
+        if regen_count < MAX_SCHEMA2_USES and SCHEMA2_CSV_PATH.exists():
+            schemas = _load_schemas_from_csv(SCHEMA2_CSV_PATH)
+            if schemas:
+                remaining = MAX_SCHEMA2_USES - regen_count
+                print(f"💄 Using MEDSPA schema (schema2.csv) - {remaining} uses remaining for session {session_id}")
+                return schemas, f"schema2.csv"
+    
+    # Fallback to default schema.csv for both types
+    if SCHEMA_CSV_PATH.exists():
+        schemas = _load_schemas_from_csv(SCHEMA_CSV_PATH)
+        if schemas:
+            print(f"📋 Using fallback schema (schema.csv) for session {session_id}")
+            return schemas, "schema.csv"
+    
+    # Last resort: default schemas
+    print(f"🔄 Using default schemas for session {session_id}")
+    return DEFAULT_ROWS, "default"
+
 def _get_priority_schemas(session_id: str = None) -> tuple[list[dict], str]:
     """
     Get schemas with priority system and fallback handling:
@@ -236,7 +271,7 @@ def _inline_schema_from_text(text: str) -> Optional[dict]:
     return None
 
 def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Enhanced schema extraction with robust error handling and session-aware regeneration counting."""
+    """Enhanced schema extraction with schema type selection support."""
     print("--- Running Schema Extraction Node ---")
     
     text = state.get("text", "")
@@ -247,6 +282,10 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
     session_id = state.get("session_id")
     if session_id:
         print(f"🆔 Processing schema extraction for session: {session_id}")
+    
+    # Get schema type from metadata (new feature)
+    metadata = state.get("metadata", {})
+    schema_type = metadata.get("schema_type", "medspa")  # Default to medspa for backward compatibility
     
     is_regeneration_request = force_random or is_new_design
     inline_schema = None if force_random else _inline_schema_from_text(text)
@@ -261,21 +300,29 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
         if is_regeneration_request:
             _increment_regeneration_count(session_id)
         
-        # Get primary and fallback schemas with session-aware counting
-        primary_schemas, source_info = _get_priority_schemas(session_id)
+        # Get schemas based on selected type
+        primary_schemas, source_info = _get_schema_by_type(schema_type, session_id)
         
-        # For priority system, also load fallback schemas
-        if "schema2.csv" in source_info:
-            # If using schema2.csv, have schema.csv as fallback
+        # Load fallback schemas based on type
+        if schema_type == "dental":
+            # For dental, fallback to schema.csv then defaults
             fallback_schemas = _load_schemas_from_csv(SCHEMA_CSV_PATH)
             schema = _pick_random_schema_with_fallback(primary_schemas, fallback_schemas)
             if schema:
-                schema_source = f"csv_priority (schema2.csv with fallback)"
-        else:
-            # If using schema.csv, have defaults as fallback
-            schema = _pick_random_schema_with_fallback(primary_schemas, DEFAULT_ROWS)
-            if schema:
-                schema_source = f"csv_priority (schema.csv with fallback)"
+                schema_source = f"dental_schema (schema3.csv with fallback)"
+        elif schema_type == "medspa":
+            # For medspa, use priority system with schema2.csv
+            if "schema2.csv" in source_info:
+                # If using schema2.csv, have schema.csv as fallback
+                fallback_schemas = _load_schemas_from_csv(SCHEMA_CSV_PATH)
+                schema = _pick_random_schema_with_fallback(primary_schemas, fallback_schemas)
+                if schema:
+                    schema_source = f"medspa_schema (schema2.csv with fallback)"
+            else:
+                # If using schema.csv, have defaults as fallback
+                schema = _pick_random_schema_with_fallback(primary_schemas, DEFAULT_ROWS)
+                if schema:
+                    schema_source = f"medspa_schema (schema.csv with fallback)"
         
         if not schema:
             print("❌ All schema sources failed")
@@ -296,13 +343,15 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
     gi["user_text"] = text
     gi["json_schema"] = schema
     gi["schema_source"] = schema_source
+    gi["schema_type"] = schema_type  # Add schema type to generator input
     
     # CRITICAL: Add color palette to generator input during regeneration
     color_palette = state.get("color_palette", "")
     gi["color_palette"] = color_palette
     
-    # Add debug logging for color palette
+    # Add debug logging for color palette and schema type
     print(f"🎨 Schema Extraction - Color Palette: '{color_palette}'")
+    print(f"🏥 Schema Extraction - Schema Type: '{schema_type}'")
     if color_palette and color_palette.strip():
         print(f"✅ Color palette will be used in design generation")
     else:

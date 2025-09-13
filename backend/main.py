@@ -216,6 +216,7 @@ async def accept_query(
     image: UploadFile | None = File(None),
     color_palette: str | None = Form(None),  # Add this line
     regenerate: bool = Form(False),
+    schema_type: str = Form("medspa")  # Add schema_type parameter
 ):
     try:
         doc = None
@@ -249,6 +250,12 @@ async def accept_query(
 
         # Initialize state
         state = user_node_init_state(payload)
+        
+        # Add schema_type to metadata
+        state["metadata"] = {
+            "regenerate": regenerate,
+            "schema_type": schema_type  # Add schema type to metadata
+        }
         
         # FIXED: Use consistent thread ID that LangGraph Studio can track
         thread_id = _as_uuid(state.get("session_id"))

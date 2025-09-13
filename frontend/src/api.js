@@ -4,20 +4,33 @@ const API_BASE =
   (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) ||
   "https://growth-99-graph-production.up.railway.app"; // FIX: Use correct Railway URL
 
-export async function sendQuery({ session_id, text, llm_model, file, logo, image, color_palette, regenerate }) {
-  const form = new FormData();
-  if (session_id) form.append("session_id", session_id);
-  form.append("text", text);
-  if (llm_model) form.append("llm_model", llm_model);
-  if (file) form.append("file", file, file.name);
-  if (logo) form.append("logo", logo, logo.name); // Add logo upload
-  if (image) form.append("image", image, image.name); // Add image upload
-  if (color_palette) form.append("color_palette", color_palette);
-  if (typeof regenerate !== "undefined") form.append("regenerate", String(!!regenerate));
+export async function sendQuery({
+  session_id,
+  text,
+  llm_model = "gpt-4o",
+  file = null,
+  logo = null,
+  image = null,
+  color_palette = "",
+  regenerate = false,
+  schema_type = "medspa"  // Add schema_type parameter
+}) {
+  const formData = new FormData();
+  
+  if (session_id) formData.append("session_id", session_id);
+  formData.append("text", text);
+  formData.append("llm_model", llm_model);
+  formData.append("color_palette", color_palette);
+  formData.append("regenerate", regenerate.toString());
+  formData.append("schema_type", schema_type);  // Add schema_type to form data
+  
+  if (file) formData.append("file", file);
+  if (logo) formData.append("logo", logo);
+  if (image) formData.append("image", image);
 
   // FIX: Ensure no double slashes
   const apiUrl = `${API_BASE.replace(/\/$/, '')}/api/query`;
-  const res = await fetch(apiUrl, { method: "POST", body: form });
+  const res = await fetch(apiUrl, { method: "POST", body: formData });
   
   if (!res.ok) {
     const msg = await res.text().catch(() => res.statusText);

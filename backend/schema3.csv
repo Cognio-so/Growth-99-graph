@@ -1,0 +1,467 @@
+S.No,URL ,JSON SCHEMA
+1,https://smilebrightdental.com/,"```json
+{
+  ""components"": {
+    ""navigation_bar"": {
+      ""type"": ""nav"",
+      ""description"": ""Clean horizontal navigation with logo on left, menu items centered, and appointment booking button on right."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""Medium sans-serif, navy blue"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""button"": {
+          ""visual_description"": ""Bold white text on teal background"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical, wide horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""navy blue"",
+        ""accent"": ""teal""
+      },
+      ""image_style"": ""clean dental logo"",
+      ""other_visual_notes"": ""Appointment button stands out with teal background""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Large banner with professional dental office image background, centered text overlay with headline and call-to-action."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, white text"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""subheading"": {
+          ""visual_description"": ""Medium sans-serif, white text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""button"": {
+          ""visual_description"": ""Bold white text on teal background"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""professional dental office image"",
+        ""text"": ""white"",
+        ""accent"": ""teal""
+      },
+      ""image_style"": ""high-quality dental office photography"",
+      ""other_visual_notes"": ""Overlay with semi-transparent dark background for text readability""
+    },
+    ""services_section"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Grid of dental service cards with icons, titles, and descriptions."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, navy blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""card_title"": {
+          ""visual_description"": ""Medium sans-serif, navy blue"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""card_description"": {
+          ""visual_description"": ""Small sans-serif, gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""grid spacing medium""
+      },
+      ""colors"": {
+        ""background"": ""light gray"",
+        ""text"": ""navy blue and gray"",
+        ""accent"": ""teal icons""
+      },
+      ""image_style"": ""dental service icons"",
+      ""other_visual_notes"": ""Cards have subtle shadow and rounded corners""
+    },
+    ""about_section"": {
+      ""type"": ""text_block"",
+      ""description"": ""Two-column layout with dentist photo on left and text content on right."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, navy blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""body"": {
+          ""visual_description"": ""Regular sans-serif, gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""navy blue and gray"",
+        ""accent"": ""none""
+      },
+      ""image_style"": ""professional dentist portrait"",
+      ""other_visual_notes"": ""Clean, medical professional appearance""
+    },
+    ""testimonials_section"": {
+      ""type"": ""testimonial"",
+      ""description"": ""Patient testimonials with photos and star ratings."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, navy blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""testimonial_text"": {
+          ""visual_description"": ""Italic serif, gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""author_name"": {
+          ""visual_description"": ""Bold sans-serif, navy blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""light gray"",
+        ""text"": ""navy blue and gray"",
+        ""accent"": ""gold stars""
+      },
+      ""image_style"": ""patient headshots"",
+      ""other_visual_notes"": ""Star ratings displayed prominently""
+    },
+    ""contact_section"": {
+      ""type"": ""contact"",
+      ""description"": ""Contact form with office information and map."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, navy blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""form_labels"": {
+          ""visual_description"": ""Medium sans-serif, navy blue"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""navy blue"",
+        ""accent"": ""teal submit button""
+      },
+      ""image_style"": ""office location map"",
+      ""other_visual_notes"": ""Clean form design with teal submit button""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Footer with contact information, office hours, and social links."",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""Small sans-serif, white text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""navy blue"",
+        ""text"": ""white"",
+        ""accent"": ""teal""
+      },
+      ""image_style"": ""white logo"",
+      ""other_visual_notes"": ""Professional medical footer design""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""navigation_bar"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""services_section"", ""order"": 3},
+    {""component"": ""about_section"", ""order"": 4},
+    {""component"": ""testimonials_section"", ""order"": 5},
+    {""component"": ""contact_section"", ""order"": 6},
+    {""component"": ""footer"", ""order"": 7}
+  ]
+}
+```"
+2,https://healthcaremedicalcenter.com/,"```json
+{
+  ""components"": {
+    ""navigation_bar"": {
+      ""type"": ""nav"",
+      ""description"": ""Professional medical navigation with logo, menu items, and emergency contact button."",
+      ""typography"": {
+        ""links"": {
+          ""visual_description"": ""Medium sans-serif, dark blue"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""emergency_button"": {
+          ""visual_description"": ""Bold white text on red background"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical, wide horizontal"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue"",
+        ""accent"": ""red emergency button""
+      },
+      ""image_style"": ""medical cross logo"",
+      ""other_visual_notes"": ""Emergency button prominently displayed""
+    },
+    ""hero_banner"": {
+      ""type"": ""hero"",
+      ""description"": ""Medical facility image with healthcare professionals, centered text with appointment booking."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, white text"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""subheading"": {
+          ""visual_description"": ""Medium sans-serif, white text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""button"": {
+          ""visual_description"": ""Bold white text on blue background"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""uppercase""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""extra large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""medical facility image"",
+        ""text"": ""white"",
+        ""accent"": ""medical blue""
+      },
+      ""image_style"": ""professional medical facility photography"",
+      ""other_visual_notes"": ""Trust-building medical imagery""
+    },
+    ""services_section"": {
+      ""type"": ""card_grid"",
+      ""description"": ""Medical specialties grid with icons and descriptions."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, dark blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""card_title"": {
+          ""visual_description"": ""Medium sans-serif, dark blue"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""card_description"": {
+          ""visual_description"": ""Small sans-serif, gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""grid spacing medium""
+      },
+      ""colors"": {
+        ""background"": ""light gray"",
+        ""text"": ""dark blue and gray"",
+        ""accent"": ""medical blue icons""
+      },
+      ""image_style"": ""medical specialty icons"",
+      ""other_visual_notes"": ""Professional medical appearance""
+    },
+    ""doctors_section"": {
+      ""type"": ""profile_grid"",
+      ""description"": ""Grid of doctor profiles with photos, names, and specialties."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, dark blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""doctor_name"": {
+          ""visual_description"": ""Medium sans-serif, dark blue"",
+          ""weight"": ""semibold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""specialty"": {
+          ""visual_description"": ""Small sans-serif, gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue and gray"",
+        ""accent"": ""medical blue""
+      },
+      ""image_style"": ""professional doctor headshots"",
+      ""other_visual_notes"": ""Clean, trustworthy medical professional appearance""
+    },
+    ""testimonials_section"": {
+      ""type"": ""testimonial"",
+      ""description"": ""Patient testimonials with star ratings and photos."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, dark blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""testimonial_text"": {
+          ""visual_description"": ""Italic serif, gray text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""author_name"": {
+          ""visual_description"": ""Bold sans-serif, dark blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""light gray"",
+        ""text"": ""dark blue and gray"",
+        ""accent"": ""gold stars""
+      },
+      ""image_style"": ""patient photos"",
+      ""other_visual_notes"": ""Star ratings for credibility""
+    },
+    ""contact_section"": {
+      ""type"": ""contact"",
+      ""description"": ""Contact form with office hours and emergency contact information."",
+      ""typography"": {
+        ""heading"": {
+          ""visual_description"": ""Large serif, dark blue"",
+          ""weight"": ""bold"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        },
+        ""form_labels"": {
+          ""visual_description"": ""Medium sans-serif, dark blue"",
+          ""weight"": ""medium"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""large vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""white"",
+        ""text"": ""dark blue"",
+        ""accent"": ""medical blue submit button""
+      },
+      ""image_style"": ""medical facility map"",
+      ""other_visual_notes"": ""Emergency contact prominently displayed""
+    },
+    ""footer"": {
+      ""type"": ""footer"",
+      ""description"": ""Footer with medical information, office hours, and emergency contacts."",
+      ""typography"": {
+        ""body"": {
+          ""visual_description"": ""Small sans-serif, white text"",
+          ""weight"": ""regular"",
+          ""letter_spacing"": ""normal"",
+          ""text_transform"": ""none""
+        }
+      },
+      ""spacing"": {
+        ""padding"": ""medium vertical"",
+        ""margin"": ""none""
+      },
+      ""colors"": {
+        ""background"": ""dark blue"",
+        ""text"": ""white"",
+        ""accent"": ""medical blue""
+      },
+      ""image_style"": ""white medical logo"",
+      ""other_visual_notes"": ""Professional medical footer with emergency info""
+    }
+  },
+  ""page_structure"": [
+    {""component"": ""navigation_bar"", ""order"": 1},
+    {""component"": ""hero_banner"", ""order"": 2},
+    {""component"": ""services_section"", ""order"": 3},
+    {""component"": ""doctors_section"", ""order"": 4},
+    {""component"": ""testimonials_section"", ""order"": 5},
+    {""component"": ""contact_section"", ""order"": 6},
+    {""component"": ""footer"", ""order"": 7}
+  ]
+}
+```"
