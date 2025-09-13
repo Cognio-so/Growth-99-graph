@@ -777,6 +777,13 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
 - **PRESERVE component structure**: same components, same layout, same functionality
 - **KEEP all existing content**: text, images, links, form fields, etc.
 - **ONLY update className attributes and style properties**
+- **CRITICAL**: When changing theme colors, ONLY change the color values in existing CSS classes
+- **DO NOT**: Add new components, remove existing components, change text content, or modify functionality
+- **DO NOT**: Change the hero section content, button text, or any other text elements
+- **ONLY**: Replace color values in existing className attributes (e.g., bg-blue-500 → bg-purple-500)
+- **PRESERVE ALL TEXT CONTENT**: Keep all headings, descriptions, button text, and other text exactly as they are
+- **PRESERVE ALL IMAGES**: Keep all existing images and their positioning
+- **PRESERVE ALL LAYOUTS**: Keep the same component structure and positioning
 
 #### FOR FUNCTIONALITY CHANGES:
 - **ONLY modify what's specifically requested**: add/remove features as asked
