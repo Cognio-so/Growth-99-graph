@@ -212,8 +212,9 @@ async def accept_query(
     text: str = Form(...),
     llm_model: str | None = Form(None),
     file: UploadFile | None = File(None),
-    logo: UploadFile | None = File(None),  # Add logo parameter
-    image: UploadFile | None = File(None),  # Add image parameter
+    logo: UploadFile | None = File(None),
+    image: UploadFile | None = File(None),
+    color_palette: str | None = Form(None),  # Add this line
     regenerate: bool = Form(False),
 ):
     try:
@@ -239,8 +240,12 @@ async def accept_query(
             "doc": doc,
             "logo": logo_data,  # Add logo to payload
             "image": image_data,  # Add image to payload
+            "color_palette": color_palette,  # Add this line
             "regenerate": regenerate,
         }
+        
+        # Add debug logging
+        print(f" Main API - Color Palette received: '{color_palette}'")
 
         # Initialize state
         state = user_node_init_state(payload)

@@ -9,6 +9,7 @@ class GraphState(TypedDict, total=False):
     doc: Optional[Dict[str, Any]]        # {name,mime,size,path} if uploaded
     logo: Optional[Dict[str, Any]]       # {name,mime,size,path,url,filename} if uploaded
     image: Optional[Dict[str, Any]]      # {name,mime,size,path,url,filename} if uploaded
+    color_palette: Optional[str]         # User-specified color palette
     messages: List[Dict[str, Any]]
     metadata: Dict[str, Any]
     context: Dict[str, Any]

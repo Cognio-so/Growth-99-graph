@@ -2,9 +2,9 @@
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) ||
-  "https://your-railway-url.railway.app"; // Update this line
+  "https://growth-99-graph-production.up.railway.app"; // FIX: Use correct Railway URL
 
-export async function sendQuery({ session_id, text, llm_model, file, logo, image, regenerate }) {
+export async function sendQuery({ session_id, text, llm_model, file, logo, image, color_palette, regenerate }) {
   const form = new FormData();
   if (session_id) form.append("session_id", session_id);
   form.append("text", text);
@@ -12,6 +12,7 @@ export async function sendQuery({ session_id, text, llm_model, file, logo, image
   if (file) form.append("file", file, file.name);
   if (logo) form.append("logo", logo, logo.name); // Add logo upload
   if (image) form.append("image", image, image.name); // Add image upload
+  if (color_palette) form.append("color_palette", color_palette);
   if (typeof regenerate !== "undefined") form.append("regenerate", String(!!regenerate));
 
   // FIX: Ensure no double slashes

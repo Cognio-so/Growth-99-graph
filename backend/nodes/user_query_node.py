@@ -117,6 +117,7 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
     doc = payload.get("doc")  # {name,mime,size,path} or None
     logo = payload.get("logo")  # {name,mime,size,path,url,filename} or None
     image = payload.get("image")  # {name,mime,size,path,url,filename} or None
+    color_palette = payload.get("color_palette")  # Add this line
     regenerate = bool(payload.get("regenerate", False))
 
     session_id = _ensure_session(payload.get("session_id"), meta={"llm_model": llm_model, "has_doc": bool(doc), "has_logo": bool(logo), "has_image": bool(image)})
@@ -129,7 +130,7 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
         if text and text.strip() and text.strip() != "regenerate":
             print(f"✅ Frontend provided text, using current text: '{text[:100]}...'")
             # Use the current text from frontend
-            _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None, "regenerate": True})
+            _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None, "color_palette": color_palette, "regenerate": True})
         else:
             print("⚠️ No text from frontend, searching for stored original query...")
             # No text from frontend, use stored original query
@@ -139,25 +140,27 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
                 text = original_query
             else:
                 print("⚠️ No stored original query found, using current text for regeneration")
-                _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None, "regenerate": True})
+                _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None, "color_palette": color_palette, "regenerate": True})
     else:
         # Normal flow - insert the new message
-        _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None})
+        _insert_user_message(session_id, text, {"doc": doc or None, "logo": logo or None, "image": image or None, "color_palette": color_palette})
     
     messages = _load_recent_messages(session_id)
 
-    return {
+    state = {
         "session_id": session_id,
-        "timestamp": ts if isinstance(ts, str) else ts.isoformat(),
         "text": text,
         "llm_model": llm_model,
-        "doc": doc or None,
-        "logo": logo or None,  # Add logo to state
-        "image": image or None,  # Add image to state
-        "messages": messages,
+        "doc": doc,
+        "logo": logo,
+        "image": image,
+        "color_palette": color_palette,  # Add this line
+        "timestamp": ts,
         "metadata": {"regenerate": regenerate},
         "context": {},
     }
+
+    return state
 
 def user_node(state: GraphState) -> GraphState:
     """Enhanced user node that clears document information when file is removed or changed."""

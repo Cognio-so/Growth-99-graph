@@ -38,7 +38,17 @@ const MODEL_DISPLAY_NAMES = {
 
 function IntentForm() {
   const [sessionId, setSessionId] = React.useState(() => {
+    // FIX: Check localStorage first before creating new session ID
+    if (typeof window !== 'undefined') {
+      const savedSessionId = localStorage.getItem('current_session_id');
+      if (savedSessionId) {
+        console.log('🔄 Restoring session ID from localStorage:', savedSessionId);
+        return savedSessionId;
+      }
+    }
+    // Only create new session ID if none exists in localStorage
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🆕 Creating new session ID:', newSessionId);
     return newSessionId;
   });
   const [model, setModel] = React.useState("k2"); // Default to K2
@@ -46,6 +56,7 @@ function IntentForm() {
   const [file, setFile] = React.useState(null);
   const [logo, setLogo] = React.useState(null); // Add logo state
   const [image, setImage] = React.useState(null); // Add image state
+  const [colorPalette, setColorPalette] = React.useState(""); // Add color palette state
   const [sending, setSending] = React.useState(false);
   const [resp, setResp] = React.useState(null);
   const [error, setError] = React.useState("");
@@ -410,7 +421,7 @@ function IntentForm() {
     }]);
     
     try {
-      const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file, logo, image });
+      const json = await sendQuery({ session_id: sessionId || undefined, text, llm_model: model, file, logo, image, color_palette: colorPalette });
       setResp(json);
       if (json?.session_id) { 
         setSessionId(json.session_id); 
@@ -423,6 +434,7 @@ function IntentForm() {
         setFile(null); // Clear file input
         setLogo(null); // Clear logo input
         setImage(null); // Clear image input
+        setColorPalette(""); // Clear color palette input
         // Clear the actual file input elements
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
@@ -434,6 +446,9 @@ function IntentForm() {
           imageInputRef.current.value = '';
         }
         // Note: We don't clear sessionId as it should persist for the session
+      } else {
+        // Clear color palette after successful design generation
+        setColorPalette("");
       }
       
       // Automatically open preview in new tab when design is ready
@@ -490,6 +505,7 @@ function IntentForm() {
         file, 
         logo,
         image,
+        color_palette: colorPalette,
         regenerate: true 
       });
       setResp(json);
@@ -541,7 +557,8 @@ function IntentForm() {
         llm_model: model, 
         file, 
         logo,
-        image
+        image,
+        color_palette: colorPalette
       });
       setResp(json);
       
@@ -565,6 +582,9 @@ function IntentForm() {
           window.open(sandboxUrl, '_blank');
         }, 1000);
       }
+      
+      // Clear color palette after successful edit
+      setColorPalette("");
       
       // ADD THIS LINE:
       loadSessions();
@@ -783,7 +803,8 @@ function IntentForm() {
         llm_model: model, 
         file: null,
         logo: null,
-        image: null
+        image: null,
+        color_palette: colorPalette
       });
       
       setResp(json);
@@ -1037,6 +1058,20 @@ function IntentForm() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Color Palette Input */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">
+                    Color Palette
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={colorPalette}
+                    onChange={(e) => setColorPalette(e.target.value)}
+                    placeholder="blue, #FF5733, yellow..."
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                  />
                 </div>
 
                 {/* Model Selection - Centered below text area */}
@@ -1319,6 +1354,8 @@ function IntentForm() {
                     Image
                   </label>
                   
+                  
+                  
                   {/* Model Selection */}
                   <select
                     value={model}
@@ -1460,6 +1497,18 @@ function IntentForm() {
             
             {sandboxResult?.url && (
               <div className="flex items-center space-x-2">
+                {/* Add Color Palette Input */}
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-600 font-medium">Colors:</label>
+                  <input
+                    type="text"
+                    value={colorPalette}
+                    onChange={(e) => setColorPalette(e.target.value)}
+                    placeholder="blue, #FF5733, yellow..."
+                    className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48"
+                  />
+                </div>
+                
                 <button
                   onClick={handleDownloadCode}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm flex items-center gap-2"

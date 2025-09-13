@@ -11,6 +11,15 @@ def new_design(state: Dict[str, Any]) -> Dict[str, Any]:
     
     gi = ctx.get("generator_input") or {}
     gi["user_text"] = state.get("text", "")
+    gi["color_palette"] = state.get("color_palette", "")
+    
+    # Add debug logging for color palette
+    color_palette = state.get("color_palette", "")
+    print(f" Color Palette received: '{color_palette}'")
+    if color_palette and color_palette.strip():
+        print(f"✅ Color palette will be used in design generation")
+    else:
+        print(f"❌ No color palette provided or empty")
     
     # Handle extracted schema
     json_schema = intent.get("json_schema")

@@ -502,6 +502,17 @@ def edit_analyzer(state: GraphState) -> GraphState:
             gi["has_extracted_business_info"] = False
             gi["extraction_priority"] = "low"
         
+        # CRITICAL: Add color palette to generator input for edit mode
+        color_palette = state.get("color_palette", "")
+        gi["color_palette"] = color_palette
+        
+        # Add debug logging for color palette in edit mode
+        print(f"🎨 Edit Analyzer - Color Palette: '{color_palette}'")
+        if color_palette and color_palette.strip():
+            print(f"✅ Color palette will be used in edit generation")
+        else:
+            print(f"❌ No color palette provided for edit")
+        
         ctx["edit_analysis"] = edit_analysis
         ctx["generator_input"] = gi
         

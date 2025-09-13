@@ -296,6 +296,17 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
     gi["user_text"] = text
     gi["json_schema"] = schema
     gi["schema_source"] = schema_source
+    
+    # CRITICAL: Add color palette to generator input during regeneration
+    color_palette = state.get("color_palette", "")
+    gi["color_palette"] = color_palette
+    
+    # Add debug logging for color palette
+    print(f"🎨 Schema Extraction - Color Palette: '{color_palette}'")
+    if color_palette and color_palette.strip():
+        print(f"✅ Color palette will be used in design generation")
+    else:
+        print(f"❌ No color palette provided or empty")
 
     ctx["generator_input"] = gi
     state["context"] = ctx

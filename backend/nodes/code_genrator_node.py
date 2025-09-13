@@ -51,11 +51,49 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     has_uploaded_image = gi.get("has_uploaded_image", False)
     uploaded_image_url = gi.get("uploaded_image_url")
     
-    prompt_parts = [
+    # START WITH COLOR PALETTE - HIGHEST PRIORITY
+    prompt_parts = []
+    
+    # Add color palette with ABSOLUTE HIGHEST PRIORITY
+    color_palette = gi.get("color_palette", "")
+    print(f"🎨 Code Generator - Color Palette: '{color_palette}'")
+    if color_palette and color_palette.strip():
+        print(f"✅ Adding color palette to LLM prompt")
+        
+        # Parse colors from the palette
+        colors = [color.strip() for color in color_palette.split(',') if color.strip()]
+        print(f"🎨 Parsed colors: {colors}")
+        
+        prompt_parts.extend([
+            "## 🎨 COLOR PALETTE - HIGHEST PRIORITY",
+            f"**USER COLORS**: {color_palette}",
+            f"**PARSED**: {', '.join(colors)}",
+            "",
+            "**RULES**:",
+            "- Convert color names to hex: red=#FF0000, blue=#0000FF, yellow=#FFFF00, etc.",
+            "- Use ALL provided colors throughout the design",
+            "- Apply to backgrounds, text, buttons, borders (NOT images)",
+            "- Create professional color scheme",
+            "- Intelligently use all colors across the entire UI for modern, beautiful design",
+            "- Override JSON schema colors completely - color palette has TOP priority",
+            "- **IMPORTANT**: If user mentions specific sections (like 'hero section', 'footer', etc.), apply colors ONLY to those sections and keep JSON schema colors for the rest",
+            "- **IMPORTANT**: If user doesn't mention specific sections, apply colors to the ENTIRE design",
+            "",
+            "**FORBIDDEN**:",
+            "- Never use colors not in palette",
+            "- Never apply colors over images/backgrounds",
+            "- Never use JSON schema colors when color palette is provided (unless user specifies particular sections)",
+            "",
+        ])
+    else:
+        print(f"❌ No color palette to add to prompt")
+    
+    # NOW add the user prompt
+    prompt_parts.extend([
         "## USER PROMPT - YOUR DESIGN DIRECTION",
         f"{user_text}",
         "",
-    ]
+    ])
     
     # HIGHEST PRIORITY: Uploaded Logo (takes precedence over everything)
     if has_uploaded_logo and uploaded_logo_url:
@@ -677,6 +715,10 @@ def _build_edit_prompt(ctx: Dict[str, Any]) -> str:
     user_text = ctx.get("user_text", "")
     existing_code = ctx.get("existing_code", "")
     
+    # Get color palette from generator input
+    gi = ctx.get("generator_input", {})
+    color_palette = gi.get("color_palette", "")
+    
     if not edit_analysis.get("analysis_success"):
         return ""
     
@@ -700,7 +742,32 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
 - **Specific Requirements**: {chr(10).join(f"- {req}" for req in edit_analysis.get('specific_requirements', []))}
 - **Preserve Existing**: {edit_analysis.get('preserve_existing', True)}
 - **Context Needed**: {edit_analysis.get('context_needed', '')}
-- **Content Preservation Rules**: {chr(10).join(f"- {rule}" for rule in edit_analysis.get('content_preservation_rules', []))}
+- **Content Preservation Rules**: {chr(10).join(f"- {rule}" for rule in edit_analysis.get('content_preservation_rules', []))}"""
+
+    # Add color palette section if colors are provided
+    if color_palette and color_palette.strip():
+        colors = [color.strip() for color in color_palette.split(',') if color.strip()]
+        edit_prompt += f"""
+
+### 🎨 COLOR PALETTE FOR EDIT:
+**USER COLORS**: {color_palette}
+**PARSED**: {', '.join(colors)}
+
+**RULES**:
+- Convert color names to hex: red=#FF0000, blue=#0000FF, yellow=#FFFF00, etc.
+- Use ALL provided colors throughout the design
+- Apply to backgrounds, text, buttons, borders (NOT images)
+- Create professional color scheme
+- Intelligently use all colors across the entire UI for modern, beautiful design
+- Override JSON schema colors completely - color palette has TOP priority
+- Follow user query instructions about color placement (e.g., 'use in hero section')
+
+**FORBIDDEN**:
+- Never use colors not in palette
+- Never apply colors over images/backgrounds
+- Never use JSON schema colors when color palette is provided"""
+
+    edit_prompt += """
 
 ### 🚨 CRITICAL EDITING INSTRUCTIONS:
 
