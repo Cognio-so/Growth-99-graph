@@ -38,17 +38,9 @@ const MODEL_DISPLAY_NAMES = {
 
 function IntentForm() {
   const [sessionId, setSessionId] = React.useState(() => {
-    // FIX: Check localStorage first before creating new session ID
-    if (typeof window !== 'undefined') {
-      const savedSessionId = localStorage.getItem('current_session_id');
-      if (savedSessionId) {
-        console.log('🔄 Restoring session ID from localStorage:', savedSessionId);
-        return savedSessionId;
-      }
-    }
-    // Only create new session ID if none exists in localStorage
+    // Always create a new session ID on page refresh
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('🆕 Creating new session ID:', newSessionId);
+    console.log('🆕 Creating new session ID on page load:', newSessionId);
     return newSessionId;
   });
   const [model, setModel] = React.useState("k2"); // Default to K2
@@ -100,7 +92,12 @@ function IntentForm() {
   const fileInputRef = React.useRef(null);
   const logoInputRef = React.useRef(null); // Add logo input ref
   const imageInputRef = React.useRef(null); // Add image input ref
-
+  const createNewSession = () => {
+    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🆕 Creating new session ID:', newSessionId);
+    setSessionId(newSessionId);
+    return newSessionId;
+  };
   // Add download function
   const handleDownloadCode = async () => {
     console.log('=== handleDownloadCode called ===');
@@ -1240,7 +1237,10 @@ function IntentForm() {
         
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => setCurrentView("initial")}
+            onClick={() => {
+              createNewSession();
+              setCurrentView("initial");
+            }}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
           >
             New Design

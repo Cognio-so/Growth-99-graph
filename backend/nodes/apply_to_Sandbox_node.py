@@ -934,7 +934,6 @@ def _verify_css_content(sandbox: Sandbox) -> bool:
 
 
 # Main function
-# Main function
 def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
     """Apply Sandbox Node with SESSION-BASED sandbox management and EDIT support."""
     print("--- Running Apply Sandbox Node (Enhanced with Edit Support) ---")
@@ -982,18 +981,18 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 if not final_url:
                     final_url = _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
             
-            if not final_url:
-                print("❌ All restart attempts failed - stopping edit process")
-                ctx["sandbox_result"] = {
-                    "success": False,
-                    "error": "Failed to restart dev server after edits",
-                    "details": "Edit process stopped due to server restart failures"
-                }
-                state["context"] = ctx
-                return state
-            
-            # Success
+            # Success - CRITICAL FIX: Capture complete application state for proper storage
             sandbox_id = getattr(sandbox, "id", "unknown")
+            
+            # CRITICAL: Capture complete application state after successful edit
+            complete_application_state = _capture_complete_application_state(sandbox)
+            if complete_application_state:
+                # Replace the edit-only generation_result with complete application state
+                ctx["generation_result"] = complete_application_state
+                print("✅ Replaced edit-only state with complete application state for proper storage")
+            else:
+                print("⚠️ Could not capture complete application state, keeping original edit state")
+            
             ctx["sandbox_result"] = {
                 "success": True,
                 "url": final_url,
@@ -1133,22 +1132,16 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     print("❌ No create_react_app function found in generated script")
                     print(f"Available keys in namespace: {list(ns.keys())}")
-                    # print("Script content (first 2000 chars):")
-                    # print(normalized[:2000])
                     
             except SyntaxError as syntax_error:
                 print(f"❌ Script has syntax errors: {syntax_error}")
                 print(f"Error on line {syntax_error.lineno}: {syntax_error.text}")
-                # print("Full script content:")
-                # print(normalized)
-                
+            
             except Exception as script_error:
                 print(f"❌ Script execution failed with error: {script_error}")
                 print(f"Error type: {type(script_error).__name__}")
                 import traceback
                 print(f"Traceback: {traceback.format_exc()}")
-                # print("Full script content:")
-                # print(normalized)
             
             # Only create fallback if script execution actually failed
             if not script_execution_success:
@@ -1161,19 +1154,10 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
             # NEW: Ensure Tailwind CSS is properly built
             print("🎨 Ensuring CSS is properly configured...")
 
-            # Step 1: Basic Tailwind setup (no longer needed)
-            # _ensure_tailwind_build(sandbox)  # REMOVE THIS
             _ensure_css_files(sandbox)
 
-            # Step 2: Fix the Tailwind PostCSS plugin issue (no longer needed)
-            # if not _fix_tailwind_postcss_plugin(sandbox):  # REMOVE THIS
-            #     print("⚠️ Primary PostCSS fix failed, trying alternatives...")
-            #     _try_alternative_postcss_setup(sandbox)  # REMOVE THIS
-
-            # Step 3: Fix Vite CSS processing (simplified)
             _fix_vite_css_processing(sandbox)
 
-            # Step 4: Verify CSS content
             if not _verify_css_content(sandbox):
                 print("❌ Critical CSS verification failed! Recreating CSS files...")
                 _ensure_css_files(sandbox)
@@ -1222,6 +1206,74 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
 
     state["context"] = ctx
     return state
+
+def _capture_complete_application_state(sandbox) -> Dict[str, Any]:
+    """Capture the complete application state after successful edit for proper storage."""
+    print("📁 Capturing complete application state after edit...")
+    
+    try:
+        complete_state = {
+            "e2b_script": None,  # Will be generated
+            "is_correction": False,
+            "is_edit": False,
+            "complete_files": {}
+        }
+        
+        # Capture all application files
+        critical_files = [
+            "src/App.jsx", "src/main.jsx", "src/index.css", "package.json", "index.html"
+        ]
+        
+        # Also capture any component files
+        try:
+            # List all files in src directory
+            src_files_result = sandbox.commands.run("find my-app/src -name '*.jsx' -o -name '*.js' -o -name '*.css'", timeout=10)
+            if src_files_result and src_files_result.stdout:
+                additional_files = [f.strip() for f in src_files_result.stdout.split('\n') if f.strip()]
+                for file_path in additional_files:
+                    if file_path not in critical_files:
+                        critical_files.append(file_path.replace('my-app/', ''))
+        except Exception as e:
+            print(f"⚠️ Could not list additional files: {e}")
+        
+        # Read all files
+        for file_path in critical_files:
+            try:
+                full_path = f"my-app/{file_path}"
+                content = sandbox.files.read(full_path)
+                if content:
+                    complete_state["complete_files"][file_path] = content
+                    print(f"   ✅ Captured: {file_path}")
+            except Exception as e:
+                print(f"   ⚠️ Could not capture {file_path}: {e}")
+        
+        # Generate a proper e2b_script that recreates the complete application
+        script_lines = []
+        script_lines.append("def create_react_app(sandbox):")
+        script_lines.append('    """Recreate complete application from stored state"""')
+        script_lines.append("    print('Recreating complete application from stored state...')")
+        
+        for file_path, content in complete_state["complete_files"].items():
+            # Properly escape the content for Python
+            escaped_content = content.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+            script_lines.append(f'    # Recreate {file_path}')
+            script_lines.append(f'    {file_path.replace("/", "_").replace(".", "_")}_content = """{escaped_content}"""')
+            script_lines.append(f'    sandbox.files.write("my-app/{file_path}", {file_path.replace("/", "_").replace(".", "_")}_content)')
+            script_lines.append(f'    print(f"✅ Recreated {file_path}")')
+        
+        script_lines.append("    print('✅ Complete application recreated successfully')")
+        script_lines.append("    return 'Complete application recreated from stored state'")
+        
+        # Create the complete script
+        complete_script = "\n".join(script_lines)
+        complete_state["e2b_script"] = complete_script
+        
+        print(f"✅ Captured complete application state with {len(complete_state['complete_files'])} files")
+        return complete_state
+        
+    except Exception as e:
+        print(f"❌ Error capturing complete application state: {e}")
+        return None
 
 def _fix_tailwind_postcss_plugin(sandbox: Sandbox) -> bool:
     """No longer needed - Tailwind comes from CDN"""
