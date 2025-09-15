@@ -162,6 +162,64 @@ def user_node_init_state(payload: Dict[str, Any]) -> GraphState:
 
     return state
 
+# Add this function to provide immediate AI response
+def _add_immediate_ai_response(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Add immediate AI response when user submits query"""
+    user_text = state.get("text", "")
+    
+    print(f"🔍 Adding immediate AI response for text: '{user_text[:50]}...'")
+    
+    # Create contextual AI response based on user input
+    if "spa" in user_text.lower() or "medical" in user_text.lower():
+        ai_response = "I'll create a beautiful medical spa website with a serene, professional design. Let me build this with calming colors and elegant UI/UX that reflects the luxury spa experience."
+    elif "ed-tech" in user_text.lower() or "education" in user_text.lower() or "student" in user_text.lower():
+        ai_response = "I'll create a beautiful ed-tech platform with login and signup pages designed specifically for students. Let me build this with engaging colors and student-friendly UI/UX."
+    elif "landing" in user_text.lower() or "website" in user_text.lower():
+        ai_response = "I'll create a stunning landing page that captures your brand's essence. Let me build this with modern design principles and engaging visuals."
+    else:
+        ai_response = "I'll create a beautiful application based on your requirements. Let me build this with modern design principles and engaging UI/UX."
+    
+    print(f"🤖 AI Response: '{ai_response}'")
+    
+    # CRITICAL: First ensure user message is in the messages array
+    current_messages = state.get("messages", [])
+    
+    # Check if user message exists, if not add it
+    has_user_message = any(msg.get("role") == "user" for msg in current_messages)
+    if not has_user_message and user_text:
+        user_message = {
+            "role": "user",
+            "content": user_text,
+            "created_at": datetime.utcnow().isoformat(),
+            "meta": {}
+        }
+        current_messages = current_messages + [user_message]
+        print(f"🤖 Added user message to backend state")
+    
+    # Add immediate AI response to messages
+    ai_message = {
+        "role": "assistant", 
+        "content": ai_response,
+        "created_at": datetime.utcnow().isoformat(),
+        "meta": {}
+    }
+    
+    print(f"🤖 Current messages count: {len(current_messages)}")
+    
+    # CRITICAL: Store AI response in context to preserve it across nodes
+    ctx = state.get("context", {})
+    ctx["immediate_ai_response"] = ai_message
+    ctx["user_message"] = user_message if not has_user_message else None
+    state["context"] = ctx
+    
+    # Add AI response to messages array
+    state["messages"] = current_messages + [ai_message]
+    print(f"🤖 New messages count: {len(state['messages'])}")
+    print(f"🤖 Messages: {[msg.get('role') + ': ' + msg.get('content', '')[:30] + '...' for msg in state['messages']]}")
+    
+    return state
+
+# Update the user_node function to call this
 def user_node(state: GraphState) -> GraphState:
     """Enhanced user node that clears document information when file is removed or changed."""
     print("--- Running User Node ---")
@@ -201,6 +259,8 @@ def user_node(state: GraphState) -> GraphState:
         print("📝 No document provided")
     
     state["context"] = ctx
+    # Add immediate AI response
+    state = _add_immediate_ai_response(state)
     return state
 
 def _clear_document_information(ctx: Dict[str, Any]) -> None:
