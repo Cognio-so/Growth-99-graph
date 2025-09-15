@@ -75,6 +75,40 @@ def output_result(state: Dict[str, Any]) -> Dict[str, Any]:
     session_id = state.get("session_id")
     user_query = state.get("text", "")
     
+    # CRITICAL: Restore both user and AI messages if they were lost during processing
+    immediate_ai_response = ctx.get("immediate_ai_response")
+    user_message = ctx.get("user_message")
+    current_messages = state.get("messages", [])
+    
+    print(f"🤖 Output node - Current messages count: {len(current_messages)}")
+    print(f"🤖 Output node - Has AI response in context: {immediate_ai_response is not None}")
+    print(f"🤖 Output node - Has user message in context: {user_message is not None}")
+    
+    # Check what messages we have
+    has_user_message = any(msg.get("role") == "user" for msg in current_messages)
+    has_ai_response = any(msg.get("role") == "assistant" for msg in current_messages)
+    
+    print(f"🤖 Output node - Has user message in array: {has_user_message}")
+    print(f" Output node - Has AI response in array: {has_ai_response}")
+    
+    # Restore missing messages
+    messages_to_add = []
+    
+    if not has_user_message and user_message:
+        messages_to_add.append(user_message)
+        print(" Restoring user message from context")
+    
+    if not has_ai_response and immediate_ai_response:
+        messages_to_add.append(immediate_ai_response)
+        print(" Restoring AI response from context")
+    
+    if messages_to_add:
+        state["messages"] = current_messages + messages_to_add
+        print(f" Output node - Final messages count: {len(state['messages'])}")
+        print(f" Output node - Final messages: {[msg.get('role') + ': ' + msg.get('content', '')[:30] + '...' for msg in state['messages']]}")
+    else:
+        print("🤖 All messages already present")
+    
     # Get the latest message ID for this session
     message_id = None
     try:
@@ -103,12 +137,12 @@ def output_result(state: Dict[str, Any]) -> Dict[str, Any]:
     generation_result = ctx.get("generation_result", {})
     sandbox_result = ctx.get("sandbox_result", {})
     
-    # Create AI response text
-    ai_response = "Design generated successfully"
+    # Create final AI response text for database storage
+    final_ai_response = "Design generated successfully"
     if generation_result:
-        ai_response += f" with {len(generation_result.get('components', []))} components"
+        final_ai_response += f" with {len(generation_result.get('components', []))} components"
     if sandbox_result.get('url'):
-        ai_response += f" and deployed to sandbox"
+        final_ai_response += f" and deployed to sandbox"
     
     # Store conversation history
     if message_id:
@@ -116,7 +150,7 @@ def output_result(state: Dict[str, Any]) -> Dict[str, Any]:
             session_id=session_id,
             message_id=message_id,
             user_query=user_query,
-            ai_response=ai_response,
+            ai_response=final_ai_response,
             generation_result=generation_result,
             sandbox_result=sandbox_result
         )
@@ -153,6 +187,16 @@ def output_result(state: Dict[str, Any]) -> Dict[str, Any]:
                     db.commit()
             except Exception as e:
                 print(f"Error storing generated link: {e}")
+    
+    # Create final_result for frontend compatibility
+    if sandbox_result and sandbox_result.get('url'):
+        ctx["final_result"] = {
+            "url": sandbox_result['url'],
+            "message": sandbox_result.get('message', 'Application deployed successfully'),
+            "success": sandbox_result.get('success', True)
+        }
+        state["context"] = ctx
+        print(f"✅ Created final_result for frontend: {ctx['final_result']['url']}")
     
     # Update session title if this is the first message
     title = None
