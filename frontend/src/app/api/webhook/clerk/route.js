@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { Webhook } from "svix";
-import { connectDB } from "@/lib/db";
 import User from "@/models/UserModel";
+import { connectToDatabase } from "@/lib/db";
 
 export async function POST(req) {
   // Get the webhook secret from environment variables
@@ -55,7 +55,7 @@ export async function POST(req) {
   console.log(`Webhook with an ID of ${id} and type of ${eventType}`);
 
   // Connect to the database
-  await connectDB();
+  await connectToDatabase();
 
   try {
     if (eventType === "user.created") {
