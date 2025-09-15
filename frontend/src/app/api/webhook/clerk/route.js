@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { Webhook } from "svix";
-import User from "@/models/UserModel";
 import { connectToDatabase } from "@/lib/db";
+import { createUserDocument, updateUserDocument } from "@/models/user";
 
 export async function POST(req) {
   // Get the webhook secret from environment variables
@@ -26,8 +26,8 @@ export async function POST(req) {
   }
 
   // Get the body
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
+  const payload = await req.text();
+  const body = JSON.parse(payload);
 
   // Create a new Svix instance with your secret.
   const wh = new Webhook(WEBHOOK_SECRET);
@@ -36,7 +36,7 @@ export async function POST(req) {
 
   // Verify the payload with the headers
   try {
-    evt = wh.verify(body, {
+    evt = wh.verify(payload, {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
@@ -55,83 +55,45 @@ export async function POST(req) {
   console.log(`Webhook with an ID of ${id} and type of ${eventType}`);
 
   // Connect to the database
-  await connectToDatabase();
-
   try {
+    const { db } = await connectToDatabase();
+    const usersCollection = db.collection('users');
+
     if (eventType === "user.created") {
-      const {
-        id,
-        email_addresses,
-        first_name,
-        last_name,
-        image_url,
-      } = evt.data;
-      const email = email_addresses[0]?.email_address;
-
-      if (!email) {
-        return new Response("Error: missing user email", { status: 400 });
-      }
-
-      const newUser = new User({
-        clerkId: id,
-        name: `${first_name || ""} ${last_name || ""}`.trim(),
-        email,
-        firstName: first_name || "",
-        lastName: last_name || "",
-        profileImage: image_url || "",
-        role: "user",
-        status: "active",
-      });
-
-      await newUser.save();
+      const userDoc = createUserDocument(evt.data);
+      await usersCollection.insertOne(userDoc);
       console.log(`User ${id} was created in the database.`);
       return new Response("User created successfully", { status: 201 });
     }
 
     if (eventType === "user.updated") {
-      const {
-        id,
-        email_addresses,
-        first_name,
-        last_name,
-        image_url,
-      } = evt.data;
-      const email = email_addresses[0]?.email_address;
-
-      if (!email) {
-        return new Response("Error: missing user email", { status: 400 });
+      const existingUser = await usersCollection.findOne({ clerkId: id });
+      if (existingUser) {
+        const updatedUser = updateUserDocument(existingUser, evt.data);
+        await usersCollection.updateOne(
+          { clerkId: id },
+          { $set: updatedUser }
+        );
+        console.log(`User ${id} was updated in the database.`);
+        return new Response("User updated successfully", { status: 200 });
+      } else {
+        // If user doesn't exist, create them
+        const userDoc = createUserDocument(evt.data);
+        await usersCollection.insertOne(userDoc);
+        console.log(`User ${id} was created in the database (from update).`);
+        return new Response("User created successfully", { status: 201 });
       }
-
-      const updatedUser = await User.findOneAndUpdate(
-        { clerkId: id },
-        {
-          name: `${first_name || ""} ${last_name || ""}`.trim(),
-          email,
-          firstName: first_name || "",
-          lastName: last_name || "",
-          profileImage: image_url || "",
-        },
-        { new: true }
-      );
-
-      if (!updatedUser) {
-        return new Response("Error: user not found", { status: 404 });
-      }
-
-      console.log(`User ${id} was updated in the database.`);
-      return new Response("User updated successfully", { status: 200 });
     }
 
     if (eventType === "user.deleted") {
-      const { id } = evt.data;
-      const deletedUser = await User.findOneAndDelete({ clerkId: id });
-
-      if (!deletedUser) {
-        return new Response("Error: user not found", { status: 404 });
+      const result = await usersCollection.deleteOne({ clerkId: id });
+      if (result.deletedCount > 0) {
+        console.log(`User ${id} was deleted from the database.`);
+        return new Response("User deleted successfully", { status: 200 });
+      } else {
+        console.log(`User ${id} was not found in the database.`);
+        return new Response("User not found", { status: 404 });
       }
-
-      console.log(`User ${id} was deleted from the database.`);
-      return new Response("User deleted successfully", { status: 200 });
     }
 
     return new Response("", { status: 200 });
