@@ -295,7 +295,7 @@ export default function ResultView() {
     setLoadingStage("Loading previous version...")
     
     try {
-      const response = await fetch(`http://localhost:8000/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
         method: 'POST'
       })
       
@@ -679,7 +679,7 @@ export default function ResultView() {
     
     setDownloading(true)
     try {
-      const response = await fetch(`http://localhost:8000/api/conversations/${message.conversation_id}/download`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conversations/${message.conversation_id}/download`, {
         method: 'GET'
       })
       
