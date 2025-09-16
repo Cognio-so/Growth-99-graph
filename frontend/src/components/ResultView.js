@@ -17,6 +17,7 @@ import {
   updateAssistantMessage, 
   getConversation 
 } from '@/lib/actions/conversation-actions'
+import GitHubDeploy from "./GithubDeploy.jsx"
 
 export default function ResultView() {
   const searchParams = useSearchParams()
@@ -747,17 +748,23 @@ export default function ResultView() {
               </SelectContent>
             </Select>
             {selectedMessageId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                disabled={downloading}
-                className="flex items-center gap-2 text-xs h-6 px-2"
-                title="Download project files"
-              >
-                <Download className="h-3 w-3" />
-                {downloading ? 'Downloading...' : 'Download'}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 text-xs h-6 px-2"
+                  title="Download project files"
+                >
+                  <Download className="h-3 w-3" />
+                  {downloading ? 'Downloading...' : 'Download'}
+                </Button>
+                <GitHubDeploy 
+                  conversationId={messages.find(m => m.id === selectedMessageId)?.conversation_id}
+                  disabled={!selectedMessageId}
+                />
+              </>
             )}
           </div>
           
