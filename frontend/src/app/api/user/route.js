@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getServerSession } from '@/lib/get-session';
 import { 
   getCurrentUser, 
   updateCurrentUser, 
   getUserStats,
-  incrementUserQueries 
+  incrementUserQueries,
+  deleteUserAccount
 } from '@/lib/actions/user-actions';
 
 // GET - Get current user data
@@ -32,9 +33,9 @@ export async function GET() {
 // PUT - Update current user data
 export async function PUT(request) {
   try {
-    const { userId } = await auth();
+    const session = await getServerSession();
     
-    if (!userId) {
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'User not authenticated' },
         { status: 401 }
@@ -45,9 +46,8 @@ export async function PUT(request) {
     
     // Remove sensitive fields that shouldn't be updated via this endpoint
     const allowedFields = [
-      'firstName', 
-      'lastName', 
-      'username', 
+      'name', 
+      'email', 
       'preferences'
     ];
     
@@ -73,6 +73,40 @@ export async function PUT(request) {
     });
   } catch (error) {
     console.error('Error in PUT /api/user:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Delete user account
+export async function DELETE() {
+  try {
+    const session = await getServerSession();
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
+    
+    const result = await deleteUserAccount();
+    
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Account deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error in DELETE /api/user:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

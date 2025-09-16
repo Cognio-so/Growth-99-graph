@@ -1,13 +1,10 @@
-import { ObjectId } from 'mongodb';
 
 export const UserSchema = {
-  clerkId: { type: String, required: true, unique: true },
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  firstName: { type: String },
-  lastName: { type: String },
-  username: { type: String },
-  imageUrl: { type: String },
-  hasImage: { type: Boolean, default: false },
+  emailVerified: { type: Boolean, default: false },
+  image: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   lastSignInAt: { type: Date },
@@ -21,18 +18,16 @@ export const UserSchema = {
   lastActiveAt: { type: Date, default: Date.now }
 };
 
-export const createUserDocument = (clerkUser) => {
+export const createUserDocument = (betterAuthUser) => {
   return {
-    clerkId: clerkUser.id,
-    email: clerkUser.emailAddresses?.[0]?.emailAddress || '',
-    firstName: clerkUser.firstName || '',
-    lastName: clerkUser.lastName || '',
-    username: clerkUser.username || '',
-    imageUrl: clerkUser.imageUrl || '',
-    hasImage: !!clerkUser.imageUrl,
-    createdAt: new Date(clerkUser.createdAt),
+    id: betterAuthUser.id,
+    name: betterAuthUser.name || '',
+    email: betterAuthUser.email || '',
+    emailVerified: betterAuthUser.emailVerified || false,
+    image: betterAuthUser.image || '',
+    createdAt: new Date(betterAuthUser.createdAt || Date.now()),
     updatedAt: new Date(),
-    lastSignInAt: new Date(clerkUser.lastSignInAt || Date.now()),
+    lastSignInAt: new Date(betterAuthUser.lastSignInAt || Date.now()),
     preferences: {
       theme: 'system',
       notifications: true
@@ -42,16 +37,14 @@ export const createUserDocument = (clerkUser) => {
   };
 };
 
-export const updateUserDocument = (existingUser, clerkUser) => {
+export const updateUserDocument = (existingUser, betterAuthUser) => {
   return {
     ...existingUser,
-    email: clerkUser.emailAddresses?.[0]?.emailAddress || existingUser.email,
-    firstName: clerkUser.firstName || existingUser.firstName,
-    lastName: clerkUser.lastName || existingUser.lastName,
-    username: clerkUser.username || existingUser.username,
-    imageUrl: clerkUser.imageUrl || existingUser.imageUrl,
-    hasImage: !!clerkUser.imageUrl || existingUser.hasImage,
+    name: betterAuthUser.name || existingUser.name,
+    email: betterAuthUser.email || existingUser.email,
+    emailVerified: betterAuthUser.emailVerified || existingUser.emailVerified,
+    image: betterAuthUser.image || existingUser.image,
     updatedAt: new Date(),
-    lastSignInAt: new Date(clerkUser.lastSignInAt || existingUser.lastSignInAt)
+    lastSignInAt: new Date(betterAuthUser.lastSignInAt || existingUser.lastSignInAt)
   };
 };
