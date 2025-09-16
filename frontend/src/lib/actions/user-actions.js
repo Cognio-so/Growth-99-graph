@@ -1,194 +1,152 @@
+'use server';
 import { connectToDatabase } from '@/lib/db';
-import { auth } from '@clerk/nextjs/server';
+import { getServerSession } from '@/lib/get-session';
 
-// Create a new user
-export async function createUser(userData) {
-  try {
-    const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
-    
-    const result = await usersCollection.insertOne({
-      ...userData,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    
-    return { success: true, userId: result.insertedId };
-  } catch (error) {
-    console.error('Error creating user:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Get user by Clerk ID
-export async function getUserByClerkId(clerkId) {
-  try {
-    const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
-    
-    const user = await usersCollection.findOne({ clerkId });
-    return { success: true, user };
-  } catch (error) {
-    console.error('Error getting user:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Get current authenticated user
+// Get current user data
 export async function getCurrentUser() {
   try {
-    const { userId } = await auth();
+    const session = await getServerSession();
     
-    if (!userId) {
+    if (!session?.user) {
       return { success: false, error: 'User not authenticated' };
     }
+
+    const { db } = await connectToDatabase();
+    const user = await db.collection('users').findOne({ 
+      id: session.user.id 
+    });
+
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    // Remove sensitive data
+    const { password, ...userWithoutPassword } = user;
     
-    return await getUserByClerkId(userId);
+    return { success: true, user: userWithoutPassword };
   } catch (error) {
     console.error('Error getting current user:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: 'Internal server error' };
   }
 }
 
-// Update user
-export async function updateUser(clerkId, updateData) {
+// Update current user data
+export async function updateCurrentUser(updateData) {
   try {
+    const session = await getServerSession();
+    
+    if (!session?.user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
     const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
     
-    const result = await usersCollection.updateOne(
-      { clerkId },
-      { 
-        $set: {
-          ...updateData,
-          updatedAt: new Date()
-        }
-      }
+    // Add updatedAt timestamp
+    const dataToUpdate = {
+      ...updateData,
+      updatedAt: new Date()
+    };
+
+    const result = await db.collection('users').updateOne(
+      { id: session.user.id },
+      { $set: dataToUpdate }
     );
-    
+
     if (result.matchedCount === 0) {
       return { success: false, error: 'User not found' };
     }
-    
-    return { success: true, modifiedCount: result.modifiedCount };
+
+    return { success: true, message: 'User updated successfully' };
   } catch (error) {
     console.error('Error updating user:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Update current user
-export async function updateCurrentUser(updateData) {
-  try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return { success: false, error: 'User not authenticated' };
-    }
-    
-    return await updateUser(userId, updateData);
-  } catch (error) {
-    console.error('Error updating current user:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Delete user
-export async function deleteUser(clerkId) {
-  try {
-    const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
-    
-    const result = await usersCollection.deleteOne({ clerkId });
-    
-    if (result.deletedCount === 0) {
-      return { success: false, error: 'User not found' };
-    }
-    
-    return { success: true, deletedCount: result.deletedCount };
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Increment user query count
-export async function incrementUserQueries(clerkId) {
-  try {
-    const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
-    
-    const result = await usersCollection.updateOne(
-      { clerkId },
-      { 
-        $inc: { totalQueries: 1 },
-        $set: { 
-          lastActiveAt: new Date(),
-          updatedAt: new Date()
-        }
-      }
-    );
-    
-    return { success: true, modifiedCount: result.modifiedCount };
-  } catch (error) {
-    console.error('Error incrementing user queries:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: 'Internal server error' };
   }
 }
 
 // Get user statistics
-export async function getUserStats(clerkId) {
+export async function getUserStats() {
   try {
+    const session = await getServerSession();
+    
+    if (!session?.user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
     const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
-    
-    const user = await usersCollection.findOne(
-      { clerkId },
-      { 
-        projection: { 
-          totalQueries: 1, 
-          lastActiveAt: 1, 
-          createdAt: 1,
-          firstName: 1,
-          lastName: 1
-        }
-      }
-    );
-    
+    const user = await db.collection('users').findOne({ 
+      id: session.user.id 
+    });
+
     if (!user) {
       return { success: false, error: 'User not found' };
     }
-    
-    return { success: true, stats: user };
+
+    const stats = {
+      totalQueries: user.totalQueries || 0,
+      createdAt: user.createdAt,
+      lastActiveAt: user.lastActiveAt
+    };
+
+    return { success: true, stats };
   } catch (error) {
     console.error('Error getting user stats:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: 'Internal server error' };
   }
 }
 
-// Get all users (admin function)
-export async function getAllUsers(limit = 50, skip = 0) {
+// Increment user query count
+export async function incrementUserQueries() {
   try {
+    const session = await getServerSession();
+    
+    if (!session?.user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
     const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
     
-    const users = await usersCollection
-      .find({})
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .skip(skip)
-      .toArray();
-    
-    const total = await usersCollection.countDocuments();
-    
-    return { 
-      success: true, 
-      users, 
-      total,
-      hasMore: skip + users.length < total
-    };
+    const result = await db.collection('users').updateOne(
+      { id: session.user.id },
+      { 
+        $inc: { totalQueries: 1 },
+        $set: { lastActiveAt: new Date() }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return { success: false, error: 'User not found' };
+    }
+
+    return { success: true };
   } catch (error) {
-    console.error('Error getting all users:', error);
-    return { success: false, error: error.message };
+    console.error('Error incrementing user queries:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+// Delete user account
+export async function deleteUserAccount() {
+  try {
+    const session = await getServerSession();
+    
+    if (!session?.user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const { db } = await connectToDatabase();
+    
+    // Delete user data
+    const result = await db.collection('users').deleteOne({ 
+      id: session.user.id 
+    });
+
+    if (result.deletedCount === 0) {
+      return { success: false, error: 'User not found' };
+    }
+
+    return { success: true, message: 'Account deleted successfully' };
+  } catch (error) {
+    console.error('Error deleting user account:', error);
+    return { success: false, error: 'Internal server error' };
   }
 }

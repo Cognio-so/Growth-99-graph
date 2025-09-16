@@ -10,7 +10,8 @@ export default function MainInput() {
   const [input, setInput] = useState("")
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [selectedModel, setSelectedModel] = useState("k2") 
+  const [selectedModel, setSelectedModel] = useState("k2")
+  const [selectedCategory, setSelectedCategory] = useState("medical-aesthetics")
   const router = useRouter()
 
   const availableModels = [
@@ -22,6 +23,12 @@ export default function MainInput() {
     { value: "groq-default", label: "Groq Default" }
   ]
 
+  const availableCategories = [
+    { value: "medical-aesthetics", label: "Medical Aesthetics" },
+    { value: "dental", label: "Dental" },
+    { value: "functional-medicine", label: "Functional Medicine" }
+  ]
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!input.trim()) return
@@ -31,13 +38,24 @@ export default function MainInput() {
     try {
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
+      if (file) {
+        const fileData = {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: file.lastModified
+        }
+        sessionStorage.setItem(`file_${sessionId}`, JSON.stringify(fileData))
+      }
+      
       const encodedInput = encodeURIComponent(input)
       const encodedModel = encodeURIComponent(selectedModel)
-      router.push(`/result?session=${sessionId}&message=${encodedInput}&model=${encodedModel}`)
+      const encodedCategory = encodeURIComponent(selectedCategory)
       
+      router.push(`/result?session=${sessionId}&message=${encodedInput}&model=${encodedModel}&category=${encodedCategory}`)
       
     } catch (error) {
-      console.error('Error submitting query:', error)
+      console.error('Error navigating to result page:', error)
     } finally {
       setLoading(false)
     }
@@ -72,7 +90,7 @@ export default function MainInput() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask Growth-AI to create a landing page for my..."
-                className="w-full bg-transparent text-white placeholder-muted-foreground text-lg resize-none outline-none min-h-[40px] max-h-[200px]"
+                className="w-full bg-transparent text-foreground placeholder-muted-foreground text-lg resize-none outline-none min-h-[40px] max-h-[200px]"
                 disabled={loading}
                 rows={2}
               />
@@ -100,6 +118,20 @@ export default function MainInput() {
                 </div>
                 
                 <div className="flex items-center gap-3">
+                  {/* Category Selector */}
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled={loading}>
+                    <SelectTrigger className="w-[160px] h-8 text-xs rounded-full cursor-pointer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCategories.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   {/* Model Selector */}
                   <Select value={selectedModel} onValueChange={setSelectedModel} disabled={loading}>
                     <SelectTrigger className="w-[140px] h-8 text-xs rounded-full cursor-pointer">
