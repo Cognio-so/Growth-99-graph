@@ -5,6 +5,15 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 from llm import get_chat_model
 
+# Import luxury design enhancements
+from luxury_design_enhancements import (
+    get_random_luxury_combination, 
+    get_luxury_font_palette, 
+    get_luxury_color_palette,
+    generate_luxury_css_variables,
+    get_google_fonts_import
+)
+
 # Define paths for both the prompt template and the UI guidelines context file
 PROMPT_TEMPLATE_PATH = Path(__file__).parent.parent / "prompts.md"
 UI_DESIGN_MD_PATH = Path(__file__).parent.parent / "UI_design.md"
@@ -51,9 +60,66 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     has_uploaded_image = gi.get("has_uploaded_image", False)
     uploaded_image_url = gi.get("uploaded_image_url")
     
-    # START WITH COLOR PALETTE - HIGHEST PRIORITY
+    # START WITH LUXURY DESIGN ENHANCEMENTS - RANDOM FONTS AND COLORS
     prompt_parts = []
     
+    # Get random luxury font and color combination
+    font_palette_name, color_palette_name = get_random_luxury_combination()
+    font_palette = get_luxury_font_palette(font_palette_name)
+    color_palette = get_luxury_color_palette(color_palette_name)
+    
+    print(f"🎨 Luxury Design - Font: {font_palette_name}, Color: {color_palette_name}")
+    
+    # Add luxury design enhancements to prompt
+    prompt_parts.extend([
+        "## 🎨 LUXURY DESIGN ENHANCEMENTS - RANDOM FONTS & COLORS",
+        "**CRITICAL**: Use these randomly selected luxury fonts and colors for the ENTIRE UI design.",
+        "**PRIORITY**: These luxury enhancements take priority over JSON schema fonts/colors.",
+        "",
+        f"**SELECTED FONT PALETTE**: {font_palette_name}",
+        f"**SELECTED COLOR PALETTE**: {color_palette_name}",
+        "",
+        "### 🎨 LUXURY FONT SYSTEM:",
+        f"- **Headings**: {font_palette['headings']}",
+        f"- **Subheadings**: {font_palette['subheadings']}",
+        f"- **Body Text**: {font_palette['body']}",
+        f"- **Accent Text**: {font_palette['accent']}",
+        "",
+        "### 🎨 LUXURY COLOR SYSTEM:",
+        f"- **Primary**: {color_palette['primary']}",
+        f"- **Secondary**: {color_palette['secondary']}",
+        f"- **Accent**: {color_palette['accent']}",
+        f"- **Background**: {color_palette['background']}",
+        f"- **Text Primary**: {color_palette['text_primary']}",
+        f"- **Text Secondary**: {color_palette['text_secondary']}",
+        "",
+        "### 🎨 LUXURY GRADIENTS:",
+        f"- **Main Gradient**: {color_palette['gradient']}",
+        f"- **Secondary Gradient**: {color_palette['gradient_secondary']}",
+        f"- **Accent Gradient**: {color_palette['gradient_accent']}",
+        f"- **Mixed Gradient**: {color_palette['gradient_mixed']}",
+        "",
+        "### 🎨 LUXURY CSS VARIABLES:",
+        "```css",
+        generate_luxury_css_variables(color_palette, font_palette),
+        "```",
+        "",
+        "### 🎨 GOOGLE FONTS IMPORT:",
+        "```css",
+        get_google_fonts_import(font_palette),
+        "```",
+        "",
+        "**MANDATORY RULES**:",
+        "- Use the luxury fonts for ALL text elements (headings, body, accents)",
+        "- Use the luxury colors for ALL UI elements (backgrounds, text, buttons, borders)",
+        "- Apply gradients for backgrounds and accent elements",
+        "- Override JSON schema fonts and colors with these luxury selections",
+        "- Keep all other JSON schema specifications (spacing, layout, structure)",
+        "- Apply luxury styling to the ENTIRE application",
+        "",
+    ])
+    
+    # START WITH COLOR PALETTE - HIGHEST PRIORITY
     # Add color palette with ABSOLUTE HIGHEST PRIORITY
     color_palette = gi.get("color_palette", "")
     print(f"🎨 Code Generator - Color Palette: '{color_palette}'")
@@ -510,6 +576,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             "  - Letter spacing (normal, wide, slight wide, etc.)",
             "  - Text transforms (uppercase, none, etc.)",
             "  - Visual descriptions (Large serif elegant, Small uppercase sans-serif, etc.)",
+            "- **OVERRIDE**: Use luxury fonts instead of schema fonts (see luxury design section above)",
             "- Apply typography rules exactly as specified for each text element",
             "",
             "**3. SPACING SPECIFICATIONS:**",
@@ -530,6 +597,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             "- Implement other_visual_notes exactly as described",
             "- Apply component-specific styling (rounded corners, shadows, overlays, etc.)",
             "- Use hover effects and interactive elements as specified",
+            "- **OVERRIDE**: Use luxury colors instead of schema colors (see luxury design section above)",
             "",
             "**6. DESIGN THEME & AESTHETIC:**",
             "- Understand overall design aesthetic from component descriptions",
@@ -708,6 +776,43 @@ Generate ONLY the corrected file content for the problematic files.
 """
     
     return correction_prompt
+def _extract_existing_components_inventory(existing_code: str) -> str:
+    """Extract a detailed inventory of existing components for the prompt."""
+    import re
+    
+    # Find all component imports
+    import_pattern = r'import\s+(\w+)\s+from\s+["\']([^"\']+)["\']'
+    imports = re.findall(import_pattern, existing_code)
+    
+    # Find all component usage
+    usage_pattern = r'<(\w+)\s*[^>]*/?>'
+    usages = re.findall(usage_pattern, existing_code)
+    
+    inventory = []
+    inventory.append("### EXISTING COMPONENTS INVENTORY:")
+    inventory.append("**MANDATORY**: These components MUST be preserved exactly as they are:")
+    inventory.append("")
+    
+    # List imports
+    inventory.append("**EXISTING IMPORTS (DO NOT REMOVE):**")
+    for component_name, import_path in imports:
+        if 'components' in import_path:
+            inventory.append(f"- import {component_name} from '{import_path}'")
+    inventory.append("")
+    
+    # List component usage
+    inventory.append("**EXISTING COMPONENT USAGE (DO NOT REMOVE):**")
+    unique_usages = list(set(usages))
+    for component in unique_usages:
+        if component not in ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'a', 'button', 'input', 'form', 'label']:
+            inventory.append(f"- <{component} />")
+    inventory.append("")
+    
+    inventory.append("**CRITICAL**: ALL of the above components MUST remain in the final code!")
+    inventory.append("**CRITICAL**: Only ADD the new component, do NOT remove any existing ones!")
+    
+    return "\n".join(inventory)
+
 
 def _build_edit_prompt(ctx: Dict[str, Any]) -> str:
     """Build a targeted edit prompt when in editing mode."""
@@ -726,6 +831,9 @@ def _build_edit_prompt(ctx: Dict[str, Any]) -> str:
     target_files = edit_analysis.get('target_files', [])
     target_file_paths = [tf.get('file_path', 'Unknown') if isinstance(tf, dict) else str(tf) for tf in target_files]
     
+    # CRITICAL: Extract existing components inventory
+    components_inventory = _extract_existing_components_inventory(existing_code)
+    
     edit_prompt = f"""
 ## EDIT MODE - TARGETED CHANGES REQUIRED
 
@@ -734,6 +842,8 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
 
 ### USER EDIT REQUEST:
 {user_text}
+
+{components_inventory}
 
 ### EDIT ANALYSIS:
 - **Edit Type**: {edit_analysis.get('edit_type', 'modify_existing')}
@@ -749,7 +859,7 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
         colors = [color.strip() for color in color_palette.split(',') if color.strip()]
         edit_prompt += f"""
 
-### 🎨 COLOR PALETTE FOR EDIT:
+### �� COLOR PALETTE FOR EDIT:
 **USER COLORS**: {color_palette}
 **PARSED**: {', '.join(colors)}
 
@@ -770,6 +880,26 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
     edit_prompt += """
 
 ### 🚨 CRITICAL EDITING INSTRUCTIONS:
+
+#### FOR ADDING NEW COMPONENTS/SECTIONS:
+- **PRESERVE ALL EXISTING IMPORTS**: Keep every single import statement exactly as they are
+- **PRESERVE ALL EXISTING COMPONENTS**: Keep all existing component usage and structure
+- **ONLY ADD NEW IMPORTS**: Add only the new component import that's needed
+- **ONLY ADD NEW COMPONENT USAGE**: Add the new component in the appropriate location
+- **MAINTAIN EXISTING ORDER**: Keep the same component order, just insert the new one where requested
+- **PRESERVE ALL EXISTING FUNCTIONALITY**: Don't change any existing components or their props
+- **CRITICAL**: Do NOT add imports for components that were not explicitly requested
+- **CRITICAL**: Do NOT add imports for components that don't exist (like About, Contact, etc.)
+- **CRITICAL**: Only add the exact component import that matches the user's request
+- **CRITICAL**: If user says "add whyus section", ONLY add import for WhyUs component, NOT About or any other component
+- **CRITICAL**: NEVER hallucinate or assume what components should exist
+- **CRITICAL**: ONLY import components that are explicitly mentioned in the user's request
+- **CRITICAL**: NEVER REMOVE OR DELETE EXISTING COMPONENTS
+- **CRITICAL**: NEVER REMOVE OR DELETE EXISTING IMPORTS
+- **CRITICAL**: NEVER REMOVE OR DELETE EXISTING COMPONENT USAGE
+- **CRITICAL**: ONLY ADD NEW COMPONENTS, NEVER REMOVE EXISTING ONES
+- **CRITICAL**: IF A COMPONENT EXISTS IN THE ORIGINAL CODE, IT MUST STAY IN THE MODIFIED CODE
+- **CRITICAL**: THE ONLY CHANGE SHOULD BE ADDING THE NEW COMPONENT, NOTHING ELSE
 
 #### FOR THEME/STYLING CHANGES:
 - **ONLY modify visual appearance**: colors, backgrounds, borders, shadows, animations, gradients, CSS classes
@@ -804,6 +934,13 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
 6. **Maintain the same code style and structure**
 7. **NEVER change text content when making theme changes**
 8. **ONLY modify styling properties and CSS classes**
+9. **PRESERVE ALL EXISTING IMPORTS - NEVER REMOVE OR MODIFY THEM**
+10. **PRESERVE ALL EXISTING COMPONENT USAGE - NEVER REMOVE OR MODIFY THEM**
+11. **ONLY IMPORT COMPONENTS THAT EXIST OR ARE BEING CREATED**
+12. **NEVER IMPORT COMPONENTS THAT DON'T EXIST**
+13. **NEVER REMOVE EXISTING COMPONENTS**
+14. **NEVER REMOVE EXISTING IMPORTS**
+15. **NEVER REMOVE EXISTING COMPONENT USAGE**
 
 ### EXISTING CODE CONTEXT (MODIFY THIS CODE):
 {existing_code}
@@ -816,11 +953,11 @@ You MUST return ONLY a Python dictionary with this EXACT structure:
     "files_to_correct": [
         {{
             "path": "src/App.jsx",
-            "corrected_content": "// COMPLETE modified file content here"
+            "corrected_content": "// PRESERVE ALL EXISTING IMPORTS AND COMPONENTS, ONLY ADD/MODIFY WHAT'S REQUESTED"
         }},
         {{
             "path": "src/components/Component.jsx",
-            "corrected_content": "// COMPLETE modified file content here"
+            "corrected_content": "// PRESERVE ALL EXISTING IMPORTS AND COMPONENTS, ONLY ADD/MODIFY WHAT'S REQUESTED"
         }}
     ],
     "new_files": [
@@ -834,12 +971,26 @@ You MUST return ONLY a Python dictionary with this EXACT structure:
 
 ### 🔧 IMPORTANT EDITING RULES:
 - **MODIFY EXISTING FILES**: Take the existing code above and make ONLY the requested changes
-- **PRESERVE STRUCTURE**: Keep the same component structure, imports, and layout
+- **PRESERVE ALL IMPORTS**: Keep every single import statement exactly as they are - NEVER remove or modify them
+- **PRESERVE ALL COMPONENTS**: Keep all existing component usage exactly as they are - NEVER remove or modify them
 - **TARGETED CHANGES**: Only change what's needed for the requested modifications
 - **NO REGENERATION**: Do not create new components unless explicitly requested
 - **MAINTAIN FUNCTIONALITY**: Keep all existing features and interactions
 - **EXACT FORMAT**: Return ONLY the Python dictionary, no explanations or markdown
 - **PRESERVE TEXT**: Keep all existing text content unchanged when making theme changes
+- **PRESERVE STRUCTURE**: Keep the same component structure, imports, and layout
+- **VERIFY IMPORTS**: Only import components that exist in the EXISTING COMPONENTS list above
+- **NEVER REMOVE**: Never remove existing components, imports, or functionality
+
+### 📝 ADDING NEW COMPONENT EXAMPLE:
+If user says "add a Gallery section", you should:
+1. Find the existing App.jsx code above
+2. PRESERVE ALL existing imports exactly as they are
+3. ADD ONLY the new import for Gallery component
+4. PRESERVE ALL existing component usage exactly as they are (Header, Hero, Services, WhyUs, etc.)
+5. ADD ONLY the new <Gallery /> component in the appropriate location
+6. Return the modified App.jsx with ALL existing imports and components preserved
+7. NEVER remove any existing components like <WhyUs />, <Services />, etc.
 
 ### 📝 THEME CHANGE EXAMPLE:
 If user says "change to cyberpunk theme", you should:
@@ -857,6 +1008,10 @@ If user says "change to cyberpunk theme", you should:
 - No additional text
 - Just the dictionary structure
 - PRESERVE ALL EXISTING TEXT CONTENT
+- PRESERVE ALL EXISTING IMPORTS
+- PRESERVE ALL EXISTING COMPONENTS
+- ONLY IMPORT EXISTING COMPONENTS
+- NEVER REMOVE EXISTING COMPONENTS
 
 Generate ONLY the corrected file content for the files that need changes.
 """
