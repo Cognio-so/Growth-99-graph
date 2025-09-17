@@ -212,7 +212,7 @@ def _get_schema_by_type(schema_type: str, session_id: str = None) -> tuple[list[
                 print(f"🦷 Using DENTAL schema (schema3.csv) for session {session_id}")
                 return schemas, "schema3.csv"
     
-    elif schema_type == "medspa":
+    elif schema_type == "medspa" or schema_type == "medical-aesthetics":
         # Use schema2.csv for medspa/fashion & beauty with priority system
         if regen_count < MAX_SCHEMA2_USES and SCHEMA2_CSV_PATH.exists():
             schemas = _load_schemas_from_csv(SCHEMA2_CSV_PATH)
@@ -310,7 +310,7 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
             schema = _pick_random_schema_with_fallback(primary_schemas, fallback_schemas)
             if schema:
                 schema_source = f"dental_schema (schema3.csv with fallback)"
-        elif schema_type == "medspa":
+        elif schema_type == "medspa" or schema_type == "medical-aesthetics":
             # For medspa, use priority system with schema2.csv
             if "schema2.csv" in source_info:
                 # If using schema2.csv, have schema.csv as fallback
@@ -359,6 +359,14 @@ def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
 
     ctx["generator_input"] = gi
     state["context"] = ctx
+    schema_to_type = {
+    "schema2.csv": "medspa",
+    "schema3.csv": "dental",
+    "schema.csv": "medspa"
+    }
+    website_type = schema_to_type.get(source_info.lower(), schema_type)
+    state["website_type"] = website_type
+
     return state
 
 # Utility function to manually reset the counter (for testing/debugging)

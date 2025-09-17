@@ -1,4 +1,3 @@
-# nodes/apply_to_Sandbox_node.py
 import os
 import re
 import time
@@ -481,7 +480,7 @@ def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int)
     
     # If we need new sandbox, kill the old one
     if should_create_new_sandbox and _global_sandbox is not None:
-        print("�� FORCING fresh sandbox due to too many failed attempts")
+        print("🔥 FORCING fresh sandbox due to too many failed attempts")
         _kill_existing_sandbox()
         _global_sandbox = None  # Ensure it's completely cleared
         _global_sandbox_info = {}
@@ -783,27 +782,37 @@ def _detect_and_install_dependencies(sandbox: Sandbox, script_content: str) -> L
         # Expanded list to include common UI libraries
     }
     
-    # Simplified dependency extraction
     potential_packages = set()
+    
+    # FIXED: More specific regex to avoid matching random text or numbers.
+    # This now looks for standard import/from patterns.
     patterns = [
-        r'from\s+["\']([^"\']+)["\']',
-        r'import\s+[^;]+\s+from\s+["\']([^"\']+)["\']',
-        r'import\s+["\']([^"\']+)["\']'
+        r'import\s+.*?from\s+["\']([^"\'.\s/][^"\']*)["\']',  # `import {..} from 'package'`
+        r'import\s+["\']([^"\'.\s/][^"\']*)["\']',            # `import 'package'`
     ]
     
     for pattern in patterns:
         matches = re.findall(pattern, script_content)
         for match in matches:
             # Filter out relative paths and built-ins
-            if not match.startswith('.') and not match.startswith('/') and match not in ['react']:
-                package_name = match.split('/')[0]  # Get root package name
-                if package_name in ALLOWED_PACKAGES:  # ONLY ALLOWED PACKAGES
+            if not match.startswith('.') and not match.startswith('/'):
+                package_name = match  # Use the full string from the import
+                if package_name in ALLOWED_PACKAGES:
                     potential_packages.add(package_name)
                 else:
-                    print(f"⚠️ Skipping blocked package: {package_name} (not in whitelist)")
+                    # Also check for root package of scoped packages (e.g., @heroicons/react from @heroicons/react/24/solid)
+                    if '/' in package_name:
+                        root_package = '/'.join(package_name.split('/')[:2])
+                        if root_package in ALLOWED_PACKAGES:
+                            potential_packages.add(root_package)
+                        else:
+                            print(f"⚠️ Skipping blocked package: {package_name} (not in whitelist)")
+                    else:
+                        print(f"⚠️ Skipping blocked package: {package_name} (not in whitelist)")
+
     
     # Filter out built-in modules
-    builtin_packages = {'path', 'fs', 'os', 'child_process'}
+    builtin_packages = {'path', 'fs', 'os', 'child_process', 'react'}
     packages_to_install = [pkg for pkg in potential_packages if pkg not in builtin_packages]
     
     print(f"📦 Found {len(packages_to_install)} packages to install: {', '.join(packages_to_install)}")
@@ -1124,15 +1133,23 @@ def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 
                 print(f"🔍 Available functions in namespace: {list(ns.keys())}")
                 
-                if "create_react_app" in ns and callable(ns["create_react_app"]):
-                    print("✅ Found create_react_app function, calling it...")
-                    result = ns["create_react_app"](sandbox)
+                # FIXED: Dynamically find the main function instead of hardcoding the name.
+                # This handles cases where the LLM names it `create_reality_app` or something similar.
+                main_function = None
+                for key in ns:
+                    if key.startswith("create_") and key.endswith("_app") and callable(ns[key]):
+                        main_function = ns[key]
+                        print(f"✅ Found main generator function: '{key}'")
+                        break
+                
+                if main_function:
+                    result = main_function(sandbox)
                     print(f"✅ Script execution result: {result}")
                     script_execution_success = True
                 else:
-                    print("❌ No create_react_app function found in generated script")
-                    print(f"Available keys in namespace: {list(ns.keys())}")
-                    
+                    print("❌ No valid generator function (e.g., create_react_app) found in the generated script.")
+                    print(f"   Available keys in namespace: {list(ns.keys())}")
+
             except SyntaxError as syntax_error:
                 print(f"❌ Script has syntax errors: {syntax_error}")
                 print(f"Error on line {syntax_error.lineno}: {syntax_error.text}")

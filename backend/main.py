@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import zipfile
 import io
 import tempfile
+from contextlib import asynccontextmanager
 
 # Load environment variables
 load_dotenv()
@@ -22,7 +23,6 @@ os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "lovable-orches
 # Now import LangChain/LangGraph components
 from langsmith import Client
 from langchain_core.runnables import RunnableConfig
-
 from db import engine
 from models import Base
 from schemas import UserQueryOut
@@ -33,31 +33,25 @@ from utlis.docs import save_upload_to_disk, save_logo_to_disk, save_image_to_dis
 # LangGraph imports
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langserve import add_routes
-from contextlib import asynccontextmanager
 import sqlite3
 
-# Import download functionality
-# try:
-#     from download_code import download_conversation_files
-#     print("✅ Successfully imported download_conversation_files")
-# except ImportError as e:
-#     print(f"❌ Failed to import download_conversation_files: {e}")
-#     download_conversation_files = None
-
+# FIXED: Replaced deprecated on_event with lifespan manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Handles application startup and shutdown events."""
     # Startup
     print("🔄 Setting up shared checkpointer...")
+    # Any other startup logic can go here
     yield
     # Shutdown
-    if hasattr(checkpointer, 'conn'):
+    if 'checkpointer' in globals() and hasattr(checkpointer, 'conn'):
         checkpointer.conn.close()
-    print("🔄 Closed checkpointer connection")
+        print("🔄 Closed checkpointer connection")
 
 app = FastAPI(
     title="Lovable-like Orchestrator", 
     version="0.5.0",
-    lifespan=lifespan
+    lifespan=lifespan  # Use the new lifespan manager
 )
 
 # Configure CORS
@@ -195,16 +189,10 @@ checkpointer = setup_checkpointer()
 # Compile the graph with shared checkpointer
 compiled_graph = graph.compile(checkpointer=checkpointer)
 
-@app.on_event("startup")
-def _startup():
-    # Database is already created above, just verify LangSmith connection
-    try:
-        client = Client()
-        print(f"✅ Connected to LangSmith. Project: {os.getenv('LANGCHAIN_PROJECT')}")
-        print(f"✅ API Key configured: {'Yes' if os.getenv('LANGCHAIN_API_KEY') else 'No'}")
-    except Exception as e:
-        print(f"⚠️  LangSmith connection issue: {e}")
-        print("Make sure LANGCHAIN_API_KEY is set in your .env file")
+# This function is no longer needed with the lifespan manager
+# @app.on_event("startup")
+# def _startup():
+#     ...
 
 @app.post("/api/query", response_model=UserQueryOut)
 async def accept_query(
