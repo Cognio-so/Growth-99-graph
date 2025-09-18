@@ -59,7 +59,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     # Get uploaded image information
     has_uploaded_image = gi.get("has_uploaded_image", False)
     uploaded_image_url = gi.get("uploaded_image_url")
-    
+    is_edit_mode = gi.get("is_edit_mode", False)
     # START WITH LUXURY DESIGN ENHANCEMENTS
     prompt_parts = []
     
@@ -71,53 +71,71 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     print(f"🎨 Luxury Design - Font: {font_palette_name}, Color: {color_palette_name}")
     
     # Add luxury design enhancements to prompt
-    prompt_parts.extend([
-        "## 🎨 LUXURY DESIGN ENHANCEMENTS - SMART FONTS & COLORS",
-        "**CRITICAL**: Use these intelligently selected luxury fonts and colors for the ENTIRE UI design.",
-        "**PRIORITY**: These luxury enhancements take priority over JSON schema fonts/colors.",
-        "",
-        f"**SELECTED FONT PALETTE**: {font_palette_name}",
-        f"**SELECTED COLOR PALETTE**: {color_palette_name}",
-        "",
-        "### 🎨 LUXURY FONT SYSTEM:",
-        f"- **Headings**: {font_palette['headings']}",
-        f"- **Subheadings**: {font_palette['subheadings']}",
-        f"- **Body Text**: {font_palette['body']}",
-        f"- **Accent Text**: {font_palette['accent']}",
-        "",
-        "### 🎨 LUXURY COLOR SYSTEM:",
-        f"- **Primary**: {color_palette['primary']}",
-        f"- **Secondary**: {color_palette['secondary']}",
-        f"- **Accent**: {color_palette['accent']}",
-        f"- **Background**: {color_palette['background']}",
-        f"- **Text Primary**: {color_palette['text_primary']}",
-        f"- **Text Secondary**: {color_palette['text_secondary']}",
-        "",
-        "### 🎨 LUXURY GRADIENTS:",
-        f"- **Main Gradient**: {color_palette['gradient']}",
-        f"- **Secondary Gradient**: {color_palette['gradient_secondary']}",
-        f"- **Accent Gradient**: {color_palette['gradient_accent']}",
-        f"- **Mixed Gradient**: {color_palette['gradient_mixed']}",
-        "",
-        "### 🎨 LUXURY CSS VARIABLES:",
-        "```css",
-        generate_luxury_css_variables(color_palette, font_palette),
-        "```",
-        "",
-        "### 🎨 GOOGLE FONTS IMPORT:",
-        "```css",
-        get_google_fonts_import(font_palette),
-        "```",
-        "",
-        "**MANDATORY RULES**:",
-        "- Use the luxury fonts for ALL text elements (headings, body, accents)",
-        "- Use the luxury colors for ALL UI elements (backgrounds, text, buttons, borders)",
-        "- Apply gradients for backgrounds and accent elements",
-        "- Override JSON schema fonts and colors with these luxury selections",
-        "- Keep all other JSON schema specifications (spacing, layout, structure)",
-        "- Apply luxury styling to the ENTIRE application",
-        "",
-    ])
+    if not is_edit_mode:
+    # Get random luxury font and color combination
+            font_palette_name, color_palette_name = get_random_luxury_combination()
+            font_palette = get_luxury_font_palette(font_palette_name)
+            color_palette = get_luxury_color_palette(color_palette_name)
+            
+            print(f"🎨 Luxury Design - Font: {font_palette_name}, Color: {color_palette_name}")
+            
+            # Add luxury design enhancements to prompt
+            prompt_parts.extend([
+                "## 🎨 LUXURY DESIGN ENHANCEMENTS - RANDOM FONTS & COLORS",
+                "**CRITICAL**: Use these randomly selected luxury fonts and colors for the ENTIRE UI design.",
+                "**PRIORITY**: These luxury enhancements take priority over JSON schema fonts/colors.",
+                "",
+                f"**SELECTED FONT PALETTE**: {font_palette_name}",
+                f"**SELECTED COLOR PALETTE**: {color_palette_name}",
+                "",
+                "### 🎨 LUXURY FONT SYSTEM:",
+                f"- **Headings**: {font_palette['headings']}",
+                f"- **Subheadings**: {font_palette['subheadings']}",
+                f"- **Body Text**: {font_palette['body']}",
+                f"- **Accent Text**: {font_palette['accent']}",
+                "",
+                "### 🎨 LUXURY COLOR SYSTEM:",
+                f"- **Primary**: {color_palette['primary']}",
+                f"- **Secondary**: {color_palette['secondary']}",
+                f"- **Accent**: {color_palette['accent']}",
+                f"- **Background**: {color_palette['background']}",
+                f"- **Text Primary**: {color_palette['text_primary']}",
+                f"- **Text Secondary**: {color_palette['text_secondary']}",
+                "",
+                "### 🎨 LUXURY GRADIENTS:",
+                f"- **Main Gradient**: {color_palette['gradient']}",
+                f"- **Secondary Gradient**: {color_palette['gradient_secondary']}",
+                f"- **Accent Gradient**: {color_palette['gradient_accent']}",
+                f"- **Mixed Gradient**: {color_palette['gradient_mixed']}",
+                "",
+                "### 🎨 LUXURY CSS VARIABLES:",
+                "```css",
+                generate_luxury_css_variables(color_palette, font_palette),
+                "```",
+                "",
+                "### 🎨 GOOGLE FONTS IMPORT:",
+                "```css",
+                get_google_fonts_import(font_palette),
+                "```",
+                "",
+                "**MANDATORY RULES**:",
+                "- Use the luxury fonts for ALL text elements (headings, body, accents)",
+                "- Use the luxury colors for ALL UI elements (backgrounds, text, buttons, borders)",
+                "- Apply gradients for backgrounds and accent elements",
+                "- Override JSON schema fonts and colors with these luxury selections",
+                "- Keep all other JSON schema specifications (spacing, layout, structure)",
+                "- Apply luxury styling to the ENTIRE application",
+                "",
+            ])
+    else:
+        # EDIT MODE: Focus on surgical changes
+        prompt_parts.extend([
+            "## 🎯 SURGICAL EDIT MODE - PRESERVE CONTENT, TARGET STYLING ONLY",
+            "**CRITICAL**: This is an edit operation. Preserve ALL existing content and make only targeted styling changes.",
+            "**FORBIDDEN**: Do not apply luxury design systems, color palettes, or wholesale theme changes.",
+            "**FOCUS**: Make only the specific styling changes requested by the user.",
+            ""
+        ])
     
     # START WITH COLOR PALETTE - HIGHEST PRIORITY
     # Add color palette with ABSOLUTE HIGHEST PRIORITY
