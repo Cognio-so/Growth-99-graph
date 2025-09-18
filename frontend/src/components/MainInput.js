@@ -19,7 +19,7 @@ export default function MainInput() {
     { value: "claude", label: "Claude 3.5 Sonnet" },
     { value: "claude-haiku", label: "Claude 3.5 Haiku" },
     { value: "gpt-4o", label: "GPT-4o" },
-    { value: "glm-4.5", label: "GLM-4.5" },
+    { value: "gpt-5", label: "gpt-5" },
     { value: "groq-default", label: "Groq Default" }
   ]
 

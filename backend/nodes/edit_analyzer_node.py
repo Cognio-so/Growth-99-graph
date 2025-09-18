@@ -79,9 +79,25 @@ def _prepare_image_for_responses(image_url: str) -> str:
     ✅ Development: if URL is localhost/127.0.0.1, fallback to base64-encoded data URI.
     """
     # If already a data URL, just return it
-    if image_url.startswith("data:"):
-        return image_url
 
+    if "railway.app/uploads/" in image_url:
+        print("⚠️ Railway uploads URL detected — converting to base64 for reliability")
+        try:
+            local_filename = image_url.split("/uploads/")[-1]
+            local_path = os.path.join("uploads", local_filename)
+            if not os.path.exists(local_path):
+                raise FileNotFoundError(f"Local file not found at {local_path}")
+
+            mime, _ = mimetypes.guess_type(local_path)
+            mime = mime or "image/png"
+            with open(local_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            print(f"✅ Converted Railway upload to base64: {local_filename} ({len(b64)//1024} KB)")
+            return f"data:{mime};base64,{b64}"
+        except Exception as e:
+            print(f"❌ Could not read Railway uploads file: {e}")
+            print("ℹ️ Falling back to original URL (may fail in API)")
+            return image_url
     # If it's a remote URL and not localhost, use directly (ideal for production)
     if image_url.startswith(("http://", "https://")):
         if "localhost" in image_url or "127.0.0.1" in image_url:
@@ -103,7 +119,8 @@ def _prepare_image_for_responses(image_url: str) -> str:
                 print("ℹ️ Falling back to returning original localhost URL (may fail in API)")
                 return image_url
         return image_url  # Production remote URL → safe to use directly
-
+    if image_url.startswith("data:"):
+        return image_url
     # Otherwise assume it's a plain local file path (dev mode)
     try:
         mime, _ = mimetypes.guess_type(image_url)
