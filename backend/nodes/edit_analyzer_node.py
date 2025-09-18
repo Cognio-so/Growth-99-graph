@@ -1,4 +1,5 @@
 # nodes/edit_analyzer.py
+import mimetypes
 from typing import Dict, Any, List
 from graph_types import GraphState
 from llm import get_chat_model, call_llm_json
@@ -62,6 +63,233 @@ SPECIAL THEME DETECTION:
 - "add theme toggle" → New functionality affecting entire UI
 - Color mentions without section → Global color scheme changes
 """
+# --- Vision intent + Responses API helpers ---
+
+import os, re, json, base64
+from openai import OpenAI
+
+_client = OpenAI()
+import os
+import os, base64, mimetypes
+
+def _prepare_image_for_responses(image_url: str) -> str:
+    """
+    Prepares an image reference for OpenAI Responses API.
+    ✅ Production: uses the public image URL directly.
+    ✅ Development: if URL is localhost/127.0.0.1, fallback to base64-encoded data URI.
+    """
+    # If already a data URL, just return it
+    if image_url.startswith("data:"):
+        return image_url
+
+    # If it's a remote URL and not localhost, use directly (ideal for production)
+    if image_url.startswith(("http://", "https://")):
+        if "localhost" in image_url or "127.0.0.1" in image_url:
+            print("⚠️ Localhost image detected — converting to base64 for dev mode")
+            try:
+                # Derive local file path from URL
+                local_filename = image_url.split("/uploads/")[-1]
+                local_path = os.path.join("uploads", local_filename)
+                if not os.path.exists(local_path):
+                    raise FileNotFoundError(f"Local file not found: {local_path}")
+                
+                mime, _ = mimetypes.guess_type(local_path)
+                mime = mime or "image/png"
+                with open(local_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                return f"data:{mime};base64,{b64}"
+            except Exception as e:
+                print(f"❌ Could not read local file for vision API: {e}")
+                print("ℹ️ Falling back to returning original localhost URL (may fail in API)")
+                return image_url
+        return image_url  # Production remote URL → safe to use directly
+
+    # Otherwise assume it's a plain local file path (dev mode)
+    try:
+        mime, _ = mimetypes.guess_type(image_url)
+        mime = mime or "image/png"
+        with open(image_url, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+        print("ℹ️ Local file path detected — encoded as base64")
+        return f"data:{mime};base64,{b64}"
+    except Exception as e:
+        print(f"❌ Failed to read image file at {image_url}: {e}")
+        return image_url  # fallback to original path
+
+
+def _call_openai_vision_responses(image_url: str, prompt: str) -> str:
+    """
+    Official Responses API call (gpt-4.1) using input_text + input_image.
+    Returns resp.output_text (string).
+    """
+    img = _prepare_image_for_responses(image_url)
+    resp = _client.responses.create(
+        model="gpt-4o",
+        input=[{
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_image", "image_url": img},
+            ],
+        }],
+    )
+    # Unified access to the text body
+    return getattr(resp, "output_text", "") or ""
+
+def _extract_vision_design_specs(image_url: str, user_query: str) -> Dict[str, Any]:
+    """
+    Analyze the image and extract extremely detailed, actionable design specs as raw text.
+    """
+    vision_prompt = f"""
+You are a **senior UI/UX design analyst**. Look carefully at the image and produce a 
+**complete, detailed design specification** that a React + Tailwind engineer can implement 
+to recreate the look and feel EXACTLY.
+
+User Query: {user_query}
+
+Provide a comprehensive text description covering all these aspects:
+
+**LAYOUT STRUCTURE:**
+- Describe the overall page layout and structure
+- Detail the header section (navigation, logo placement, menu items)
+- Describe the hero section (image positions, text placement, call-to-action buttons)
+- List all sections with their layout details (grid/flex layouts, number of columns/rows, spacing)
+- Describe the footer structure and links
+
+**COLOR PALETTE:**
+- Primary colors with HEX codes
+- Secondary colors with HEX codes  
+- Accent colors with HEX codes
+- Background colors with HEX codes
+- Text colors (primary and secondary) with HEX codes
+
+**TYPOGRAPHY:**
+- Primary font family name
+- Secondary font family name
+- Heading styles (h1, h2, etc.) with font sizes, weights, and line heights
+- Body text styles with font sizes and weights
+
+**VISUAL ELEMENTS:**
+- Button styles (shape, border radius, colors, hover states)
+- Card designs (shadows, borders, padding)
+- Icon styles and descriptions
+- Image treatments (aspect ratios, corner radius, overlays)
+
+**DESIGN STYLE:**
+- Overall design aesthetic (modern/minimalist/luxury/corporate/creative/etc)
+
+**COMPONENTS:**
+- List all major components (Header, Hero, FeatureGrid, CTA, Footer, etc.)
+
+**IMPLEMENTATION NOTES:**
+- Important constraints for the developer
+- Exact spacing, padding, and border radius values
+- Responsive behavior notes
+- Visual hierarchy details (which elements are most prominent)
+
+RULES:
+- ALWAYS include color palette with HEX codes
+- ALWAYS include at least one font name (guess if needed: e.g. sans-serif, serif)
+- DESCRIBE spacing, padding, border radius, shadows clearly
+- Capture **visual hierarchy** (which element is most prominent)
+- Be verbose: include as many details as possible
+- Output as detailed text description — no JSON formatting
+"""
+
+    raw = _call_openai_vision_responses(image_url, vision_prompt)
+
+    # Return the raw text analysis directly
+    return {"raw_analysis": raw}
+
+
+from llm import get_chat_model, call_llm_json  # you already import this in edit_analyzer
+
+def _analyze_image_intent(user_text: str, image_url: str) -> Dict[str, Any]:
+    """
+    Decide between direct UI usage vs. 'recreate UI like this image'.
+    First uses LLM classification, falls back to keyword check if LLM fails.
+    """
+    try:
+        user_text_lower = user_text.lower()
+
+        # 1️⃣ LLM-based intent classification
+        try:
+            chat = get_chat_model("groq-default", temperature=0.1)
+            classification_prompt = f"""
+Analyze this user query and tell if they want to:
+1. Add the uploaded image directly to the UI (like hero image, gallery)
+2. Recreate / restyle UI to look like the uploaded image
+
+Respond in JSON:
+{{
+  "intent": "direct_usage" | "vision_analysis",
+  "reason": "short explanation"
+}}
+
+User Query: "{user_text}"
+"""
+            llm_result = call_llm_json(chat, "You are an intent classifier for image usage.", classification_prompt)
+
+            if isinstance(llm_result, dict) and llm_result.get("intent") in ["direct_usage", "vision_analysis"]:
+                intent = llm_result["intent"]
+                print(f"🤖 LLM Intent Analysis: {intent} ({llm_result.get('reason', '')})")
+
+                if intent == "vision_analysis":
+                    analysis = _extract_vision_design_specs(image_url, user_text)
+                    return {
+                        "intent": "vision_analysis",
+                        "use_for_vision": True,
+                        "use_in_ui": False,
+                        "vision_analysis": analysis
+                    }
+                else:
+                    return {
+                        "intent": "direct_usage",
+                        "use_for_vision": False,
+                        "use_in_ui": True,
+                        "vision_analysis": None
+                    }
+
+        except Exception as e:
+            print(f"⚠️ LLM intent classification failed, falling back to keyword match: {e}")
+
+        # 2️⃣ Keyword fallback (existing logic)
+        vision_keywords = [
+            "like this image", "like this", "make it like this",
+            "make the hero section like this", "match this", "match this style",
+            "copy this design", "recreate this", "based on this image",
+            "inspired by", "mimic this", "look like this", "replicate this ui"
+        ]
+        is_vision = any(k in user_text_lower for k in vision_keywords)
+
+        if is_vision:
+            print("🔍 Keyword fallback: Vision analysis intent detected")
+            analysis = _extract_vision_design_specs(image_url, user_text)
+            return {
+                "intent": "vision_analysis",
+                "use_for_vision": True,
+                "use_in_ui": False,
+                "vision_analysis": analysis
+            }
+
+        # Default: direct usage
+        print("🖼️ No vision keywords found - defaulting to direct UI usage")
+        return {
+            "intent": "direct_usage",
+            "use_for_vision": False,
+            "use_in_ui": True,
+            "vision_analysis": None
+        }
+
+    except Exception as e:
+        print(f"❌ Error in image intent analysis: {e}")
+        return {
+            "intent": "direct_usage",
+            "use_for_vision": False,
+            "use_in_ui": True,
+            "vision_analysis": None
+        }
+
 
 def _capture_existing_code_context(state: GraphState) -> str:
     """Capture the existing code context from the current sandbox."""
@@ -467,20 +695,87 @@ def edit_analyzer(state: GraphState) -> GraphState:
                 gi["has_uploaded_logo"] = False
         
         # CRITICAL: Include uploaded image in generator input for editing
+        # CRITICAL: Include uploaded image in generator input for editing
         if image:
+            print("🖼️ Processing uploaded image with intent analysis.")
             image_url = _process_uploaded_image_for_edit(image)
+
             if image_url:
-                gi.update({
-                    "uploaded_image_url": image_url,
-                    "has_uploaded_image": True,
-                    "image_filename": image.get("filename", "image")
-                })
-                print(f"✅ Image included in edit generator input: {image_url}")
+                # Decide: add image to UI vs. recreate UI like the image
+                intent_analysis = _analyze_image_intent(user_text, image_url)
+
+                if intent_analysis["use_for_vision"]:
+                    vision_data = intent_analysis["vision_analysis"]
+                    ...
+                    edit_prompt = f"""
+                    You are an expert React + Tailwind UI/UX edit analyzer.
+                    Analyze the following together and produce a detailed description of required code changes.
+
+                    User Query:
+                    {user_text}
+
+                    Vision Analysis (design extracted from uploaded image):
+                    {vision_data['raw_analysis']}
+                    
+                    Provide a very detailed description of layout, typography, colors, responsiveness.
+                    DO NOT output JSON — just natural language describing what to change.
+                    """
+
+                    chat = get_chat_model("groq-default", temperature=0.1)
+                    edit_text = chat.invoke([{"role": "user", "content": edit_prompt}]).content
+
+                    # ✅ Instead of hardcoding, merge with normal edit_analysis:
+                    edit_analysis["changes_description"] = (
+                            f"Apply ONLY layout, color palette, spacing, typography, and component arrangement "
+                            f"from the vision analysis to the existing UI. KEEP all existing text and content unless "
+                            f"explicitly missing — in that case, generate filler content relevant to the current website type.\n\n"
+                            f"=== DESIGN REFERENCE START ===\n{edit_text}\n=== DESIGN REFERENCE END ==="
+                        )
+                    edit_analysis["scope"] = "section_specific"
+                    edit_analysis["edit_type"] = "modify_styling"
+                    image_requirements_from_vision = _detect_image_requirements(edit_text, existing_code)
+
+                    generated_images_from_vision = []
+                    if image_requirements_from_vision:
+                        print(f"🖼️ Detected {len(image_requirements_from_vision)} image requirements from vision analysis")
+                        generated_images_from_vision = _generate_images_for_edit(image_requirements_from_vision, state)
+
+                    # Attach generated images to edit_analysis so code_generator can use them
+                    edit_analysis["image_requirements"] = image_requirements_from_vision
+                    edit_analysis["generated_images"] = generated_images_from_vision
+                    ctx["edit_analysis"] = edit_analysis
+
+                                    
+                    # Pass vision data to generator node as well
+                    gi.update({
+                            "edit_request": True,
+                            "user_text": user_text,
+                            "edit_analysis": edit_analysis,  # pass this forward
+                            "is_edit_mode": True,
+                            "existing_code": existing_code,
+                            "has_vision_analysis": True,
+                            "vision_image_url": image_url,
+                            "use_image_for_vision": True,
+                            "use_image_in_ui": False,
+                            "generated_images": generated_images_from_vision
+                        })
+
+
+                else:
+                    print("🖼️ Image will be used directly in UI")
+                    gi.update({
+                        "uploaded_image_url": image_url,
+                        "has_uploaded_image": True,
+                        "image_filename": image.get("filename", "image"),
+                        "use_image_for_vision": False,
+                        "use_image_in_ui": True
+                    })
             else:
                 gi["has_uploaded_image"] = False
         else:
             gi["has_uploaded_image"] = False
-        
+
+                
         # ENHANCED: Include document extraction information in generator input
         if has_document_info:
             print("📋 Including document business information in edit request")

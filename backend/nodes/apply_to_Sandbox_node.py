@@ -778,7 +778,7 @@ def _detect_and_install_dependencies(sandbox: Sandbox, script_content: str) -> L
     ALLOWED_PACKAGES = {
         'react-dom', 'lucide-react', 'react-icons', '@heroicons/react',
         'framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-slot',
-        'class-variance-authority', 'clsx', 'tailwind-merge'
+        'class-variance-authority', 'clsx', 'tailwind-merge', 'react-router-dom', 'react-router'
         # Expanded list to include common UI libraries
     }
     

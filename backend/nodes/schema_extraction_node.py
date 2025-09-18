@@ -10,7 +10,7 @@ SCHEMA3_CSV_PATH = Path(__file__).parent.parent / "schema3.csv"  # Dental & Medi
 REGENERATION_COUNTER_FILE = Path(__file__).parent.parent / "regeneration_counter.json"
 
 # Maximum uses of schema2.csv before falling back to schema.csv
-MAX_SCHEMA2_USES = 7
+MAX_SCHEMA2_USES = 3
 
 # These are used ONLY if the CSV file is not found or is empty.
 DEFAULT_ROWS = [
