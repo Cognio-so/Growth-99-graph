@@ -24,7 +24,7 @@ MODEL_ALIASES: Dict[str, Dict[str, str]] = {
     "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
     "gpt-4o-mini": {"provider": "openai", "model": "gpt-4o-mini"},
     "gpt-4-turbo": {"provider": "openai", "model": "gpt-4-turbo"},
-    "gpt-5": {"provider": "openai", "model": "gpt-5"},
+    "gpt-5": {"provider": "openai", "model": "gpt-5-nano"},
     "claude-3-sonnet-20240229": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240229"},
     "claude-3-5-sonnet-20240620": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
     "sonnet-4": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
@@ -64,7 +64,7 @@ def _make_groq(model_id: str, **kwargs) -> ChatGroq:
     return ChatGroq(
         api_key=os.getenv("GROQ_API_KEY"),
         model=model_id,
-        temperature=kwargs.get("temperature", 0.6),
+        temperature=kwargs.get("temperature", 0.2),
         max_tokens=kwargs.get("max_tokens", 16384),
         streaming=False,  # keep non-streaming for .invoke stability
     )
@@ -74,7 +74,7 @@ def _make_openrouter(model_id: str, **kwargs) -> ChatOpenAI:
         model="moonshotai/kimi-k2",  # Correct OpenRouter model ID
         temperature=kwargs.get("temperature", 0.9),
         max_retries=kwargs.get("max_retries", 2),
-        timeout=kwargs.get("timeout", 60),
+        timeout=kwargs.get("timeout", 120),
         openai_api_base="https://openrouter.ai/api/v1",
         openai_api_key=os.getenv("OPENROUTER_API_KEY"),
     )
@@ -84,7 +84,7 @@ def _make_openai(model_id: str, **kwargs) -> ChatOpenAI:
         model=model_id,
         temperature=kwargs.get("temperature", 0.3),
         max_retries=kwargs.get("max_retries", 2),
-        timeout=kwargs.get("timeout", 60),
+        timeout=kwargs.get("timeout", 120),
     )
 
 def _make_anthropic(model_id: str, **kwargs) -> ChatAnthropic:
