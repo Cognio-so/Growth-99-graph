@@ -1,4 +1,3 @@
-# nodes/code_generator_node.py
 import json
 import re
 from typing import Dict, Any, Optional, List
@@ -8,6 +7,7 @@ from llm import get_chat_model
 # Import luxury design enhancements
 from luxury_design_enhancements import (
     get_random_luxury_combination, 
+    get_smart_luxury_combination,
     get_luxury_font_palette, 
     get_luxury_color_palette,
     generate_luxury_css_variables,
@@ -60,11 +60,11 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     has_uploaded_image = gi.get("has_uploaded_image", False)
     uploaded_image_url = gi.get("uploaded_image_url")
     
-    # START WITH LUXURY DESIGN ENHANCEMENTS - RANDOM FONTS AND COLORS
+    # START WITH LUXURY DESIGN ENHANCEMENTS
     prompt_parts = []
     
-    # Get random luxury font and color combination
-    font_palette_name, color_palette_name = get_random_luxury_combination()
+    # CORRECTED: Use smart combination based on user_text instead of random
+    font_palette_name, color_palette_name = get_smart_luxury_combination(user_text)
     font_palette = get_luxury_font_palette(font_palette_name)
     color_palette = get_luxury_color_palette(color_palette_name)
     
@@ -72,8 +72,8 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     
     # Add luxury design enhancements to prompt
     prompt_parts.extend([
-        "## 🎨 LUXURY DESIGN ENHANCEMENTS - RANDOM FONTS & COLORS",
-        "**CRITICAL**: Use these randomly selected luxury fonts and colors for the ENTIRE UI design.",
+        "## 🎨 LUXURY DESIGN ENHANCEMENTS - SMART FONTS & COLORS",
+        "**CRITICAL**: Use these intelligently selected luxury fonts and colors for the ENTIRE UI design.",
         "**PRIORITY**: These luxury enhancements take priority over JSON schema fonts/colors.",
         "",
         f"**SELECTED FONT PALETTE**: {font_palette_name}",
@@ -121,18 +121,18 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     
     # START WITH COLOR PALETTE - HIGHEST PRIORITY
     # Add color palette with ABSOLUTE HIGHEST PRIORITY
-    color_palette = gi.get("color_palette", "")
-    print(f"🎨 Code Generator - Color Palette: '{color_palette}'")
-    if color_palette and color_palette.strip():
+    color_palette_user = gi.get("color_palette", "")
+    print(f"🎨 Code Generator - Color Palette: '{color_palette_user}'")
+    if color_palette_user and color_palette_user.strip():
         print(f"✅ Adding color palette to LLM prompt")
         
         # Parse colors from the palette
-        colors = [color.strip() for color in color_palette.split(',') if color.strip()]
+        colors = [color.strip() for color in color_palette_user.split(',') if color.strip()]
         print(f"🎨 Parsed colors: {colors}")
         
         prompt_parts.extend([
             "## 🎨 COLOR PALETTE - HIGHEST PRIORITY",
-            f"**USER COLORS**: {color_palette}",
+            f"**USER COLORS**: {color_palette_user}",
             f"**PARSED**: {', '.join(colors)}",
             "",
             "**RULES**:",
@@ -360,10 +360,10 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             ])
         
         # Color palette from document
-        color_palette = gi.get("extracted_color_palette")
-        if color_palette:
+        color_palette_doc = gi.get("extracted_color_palette")
+        if color_palette_doc:
             prompt_parts.extend([
-                f"**DOCUMENT COLOR PALETTE**: {color_palette}",
+                f"**DOCUMENT COLOR PALETTE**: {color_palette_doc}",
                 "**CRITICAL**: Use these colors from the document, but harmonize with uploaded logo colors if logo is provided.",
                 "**PRIORITY**: Uploaded logo colors > Document colors > User query colors > JSON schema colors > UI guidelines",
                 "",
@@ -381,10 +381,10 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
         
         # Logo URL from document (only if no uploaded logo)
         if not has_uploaded_logo:
-            logo_url = gi.get("extracted_logo_url")
-            if logo_url:
+            logo_url_doc = gi.get("extracted_logo_url")
+            if logo_url_doc:
                 prompt_parts.extend([
-                    f"**DOCUMENT LOGO URL**: {logo_url}",
+                    f"**DOCUMENT LOGO URL**: {logo_url_doc}",
                     "**USAGE**: Use this logo from the document since no uploaded logo was provided.",
                     "**STYLING**: Apply the same professional styling as uploaded logos.",
                     "",
@@ -561,7 +561,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             schema_str,
             "```",
             "",
-            "### 🔍 MANDATORY SCHEMA ANALYSIS - EXTRACT ALL DESIGN DETAILS:",
+            "###  MANDATORY SCHEMA ANALYSIS - EXTRACT ALL DESIGN DETAILS using :",
             "",
             "**1. COLOR SPECIFICATIONS:**",
             "- Extract ALL colors from each component (background, text, accent, etc.)",
@@ -605,7 +605,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             "- Preserve design intent and professional quality",
             "- Ensure cohesive user experience",
             "",
-            "### 🎯 SCHEMA UTILIZATION PRIORITY SYSTEM:",
+            "###  SCHEMA UTILIZATION PRIORITY SYSTEM:",
             "",
             "**WHEN USER SPECIFIES DESIGN PREFERENCES:**",
             "- User preferences OVERRIDE conflicting schema specifications",
@@ -617,7 +617,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             "- Colors, typography, spacing, visual styles - implement everything",
             "- Schema is your complete design system - use it fully",
             "",
-            "### 📐 COMPONENT-SPECIFIC IMPLEMENTATION:",
+            "###  COMPONENT-SPECIFIC IMPLEMENTATION:",
             "",
             "**FOR EACH COMPONENT IN SCHEMA:**",
             "1. Read component type and description",
@@ -628,18 +628,18 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             "6. Add other_visual_notes styling",
             "7. Ensure component fits page structure order",
             "",
-            "### 🎨 DESIGN COMPLETENESS CHECKLIST:",
-            "✅ All schema colors implemented exactly",
-            "✅ All typography specifications applied",
-            "✅ All spacing rules followed precisely",
-            "✅ All visual styling notes included",
-            "✅ Component structure matches schema",
-            "✅ Page order follows schema structure",
-            "✅ Image styles implemented as specified",
-            "✅ Hover effects and interactions included",
-            "✅ Professional quality maintained throughout",
+            "###  DESIGN COMPLETENESS CHECKLIST:",
+            " All schema colors implemented exactly",
+            " All typography specifications applied",
+            " All spacing rules followed precisely",
+            " All visual styling notes included",
+            " Component structure matches schema",
+            " Page order follows schema structure",
+            " Image styles implemented as specified",
+            " Hover effects and interactions included",
+            " Professional quality maintained throughout",
             "",
-            "### 🧠 INTELLIGENT DESIGN SYNTHESIS:",
+            "###  INTELLIGENT DESIGN SYNTHESIS:",
             "",
             "**YOUR ANALYSIS PROCESS:**",
             "1. **EXTRACT EVERYTHING**: Pull ALL design details from schema (colors, fonts, spacing, styles)",
@@ -649,7 +649,7 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
             "",
             "**REMEMBER**: The JSON schema is a COMPLETE design system. Use every detail it provides unless user explicitly requests different styling for specific elements.",
             "",
-            "### 🗺️ MANDATORY MAP INTEGRATION FOR CONTACT COMPONENTS:",
+            "###  MANDATORY MAP INTEGRATION FOR CONTACT COMPONENTS:",
             "",
             "**CRITICAL REQUIREMENT**: For ANY contact-related components, ALWAYS include a map:",
             "",
@@ -706,16 +706,16 @@ def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     
     prompt_parts.extend([
         "",
-        "## 🎨 UI GUIDELINES - DESIGN PRINCIPLES & POLISH",
+        "##  UI GUIDELINES - DESIGN PRINCIPLES & POLISH",
         "**MANDATORY**: You MUST use the UI guidelines for layout, spacing, typography, and design principles.",
         "",
-        "## 🔄 MANDATORY INPUT SYNTHESIS",
+        "##  MANDATORY INPUT SYNTHESIS",
         "**CRITICAL**: You MUST combine ALL inputs together:",
-        "1. 🎯 USER PROMPT - Implement specific requirements (themes, colors, features) GLOBALLY",
-        "2. 📋 JSON SCHEMA - Use for component structure and data organization",
-        "3. 🎨 UI GUIDELINES - Apply for design principles and professional polish",
-        "4. 🖼️ AVAILABLE IMAGES - Use the provided images in your components with proper categorization",
-        "5. 🔄 SYNTHESIS - Combine all inputs for cohesive, beautiful design",
+        "1.  USER PROMPT - Implement specific requirements (themes, colors, features) GLOBALLY",
+        "2.  JSON SCHEMA - Use for component structure and data organization",
+        "3.  UI GUIDELINES - Apply for design principles and professional polish",
+        "4.  AVAILABLE IMAGES - Use the provided images in your components with proper categorization",
+        "5.  SYNTHESIS - Combine all inputs for cohesive, beautiful design",
         "",
         "**THEME IMPLEMENTATION**: Apply user's theme to the ENTIRE application. YOU choose the specific colors!**"
     ])
@@ -770,36 +770,36 @@ Return a Python dictionary with the corrected file content:
     ],
     "new_files": []  # if any new files need to be created
 }}
-```
-
 Generate ONLY the corrected file content for the problematic files.
 """
-    
+
+
     return correction_prompt
+
 def _extract_existing_components_inventory(existing_code: str) -> str:
+
     """Extract a detailed inventory of existing components for the prompt."""
     import re
-    
     # Find all component imports
     import_pattern = r'import\s+(\w+)\s+from\s+["\']([^"\']+)["\']'
     imports = re.findall(import_pattern, existing_code)
-    
+
     # Find all component usage
     usage_pattern = r'<(\w+)\s*[^>]*/?>'
     usages = re.findall(usage_pattern, existing_code)
-    
+
     inventory = []
     inventory.append("### EXISTING COMPONENTS INVENTORY:")
     inventory.append("**MANDATORY**: These components MUST be preserved exactly as they are:")
     inventory.append("")
-    
+
     # List imports
     inventory.append("**EXISTING IMPORTS (DO NOT REMOVE):**")
     for component_name, import_path in imports:
         if 'components' in import_path:
             inventory.append(f"- import {component_name} from '{import_path}'")
     inventory.append("")
-    
+
     # List component usage
     inventory.append("**EXISTING COMPONENT USAGE (DO NOT REMOVE):**")
     unique_usages = list(set(usages))
@@ -807,219 +807,192 @@ def _extract_existing_components_inventory(existing_code: str) -> str:
         if component not in ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'a', 'button', 'input', 'form', 'label']:
             inventory.append(f"- <{component} />")
     inventory.append("")
-    
+
     inventory.append("**CRITICAL**: ALL of the above components MUST remain in the final code!")
     inventory.append("**CRITICAL**: Only ADD the new component, do NOT remove any existing ones!")
-    
+
     return "\n".join(inventory)
-
-
-def _build_edit_prompt(ctx: Dict[str, Any]) -> str:
+def _build_edit_prompt(ctx: Dict[str, Any]) -> str:    
     """Build a targeted edit prompt when in editing mode."""
     edit_analysis = ctx.get("edit_analysis", {})
     user_text = ctx.get("user_text", "")
     existing_code = ctx.get("existing_code", "")
-    
+
     # Get color palette from generator input
     gi = ctx.get("generator_input", {})
     color_palette = gi.get("color_palette", "")
-    
+
     if not edit_analysis.get("analysis_success"):
         return ""
-    
+
     # Extract file paths from target_files dictionaries
     target_files = edit_analysis.get('target_files', [])
     target_file_paths = [tf.get('file_path', 'Unknown') if isinstance(tf, dict) else str(tf) for tf in target_files]
-    
+
     # CRITICAL: Extract existing components inventory
     components_inventory = _extract_existing_components_inventory(existing_code)
-    
+
     edit_prompt = f"""
-## EDIT MODE - TARGETED CHANGES REQUIRED
-
-You are in EDIT MODE. The user wants to make specific changes to an existing React application.
-DO NOT regenerate the entire application. Make ONLY the requested changes.
-
-### USER EDIT REQUEST:
-{user_text}
-
-{components_inventory}
-
-### EDIT ANALYSIS:
-- **Edit Type**: {edit_analysis.get('edit_type', 'modify_existing')}
-- **Target Files**: {', '.join(target_file_paths)}
-- **Changes Description**: {edit_analysis.get('changes_description', '')}
-- **Specific Requirements**: {chr(10).join(f"- {req}" for req in edit_analysis.get('specific_requirements', []))}
-- **Preserve Existing**: {edit_analysis.get('preserve_existing', True)}
-- **Context Needed**: {edit_analysis.get('context_needed', '')}
-- **Content Preservation Rules**: {chr(10).join(f"- {rule}" for rule in edit_analysis.get('content_preservation_rules', []))}"""
-
+    EDIT MODE - TARGETED CHANGES REQUIRED
+    You are in EDIT MODE. The user wants to make specific changes to an existing React application.
+    DO NOT regenerate the entire application. Make ONLY the requested changes.
+    USER EDIT REQUEST:
+    {user_text}
+    {components_inventory}
+    EDIT ANALYSIS:
+    Edit Type: {edit_analysis.get('edit_type', 'modify_existing')}
+    Target Files: {', '.join(target_file_paths)}
+    Changes Description: {edit_analysis.get('changes_description', '')}
+    Specific Requirements: {chr(10).join(f"- {req}" for req in edit_analysis.get('specific_requirements', []))}
+    Preserve Existing: {edit_analysis.get('preserve_existing', True)}
+    Context Needed: {edit_analysis.get('context_needed', '')}
+    Content Preservation Rules: {chr(10).join(f"- {rule}" for rule in edit_analysis.get('content_preservation_rules', []))}"""
     # Add color palette section if colors are provided
     if color_palette and color_palette.strip():
         colors = [color.strip() for color in color_palette.split(',') if color.strip()]
         edit_prompt += f"""
-
-### �� COLOR PALETTE FOR EDIT:
-**USER COLORS**: {color_palette}
-**PARSED**: {', '.join(colors)}
-
-**RULES**:
-- Convert color names to hex: red=#FF0000, blue=#0000FF, yellow=#FFFF00, etc.
-- Use ALL provided colors throughout the design
-- Apply to backgrounds, text, buttons, borders (NOT images)
-- Create professional color scheme
-- Intelligently use all colors across the entire UI for modern, beautiful design
-- Override JSON schema colors completely - color palette has TOP priority
-- Follow user query instructions about color placement (e.g., 'use in hero section')
-
-**FORBIDDEN**:
-- Never use colors not in palette
-- Never apply colors over images/backgrounds
-- Never use JSON schema colors when color palette is provided"""
-
+    COLOR PALETTE FOR EDIT:
+    USER COLORS: {color_palette}
+    PARSED: {', '.join(colors)}
+    RULES:
+    Convert color names to hex: red=#FF0000, blue=#0000FF, yellow=#FFFF00, etc.
+    Use ALL provided colors throughout the design
+    Apply to backgrounds, text, buttons, borders (NOT images)
+    Create professional color scheme
+    Intelligently use all colors across the entire UI for modern, beautiful design
+    Override JSON schema colors completely - color palette has TOP priority
+    Follow user query instructions about color placement (e.g., 'use in hero section')
+    FORBIDDEN:
+    Never use colors not in palette
+    Never apply colors over images/backgrounds
+    Never use JSON schema colors when color palette is provided"""
     edit_prompt += """
+    CRITICAL EDITING INSTRUCTIONS:
+    FOR ADDING NEW COMPONENTS/SECTIONS:
+    PRESERVE ALL EXISTING IMPORTS: Keep every single import statement exactly as they are
+    PRESERVE ALL EXISTING COMPONENTS: Keep all existing component usage and structure
+    ONLY ADD NEW IMPORTS: Add only the new component import that's needed
+    ONLY ADD NEW COMPONENT USAGE: Add the new component in the appropriate location
+    MAINTAIN EXISTING ORDER: Keep the same component order, just insert the new one where requested
+    PRESERVE ALL EXISTING FUNCTIONALITY: Don't change any existing components or their props
+    CRITICAL: Do NOT add imports for components that were not explicitly requested
+    CRITICAL: Do NOT add imports for components that don't exist (like About, Contact, etc.)
+    CRITICAL: Only add the exact component import that matches the user's request
+    CRITICAL: If user says "add whyus section", ONLY add import for WhyUs component, NOT About or any other component
+    CRITICAL: NEVER hallucinate or assume what components should exist
+    CRITICAL: ONLY import components that are explicitly mentioned in the user's request
+    CRITICAL: NEVER REMOVE OR DELETE EXISTING COMPONENTS
+    CRITICAL: NEVER REMOVE OR DELETE EXISTING IMPORTS
+    CRITICAL: NEVER REMOVE OR DELETE EXISTING COMPONENT USAGE
+    CRITICAL: ONLY ADD NEW COMPONENTS, NEVER REMOVE EXISTING ONES
+    CRITICAL: IF A COMPONENT EXISTS IN THE ORIGINAL CODE, IT MUST STAY IN THE MODIFIED CODE
+    CRITICAL: THE ONLY CHANGE SHOULD BE ADDING THE NEW COMPONENT, NOTHING ELSE
+    FOR THEME/STYLING CHANGES:
+    ONLY modify visual appearance: colors, backgrounds, borders, shadows, animations, gradients, CSS classes
+    NEVER change text content: headings, descriptions, button text, form labels, component names, etc.
+    PRESERVE component structure: same components, same layout, same functionality
+    KEEP all existing content: text, images, links, form fields, etc.
+    ONLY update className attributes and style properties
+    CRITICAL: When changing theme colors, ONLY change the color values in existing CSS classes
+    DO NOT: Add new components, remove existing components, change text content, or modify functionality
+    DO NOT: Change the hero section content, button text, or any other text elements
+    ONLY: Replace color values in existing className attributes (e.g., bg-blue-500 → bg-purple-500)
+    PRESERVE ALL TEXT CONTENT: Keep all headings, descriptions, button text, and other text exactly as they are
+    PRESERVE ALL IMAGES: Keep all existing images and their positioning
+    PRESERVE ALL LAYOUTS: Keep the same component structure and positioning
+    FOR FUNCTIONALITY CHANGES:
+    ONLY modify what's specifically requested: add/remove features as asked
+    PRESERVE existing functionality: don't break what's already working
+    MAINTAIN component structure: keep the same layout and organization
+    FOR LAYOUT CHANGES:
+    ONLY modify positioning and spacing: margins, padding, flexbox, grid
+    PRESERVE content: same text, same components, same functionality
+    MAINTAIN responsive design: ensure it still works on all screen sizes
+    ABSOLUTE RULES:
+    DO NOT regenerate the entire application
+    Make ONLY the specific changes requested
+    Preserve all existing functionality unless explicitly asked to change it
+    Focus on the target files identified in the analysis
+    Ensure the changes integrate seamlessly with existing code
+    Maintain the same code style and structure
+    NEVER change text content when making theme changes
+    ONLY modify styling properties and CSS classes
+    PRESERVE ALL EXISTING IMPORTS - NEVER REMOVE OR MODIFY THEM
+    PRESERVE ALL EXISTING COMPONENT USAGE - NEVER REMOVE OR MODIFY THEM
+    ONLY IMPORT COMPONENTS THAT EXIST OR ARE BEING CREATED
+    NEVER IMPORT COMPONENTS THAT DON'T EXIST
+    NEVER REMOVE EXISTING COMPONENTS
+    NEVER REMOVE EXISTING IMPORTS
+    NEVER REMOVE EXISTING COMPONENT USAGE
+    EXISTING CODE CONTEXT (MODIFY THIS CODE):
+    {existing_code}
+    OUTPUT FORMAT - EXACT STRUCTURE REQUIRED:
+    You MUST return ONLY a Python dictionary with this EXACT structure:
 
-### 🚨 CRITICAL EDITING INSTRUCTIONS:
+    ```python
+    {{
+        "files_to_correct": [
+            {{
+                "path": "src/App.jsx",
+                "corrected_content": "// PRESERVE ALL EXISTING IMPORTS AND COMPONENTS, ONLY ADD/MODIFY WHAT'S REQUESTED"
+            }},
+            {{
+                "path": "src/components/Component.jsx",
+                "corrected_content": "// PRESERVE ALL EXISTING IMPORTS AND COMPONENTS, ONLY ADD/MODIFY WHAT'S REQUESTED"
+            }}
+        ],
+        "new_files": [
+            {{
+                "path": "src/components/NewComponent.jsx",
+                "content": "// COMPLETE new file content here"
+            }}
+        ]
+    }}
+    IMPORTANT EDITING RULES:
+    MODIFY EXISTING FILES: Take the existing code above and make ONLY the requested changes
+    PRESERVE ALL IMPORTS: Keep every single import statement exactly as they are - NEVER remove or modify them
+    PRESERVE ALL COMPONENTS: Keep all existing component usage exactly as they are - NEVER remove or modify them
+    TARGETED CHANGES: Only change what's needed for the requested modifications
+    NO REGENERATION: Do not create new components unless explicitly requested
+    MAINTAIN FUNCTIONALITY: Keep all existing features and interactions
+    EXACT FORMAT: Return ONLY the Python dictionary, no explanations or markdown
+    PRESERVE TEXT: Keep all existing text content unchanged when making theme changes
+    PRESERVE STRUCTURE: Keep the same component structure, imports, and layout
+    VERIFY IMPORTS: Only import components that exist in the EXISTING COMPONENTS list above
+    NEVER REMOVE: Never remove existing components, imports, or functionality
+    ADDING NEW COMPONENT EXAMPLE:
+    If user says "add a Gallery section", you should:
+    Find the existing App.jsx code above
+    PRESERVE ALL existing imports exactly as they are
+    ADD ONLY the new import for Gallery component
+    PRESERVE ALL existing component usage exactly as they are (Header, Hero, Services, WhyUs, etc.)
+    ADD ONLY the new <Gallery /> component in the appropriate location
+    Return the modified App.jsx with ALL existing imports and components preserved
+    NEVER remove any existing components like <WhyUs />, <Services />, etc.
+    THEME CHANGE EXAMPLE:
+    If user says "change to cyberpunk theme", you should:
+    Find the existing code above
+    ONLY modify className attributes and style properties
+    Change colors, backgrounds, borders, shadows to cyberpunk style
+    KEEP all existing text content, headings, descriptions, button text
+    PRESERVE all component structure and functionality
+    Return the modified files with ONLY styling changes
+    CRITICAL:
+    Return ONLY the Python dictionary
+    No markdown formatting
+    No explanations
+    No additional text
+    Just the dictionary structure
+    PRESERVE ALL EXISTING TEXT CONTENT
+    PRESERVE ALL EXISTING IMPORTS
+    PRESERVE ALL EXISTING COMPONENTS
+    ONLY IMPORT EXISTING COMPONENTS
+    NEVER REMOVE EXISTING COMPONENTS
+    Generate ONLY the corrected file content for the files that need changes.
+    """
 
-#### FOR ADDING NEW COMPONENTS/SECTIONS:
-- **PRESERVE ALL EXISTING IMPORTS**: Keep every single import statement exactly as they are
-- **PRESERVE ALL EXISTING COMPONENTS**: Keep all existing component usage and structure
-- **ONLY ADD NEW IMPORTS**: Add only the new component import that's needed
-- **ONLY ADD NEW COMPONENT USAGE**: Add the new component in the appropriate location
-- **MAINTAIN EXISTING ORDER**: Keep the same component order, just insert the new one where requested
-- **PRESERVE ALL EXISTING FUNCTIONALITY**: Don't change any existing components or their props
-- **CRITICAL**: Do NOT add imports for components that were not explicitly requested
-- **CRITICAL**: Do NOT add imports for components that don't exist (like About, Contact, etc.)
-- **CRITICAL**: Only add the exact component import that matches the user's request
-- **CRITICAL**: If user says "add whyus section", ONLY add import for WhyUs component, NOT About or any other component
-- **CRITICAL**: NEVER hallucinate or assume what components should exist
-- **CRITICAL**: ONLY import components that are explicitly mentioned in the user's request
-- **CRITICAL**: NEVER REMOVE OR DELETE EXISTING COMPONENTS
-- **CRITICAL**: NEVER REMOVE OR DELETE EXISTING IMPORTS
-- **CRITICAL**: NEVER REMOVE OR DELETE EXISTING COMPONENT USAGE
-- **CRITICAL**: ONLY ADD NEW COMPONENTS, NEVER REMOVE EXISTING ONES
-- **CRITICAL**: IF A COMPONENT EXISTS IN THE ORIGINAL CODE, IT MUST STAY IN THE MODIFIED CODE
-- **CRITICAL**: THE ONLY CHANGE SHOULD BE ADDING THE NEW COMPONENT, NOTHING ELSE
-
-#### FOR THEME/STYLING CHANGES:
-- **ONLY modify visual appearance**: colors, backgrounds, borders, shadows, animations, gradients, CSS classes
-- **NEVER change text content**: headings, descriptions, button text, form labels, component names, etc.
-- **PRESERVE component structure**: same components, same layout, same functionality
-- **KEEP all existing content**: text, images, links, form fields, etc.
-- **ONLY update className attributes and style properties**
-- **CRITICAL**: When changing theme colors, ONLY change the color values in existing CSS classes
-- **DO NOT**: Add new components, remove existing components, change text content, or modify functionality
-- **DO NOT**: Change the hero section content, button text, or any other text elements
-- **ONLY**: Replace color values in existing className attributes (e.g., bg-blue-500 → bg-purple-500)
-- **PRESERVE ALL TEXT CONTENT**: Keep all headings, descriptions, button text, and other text exactly as they are
-- **PRESERVE ALL IMAGES**: Keep all existing images and their positioning
-- **PRESERVE ALL LAYOUTS**: Keep the same component structure and positioning
-
-#### FOR FUNCTIONALITY CHANGES:
-- **ONLY modify what's specifically requested**: add/remove features as asked
-- **PRESERVE existing functionality**: don't break what's already working
-- **MAINTAIN component structure**: keep the same layout and organization
-
-#### FOR LAYOUT CHANGES:
-- **ONLY modify positioning and spacing**: margins, padding, flexbox, grid
-- **PRESERVE content**: same text, same components, same functionality
-- **MAINTAIN responsive design**: ensure it still works on all screen sizes
-
-### 🚨 ABSOLUTE RULES:
-1. **DO NOT regenerate the entire application**
-2. **Make ONLY the specific changes requested**
-3. **Preserve all existing functionality unless explicitly asked to change it**
-4. **Focus on the target files identified in the analysis**
-5. **Ensure the changes integrate seamlessly with existing code**
-6. **Maintain the same code style and structure**
-7. **NEVER change text content when making theme changes**
-8. **ONLY modify styling properties and CSS classes**
-9. **PRESERVE ALL EXISTING IMPORTS - NEVER REMOVE OR MODIFY THEM**
-10. **PRESERVE ALL EXISTING COMPONENT USAGE - NEVER REMOVE OR MODIFY THEM**
-11. **ONLY IMPORT COMPONENTS THAT EXIST OR ARE BEING CREATED**
-12. **NEVER IMPORT COMPONENTS THAT DON'T EXIST**
-13. **NEVER REMOVE EXISTING COMPONENTS**
-14. **NEVER REMOVE EXISTING IMPORTS**
-15. **NEVER REMOVE EXISTING COMPONENT USAGE**
-
-### EXISTING CODE CONTEXT (MODIFY THIS CODE):
-{existing_code}
-
-###  OUTPUT FORMAT - EXACT STRUCTURE REQUIRED:
-You MUST return ONLY a Python dictionary with this EXACT structure:
-
-```python
-{{
-    "files_to_correct": [
-        {{
-            "path": "src/App.jsx",
-            "corrected_content": "// PRESERVE ALL EXISTING IMPORTS AND COMPONENTS, ONLY ADD/MODIFY WHAT'S REQUESTED"
-        }},
-        {{
-            "path": "src/components/Component.jsx",
-            "corrected_content": "// PRESERVE ALL EXISTING IMPORTS AND COMPONENTS, ONLY ADD/MODIFY WHAT'S REQUESTED"
-        }}
-    ],
-    "new_files": [
-        {{
-            "path": "src/components/NewComponent.jsx",
-            "content": "// COMPLETE new file content here"
-        }}
-    ]
-}}
-```
-
-### 🔧 IMPORTANT EDITING RULES:
-- **MODIFY EXISTING FILES**: Take the existing code above and make ONLY the requested changes
-- **PRESERVE ALL IMPORTS**: Keep every single import statement exactly as they are - NEVER remove or modify them
-- **PRESERVE ALL COMPONENTS**: Keep all existing component usage exactly as they are - NEVER remove or modify them
-- **TARGETED CHANGES**: Only change what's needed for the requested modifications
-- **NO REGENERATION**: Do not create new components unless explicitly requested
-- **MAINTAIN FUNCTIONALITY**: Keep all existing features and interactions
-- **EXACT FORMAT**: Return ONLY the Python dictionary, no explanations or markdown
-- **PRESERVE TEXT**: Keep all existing text content unchanged when making theme changes
-- **PRESERVE STRUCTURE**: Keep the same component structure, imports, and layout
-- **VERIFY IMPORTS**: Only import components that exist in the EXISTING COMPONENTS list above
-- **NEVER REMOVE**: Never remove existing components, imports, or functionality
-
-### 📝 ADDING NEW COMPONENT EXAMPLE:
-If user says "add a Gallery section", you should:
-1. Find the existing App.jsx code above
-2. PRESERVE ALL existing imports exactly as they are
-3. ADD ONLY the new import for Gallery component
-4. PRESERVE ALL existing component usage exactly as they are (Header, Hero, Services, WhyUs, etc.)
-5. ADD ONLY the new <Gallery /> component in the appropriate location
-6. Return the modified App.jsx with ALL existing imports and components preserved
-7. NEVER remove any existing components like <WhyUs />, <Services />, etc.
-
-### 📝 THEME CHANGE EXAMPLE:
-If user says "change to cyberpunk theme", you should:
-1. Find the existing code above
-2. ONLY modify className attributes and style properties
-3. Change colors, backgrounds, borders, shadows to cyberpunk style
-4. KEEP all existing text content, headings, descriptions, button text
-5. PRESERVE all component structure and functionality
-6. Return the modified files with ONLY styling changes
-
-###  CRITICAL:
-- Return ONLY the Python dictionary
-- No markdown formatting
-- No explanations
-- No additional text
-- Just the dictionary structure
-- PRESERVE ALL EXISTING TEXT CONTENT
-- PRESERVE ALL EXISTING IMPORTS
-- PRESERVE ALL EXISTING COMPONENTS
-- ONLY IMPORT EXISTING COMPONENTS
-- NEVER REMOVE EXISTING COMPONENTS
-
-Generate ONLY the corrected file content for the files that need changes.
-"""
-    
     return edit_prompt
-
-
-def generator(state: Dict[str, Any]) -> Dict[str, Any]:
+def generator(state: Dict[str, Any]) -> Dict[str, Any]:    
     """
     Calls the LLM to generate code or make targeted edits.
     Now handles both initial generation and targeted editing with enhanced validation.
@@ -1027,17 +1000,17 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
     print("--- Running Generator Node ---")
     ctx = state.get("context", {})
     gi = ctx.get("generator_input", {})
-    
+
     # Check if we're in edit mode
     is_edit_mode = gi.get("is_edit_mode", False)
-    
+
     if is_edit_mode:
         print("🔄 EDIT MODE - Generating targeted changes...")
         
         # CRITICAL: Get existing code context for editing
         existing_code = ctx.get("existing_code", "")
         if not existing_code or existing_code == "No existing code files found" or existing_code.startswith("Error"):
-            print("❌ No valid existing code context available for editing")
+            print(" No valid existing code context available for editing")
             # print(f"   Context: {existing_code[:100]}...")
             ctx["generation_result"] = {
                 "error": f"No valid existing code context available for editing: {existing_code}"
@@ -1089,7 +1062,7 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         # CRITICAL: Set state and return immediately for edit mode
         state["context"] = ctx
         return state
-    
+
     # Check if this is a correction attempt
     elif ctx.get("code_analysis", {}).get("correction_needed", False):
         print("🔄 Running generator for targeted code correction...")
@@ -1124,7 +1097,7 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
                 "is_correction": True,
                 "correction_attempt": ctx.get("correction_attempts", 0) + 1
             }
-    
+
     else:
         # Initial generation mode
         print("🆕 Running generator for initial code generation...")
@@ -1147,18 +1120,15 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
             "is_edit": False
         }
         print("✅ Initial code generation completed")
-    
+
     state["context"] = ctx
     return state
-
-
-def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
+def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:   
     """Extract correction data from LLM response with enhanced parsing."""
     try:
-        #   print(f"🔍 Extracting correction data from response...")
-        # print(f"   Response length: {len(response_content)} characters")
-        # print(f"   Response preview: {response_content[:200]}...")
-        
+    # print(f"🔍 Extracting correction data from response...")
+    # print(f" Response length: {len(response_content)} characters")
+    # print(f" Response preview: {response_content[:200]}...")
         import re
         import ast
         import json
@@ -1173,7 +1143,7 @@ def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
                 #   print(f"   ✅ Successfully parsed Python dictionary")
                 return correction_data
             except Exception as parse_error:
-                  print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
+                print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
         
         # Method 2: Find COMPLETE dictionary structure (ENHANCED)
         # Look for the opening brace and find its matching closing brace
@@ -1231,8 +1201,7 @@ def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
 def _manual_extract_edit_data(response_content: str) -> Optional[Dict[str, Any]]:
     """Manually extract edit data when automatic extraction fails."""
     try:
-        print(f"   🔧 Attempting manual extraction...")
-        
+        print(f" 🔧 Attempting manual extraction...")
         # Look for file paths and content patterns
         import re
         
