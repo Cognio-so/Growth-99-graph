@@ -10,7 +10,7 @@ SCHEMA3_CSV_PATH = Path(__file__).parent.parent / "schema3.csv"  # Dental & Medi
 REGENERATION_COUNTER_FILE = Path(__file__).parent.parent / "regeneration_counter.json"
 
 # Maximum uses of schema2.csv before falling back to schema.csv
-MAX_SCHEMA2_USES = 3
+MAX_SCHEMA2_USES = 5
 
 # These are used ONLY if the CSV file is not found or is empty.
 DEFAULT_ROWS = [
@@ -270,7 +270,7 @@ def _inline_schema_from_text(text: str) -> Optional[dict]:
             return None
     return None
 
-def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
+async def schema_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
     """Enhanced schema extraction with schema type selection support."""
     print("--- Running Schema Extraction Node ---")
     

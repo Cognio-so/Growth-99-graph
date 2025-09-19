@@ -68,14 +68,15 @@ def route_after_restore(state: GraphState) -> str:
         return "apply_sandbox"
     else:
         return "output"  # If restore failed, end the flow
-
+async def analyze_intent_node(state):
+    return await analyze_intent(state)
 def build_graph():
     g = StateGraph(GraphState)
 
     # Add all nodes (including restore_code)
     g.add_node("user_node",          trace_node(user_node, "user_node"))
     g.add_node("doc_extraction",     trace_node(doc_extraction, "doc_extraction"))
-    g.add_node("analyze_intent",     trace_node(analyze_intent, "analyze_intent"))
+    g.add_node("analyze_intent",     trace_node(analyze_intent_node, "analyze_intent"))
     g.add_node("new_design",         trace_node(new_design, "new_design"))
     g.add_node("schema_extraction",  trace_node(schema_extraction, "schema_extraction"))
     g.add_node("photo_generator",    trace_node(photo_generator, "photo_generator"))

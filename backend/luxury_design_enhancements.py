@@ -457,7 +457,7 @@ def get_smart_luxury_combination(user_text: str = "") -> tuple:
 
         chat_model = get_chat_model(temperature=0.0)
         
-        response = chat_model.invoke([
+        response = chat_model.ainvoke([
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt),
         ])

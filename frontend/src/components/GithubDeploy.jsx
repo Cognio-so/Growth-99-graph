@@ -10,7 +10,7 @@ import { Github, Loader2, ExternalLink, Check, AlertCircle, Zap, User } from "lu
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { authClient } from "@/lib/auth-client"
 
-export default function GitHubDeploy({ conversationId, disabled = false }) {
+export default function GitHubDeploy({ sessionId, conversationId, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deploymentStep, setDeploymentStep] = useState("")
@@ -87,7 +87,7 @@ export default function GitHubDeploy({ conversationId, disabled = false }) {
       // Step 1: Download the project files from backend
       setDeploymentStep("Downloading project files...")
       
-      const downloadResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/conversations/${conversationId}/download`, {
+      const downloadResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/sessions/${sessionId}/conversations/${conversationId}/download`, {
         method: 'GET'
       })
       

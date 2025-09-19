@@ -508,7 +508,7 @@ export default function ResultView() {
       formData.append('text', '') 
       formData.append('llm_model', selectedModel)
       formData.append('schema_type', selectedCategory)
-      formData.append('regenerate', 'true')
+      formData.append('regenerate', true)
       if (selectedLogo) {
         formData.append('logo', selectedLogo)
       }
@@ -680,7 +680,7 @@ export default function ResultView() {
     
     setDownloading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conversations/${message.conversation_id}/download`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/download`, {
         method: 'GET'
       })
       
@@ -761,6 +761,7 @@ export default function ResultView() {
                   {downloading ? 'Downloading...' : 'Download'}
                 </Button>
                 <GitHubDeploy 
+                  sessionId={currentSessionId}
                   conversationId={messages.find(m => m.id === selectedMessageId)?.conversation_id}
                   disabled={!selectedMessageId}
                 />

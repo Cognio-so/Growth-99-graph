@@ -14,7 +14,7 @@ PEXELS_BASE_URL = "https://api.pexels.com/v1"
 # CSV file for storing images
 IMAGES_CSV_PATH = Path(__file__).parent.parent / "generated_images.csv"
 
-def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
+async def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generate images using intelligent LLM analysis, CSV storage, and Pexels API.
     Now includes uploaded logos with highest priority.
@@ -27,10 +27,10 @@ def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     json_schema = gi.get("json_schema", {})
     
     # Step 1: Use LLM to analyze what images are needed with detailed descriptions
-    image_requirements = _analyze_image_requirements_with_llm(user_text, json_schema, state)
+    image_requirements = await _analyze_image_requirements_with_llm(user_text, json_schema, state)
     
     # Step 2: Check existing images in CSV and determine what needs to be generated
-    needed_images = _intelligent_check_existing_images(image_requirements, state)
+    needed_images = await _intelligent_check_existing_images(image_requirements, state)
     
     # Step 3: Generate new images only for those that are needed
     if needed_images:
@@ -40,7 +40,7 @@ def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
         print("✅ All required images already exist in database")
     
     # Step 4: Load all relevant images from CSV for code generation
-    final_images = _load_relevant_images_from_csv(image_requirements, state)
+    final_images = await _load_relevant_images_from_csv(image_requirements, state)
     
     # Step 5: Add uploaded logo to images with highest priority
     final_images = _add_uploaded_logo_to_images(gi, final_images)
@@ -61,7 +61,7 @@ def photo_generator(state: Dict[str, Any]) -> Dict[str, Any]:
     
     return state
 
-def _analyze_image_requirements_with_llm(user_text: str, json_schema: dict, state: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def _analyze_image_requirements_with_llm(user_text: str, json_schema: dict, state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Use LLM to analyze user text and JSON schema to determine what images are needed with detailed descriptions.
     Completely removes logo generation - only uses logos from user documents.
@@ -132,9 +132,9 @@ DO NOT include any logo requirements.
 """
     
     try:
-        model = get_chat_model(state.get("llm_model"))
+        model =await get_chat_model(state.get("llm_model"))
         # print(f"model--- {model}")    
-        response = model.invoke(analysis_prompt)
+        response = await model.ainvoke(analysis_prompt)
         
         # Extract JSON from response
         response_text = response.content if hasattr(response, 'content') else str(response)
@@ -294,7 +294,7 @@ def _fallback_detailed_analysis(user_text: str, json_schema: dict, state: Dict[s
     print(f"🚫 Logo generation completely disabled - only using document-provided logos")
     return image_requirements
 
-def _intelligent_check_existing_images(image_requirements: List[Dict[str, Any]], state: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def _intelligent_check_existing_images(image_requirements: List[Dict[str, Any]], state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Intelligently check existing images in CSV and determine what new images need to be generated.
     """
@@ -308,11 +308,11 @@ def _intelligent_check_existing_images(image_requirements: List[Dict[str, Any]],
         return image_requirements
     
     # Batch process all requirements in a single LLM call
-    needed_images = _batch_check_existing_images(image_requirements, existing_images, state)
+    needed_images =await _batch_check_existing_images(image_requirements, existing_images, state)
     
     return needed_images
 
-def _batch_check_existing_images(image_requirements: List[Dict[str, Any]], existing_images: List[Dict[str, Any]], state: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def _batch_check_existing_images(image_requirements: List[Dict[str, Any]], existing_images: List[Dict[str, Any]], state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Batch check all image requirements against existing images in a single LLM call.
     Balanced approach - reuse good images but avoid exact duplicates.
@@ -389,8 +389,8 @@ Example:
 """
     
     try:
-        model = get_chat_model(state.get("llm_model"))
-        response = model.invoke(batch_prompt)
+        model = await get_chat_model(state.get("llm_model"))
+        response =await model.ainvoke(batch_prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
         
         # Extract JSON from response
@@ -899,7 +899,7 @@ def _load_images_from_csv() -> List[Dict[str, Any]]:
     
     return images
 
-def _load_relevant_images_from_csv(image_requirements: List[Dict[str, Any]], state: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def _load_relevant_images_from_csv(image_requirements: List[Dict[str, Any]], state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Load ONLY the specific images that were identified as needed from CSV.
     This is much more efficient than loading all images.
@@ -912,7 +912,7 @@ def _load_relevant_images_from_csv(image_requirements: List[Dict[str, Any]], sta
         return []
     
     # Use single batch call to find matching images for all requirements
-    matching_results = _batch_find_matching_images(image_requirements, all_images, state)
+    matching_results = await _batch_find_matching_images(image_requirements, all_images, state)
     
     relevant_images = []
     
@@ -940,7 +940,7 @@ def _load_relevant_images_from_csv(image_requirements: List[Dict[str, Any]], sta
     print(f"✅ Loaded {len(relevant_images)} specific images for code generation (instead of all {len(all_images)} images)")
     return relevant_images
 
-def _batch_find_matching_images(image_requirements: List[Dict[str, Any]], all_images: List[Dict[str, Any]], state: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+async def _batch_find_matching_images(image_requirements: List[Dict[str, Any]], all_images: List[Dict[str, Any]], state: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
     """
     Batch find matching images for all requirements in a single LLM call.
     Fixed to use string keys instead of dict keys.
@@ -1012,8 +1012,8 @@ Example:
 """
     
     try:
-        model = get_chat_model(state.get("llm_model"))
-        response = model.invoke(batch_prompt)
+        model =await get_chat_model(state.get("llm_model"))
+        response =await model.ainvoke(batch_prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
         
         # Extract JSON from response
