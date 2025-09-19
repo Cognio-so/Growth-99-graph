@@ -30,20 +30,22 @@ Rules:
 - Do not add other keys beyond the specified ones.
 """
 
-def _check_existing_application() -> bool:
+def _check_existing_application(state: GraphState) -> bool:
     """Check if there's an existing application/sandbox available for editing."""
     try:
         # Import here to avoid circular imports
-        from nodes.apply_to_Sandbox_node import _global_sandbox, _global_sandbox_info
+        from nodes.apply_to_Sandbox_node import _get_session_sandbox
         
-        if not _global_sandbox:
+        session_id = state.get("session_id", "default")
+        sandbox = _get_session_sandbox(session_id)
+        if not sandbox:
             return False
         
         # Quick health check
-        test_result = _global_sandbox.commands.run("echo 'test'", timeout=5)
+        test_result = sandbox.commands.run("echo 'test'", timeout=5)
         if test_result and test_result.stdout:
             # Check if Vite project exists
-            project_check = _global_sandbox.commands.run("ls my-app/package.json", timeout=5)
+            project_check = sandbox.commands.run("ls my-app/package.json", timeout=5)
             if project_check.exit_code == 0:
                 return True
         
@@ -62,7 +64,7 @@ def _build_enhanced_user_prompt(state: GraphState) -> str:
     }
     
     # Check if there's an existing application
-    has_existing_app = _check_existing_application()
+    has_existing_app = _check_existing_application(state)
     
     prompt = (
         "USER REQUEST:\n"
@@ -100,13 +102,13 @@ def _build_enhanced_user_prompt(state: GraphState) -> str:
     
     return prompt
 
-def analyze_intent(state: GraphState) -> GraphState:
+async def analyze_intent(state: GraphState) -> GraphState:
     model = state.get("llm_model")
-    chat = get_chat_model(model, temperature=0.0)
+    chat = await get_chat_model(model, temperature=0.0)
     
     # Use enhanced prompt
     user_prompt = _build_enhanced_user_prompt(state)
-    result = call_llm_json(chat, ENHANCED_SYSTEM_PROMPT, user_prompt) or {}
+    result = await call_llm_json(chat, ENHANCED_SYSTEM_PROMPT, user_prompt) or {}
 
     is_edit = bool(result.get("is_edit"))
     is_new = bool(result.get("is_new_design"))
@@ -151,14 +153,14 @@ def analyze_intent(state: GraphState) -> GraphState:
         "route": route,
         "model_used": model,
         "reasoning": reasoning,  # Add reasoning for debugging
-        "has_existing_app": _check_existing_application(),  # Track existing app status
+        "has_existing_app": _check_existing_application(state),  # Track existing app status
     }
     state["context"] = ctx
     
     # Enhanced logging
     print(f"🎯 LLM Intent Analysis Results:")
     print(f"   - User text: '{state.get('text', '')}'")
-    print(f"   - Has existing app: {_check_existing_application()}")
+    print(f"   - Has existing app: {_check_existing_application(state)}")
     print(f"   - Is edit: {is_edit}")
     print(f"   - Is new design: {is_new}")
     print(f"   - Is URL: {is_url}")

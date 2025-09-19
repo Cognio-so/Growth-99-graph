@@ -221,7 +221,7 @@ RULES:
 
 from llm import get_chat_model, call_llm_json  # you already import this in edit_analyzer
 
-def _analyze_image_intent(user_text: str, image_url: str) -> Dict[str, Any]:
+async def _analyze_image_intent(user_text: str, image_url: str) -> Dict[str, Any]:
     """
     Decide between direct UI usage vs. 'recreate UI like this image'.
     First uses LLM classification, falls back to keyword check if LLM fails.
@@ -231,7 +231,7 @@ def _analyze_image_intent(user_text: str, image_url: str) -> Dict[str, Any]:
 
         # 1️⃣ LLM-based intent classification
         try:
-            chat = get_chat_model("groq-default", temperature=0.1)
+            chat = await get_chat_model("groq-default", temperature=0.1)
             classification_prompt = f"""
 Analyze this user query and tell if they want to:
 1. Add the uploaded image directly to the UI (like hero image, gallery)
@@ -245,7 +245,7 @@ Respond in JSON:
 
 User Query: "{user_text}"
 """
-            llm_result = call_llm_json(chat, "You are an intent classifier for image usage.", classification_prompt)
+            llm_result = await call_llm_json(chat, "You are an intent classifier for image usage.", classification_prompt)
 
             if isinstance(llm_result, dict) and llm_result.get("intent") in ["direct_usage", "vision_analysis"]:
                 intent = llm_result["intent"]
@@ -312,9 +312,11 @@ def _capture_existing_code_context(state: GraphState) -> str:
     """Capture the existing code context from the current sandbox."""
     try:
         # Import here to avoid circular imports
-        from nodes.apply_to_Sandbox_node import _global_sandbox
-        
-        if not _global_sandbox:
+        from nodes.apply_to_Sandbox_node import _get_session_sandbox
+        session_id = state.get("session_id", "default")
+        sandbox = _get_session_sandbox(session_id)
+        # if sandbox:
+        if not sandbox:
             print("❌ No global sandbox available for context capture")
             return "No existing sandbox available"
         
@@ -329,7 +331,7 @@ def _capture_existing_code_context(state: GraphState) -> str:
         for file_path in critical_files:
             try:
                 full_path = f"my-app/{file_path}"
-                content = _global_sandbox.files.read(full_path)
+                content = sandbox.files.read(full_path)
                 if content:
                     context_parts.append(f"## {file_path}:\n```jsx\n{content}\n```")
                     print(f"   ✅ Captured: {file_path}")
@@ -340,14 +342,14 @@ def _capture_existing_code_context(state: GraphState) -> str:
         
         # Capture component files
         try:
-            ls_result = _global_sandbox.commands.run("find my-app/src/components -name '*.jsx' -o -name '*.js'", timeout=10)
+            ls_result = sandbox.commands.run("find my-app/src/components -name '*.jsx' -o -name '*.js'", timeout=10)
             if ls_result.stdout:
                 component_files = ls_result.stdout.strip().split('\n')
                 for file_path in component_files:
                     if file_path and "my-app/" in file_path:
                         relative_path = file_path.replace("my-app/", "")
                         try:
-                            content = _global_sandbox.files.read(file_path)
+                            content = sandbox.files.read(file_path)
                             if content:
                                 context_parts.append(f"## {relative_path}:\n```jsx\n{content}\n```")
                                 print(f"   ✅ Captured component: {relative_path}")
@@ -456,7 +458,7 @@ Provide your analysis in the required JSON format with the enhanced theme_analys
 """
     return prompt
 
-def _detect_image_requirements(user_text: str, existing_code: str) -> List[Dict[str, Any]]:
+async def _detect_image_requirements(user_text: str, existing_code: str) -> List[Dict[str, Any]]:
     """
     Detect if the edit request requires images and generate descriptions.
     """
@@ -476,7 +478,7 @@ def _detect_image_requirements(user_text: str, existing_code: str) -> List[Dict[
     
     # Use LLM to analyze and generate image requirements
     try:
-        model = get_chat_model("groq-default", temperature=0.1)
+        model =await get_chat_model("groq-default", temperature=0.1)
         
         prompt = f"""
 Analyze this edit request and determine what images are needed:
@@ -499,7 +501,7 @@ Output JSON array of image requirements:
 If no images are needed, return empty array: []
 """
         
-        result = call_llm_json(model, "You are an image requirements analyzer. Output only valid JSON.", prompt)
+        result = await call_llm_json(model, "You are an image requirements analyzer. Output only valid JSON.", prompt)
         
         if isinstance(result, list):
             return result
@@ -576,7 +578,7 @@ def _generate_images_for_edit(image_requirements: List[Dict[str, Any]], state: G
         traceback.print_exc()
         return []
 
-def edit_analyzer(state: GraphState) -> GraphState:
+async def edit_analyzer(state: GraphState) -> GraphState:
     """
     ENHANCED edit analyzer with better theme and image handling.
     Analyze user edit requests to determine what changes need to be made.
@@ -601,7 +603,7 @@ def edit_analyzer(state: GraphState) -> GraphState:
     try:
         # Get LLM model
         model = state.get("llm_model", "groq-default")
-        chat = get_chat_model(model, temperature=0.1)
+        chat = await get_chat_model(model, temperature=0.1)
         
         # Build ENHANCED prompt with existing code context
         user_prompt = _build_enhanced_edit_analysis_prompt(state)
@@ -635,7 +637,7 @@ def edit_analyzer(state: GraphState) -> GraphState:
         
         # Call LLM for ENHANCED analysis
         print("🔍 Analyzing edit request with ENHANCED LLM analysis...")
-        result = call_llm_json(chat, ENHANCED_SYSTEM_PROMPT, user_prompt) or {}
+        result = await call_llm_json(chat, ENHANCED_SYSTEM_PROMPT, user_prompt) or {}
         
         # Validate and process the result with ENHANCED fields
         edit_analysis = {
@@ -675,7 +677,10 @@ def edit_analyzer(state: GraphState) -> GraphState:
         
         generated_images = []
         # Only generate images if user hasn't uploaded an image but needs images
+        import asyncio
         if image_requirements and not image:
+            if asyncio.iscoroutine(image_requirements):
+                image_requirements = await image_requirements
             print(f"🖼️ No uploaded image detected, generating {len(image_requirements)} images for edit request")
             generated_images = _generate_images_for_edit(image_requirements, state)
             edit_analysis["image_requirements"] = image_requirements
@@ -738,8 +743,8 @@ def edit_analyzer(state: GraphState) -> GraphState:
                     DO NOT output JSON — just natural language describing what to change.
                     """
 
-                    chat = get_chat_model("groq-default", temperature=0.1)
-                    edit_text = chat.invoke([{"role": "user", "content": edit_prompt}]).content
+                    chat = await get_chat_model("groq-default", temperature=0.1)
+                    edit_text = chat.ainvoke([{"role": "user", "content": edit_prompt}]).content
 
                     # ✅ Instead of hardcoding, merge with normal edit_analysis:
                     edit_analysis["changes_description"] = (

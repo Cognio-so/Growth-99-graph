@@ -940,7 +940,7 @@ Generate ONLY the corrected file content for the files that need changes.
 """
     
     return edit_prompt
-def generator(state: Dict[str, Any]) -> Dict[str, Any]:    
+async def generator(state: Dict[str, Any]) -> Dict[str, Any]:    
     """
     Calls the LLM to generate code or make targeted edits.
     Now handles both initial generation and targeted editing with enhanced validation.
@@ -979,10 +979,10 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # Use lower temperature for precise edits
         model = state.get("llm_model", "groq-default")
-        chat_model = get_chat_model(model, temperature=0.05)
+        chat_model = await get_chat_model(model, temperature=0.05)
         
         # print(f"Calling generator LLM for targeted edits...")
-        response = chat_model.invoke([
+        response =await chat_model.ainvoke([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ])
@@ -1020,10 +1020,10 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # Use lower temperature for corrections
         model = state.get("llm_model", "groq-default")
-        chat_model = get_chat_model(model, temperature=0.1)
+        chat_model = await get_chat_model(model, temperature=0.1)
         
         # print(f"Calling generator LLM for code correction...")
-        response = chat_model.invoke([
+        response =await chat_model.ainvoke([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ])
@@ -1054,10 +1054,10 @@ def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # Use normal temperature for initial generation
         model = state.get("llm_model", "groq-default")
-        chat_model = get_chat_model(model, temperature=0.1)
+        chat_model = await get_chat_model(model, temperature=0.1)
         
         # print(f"Calling generator LLM for initial generation...")
-        response = chat_model.invoke([
+        response =await chat_model.ainvoke([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ])

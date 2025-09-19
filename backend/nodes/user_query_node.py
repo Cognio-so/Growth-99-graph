@@ -186,6 +186,8 @@ def _add_immediate_ai_response(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # Check if user message exists, if not add it
     has_user_message = any(msg.get("role") == "user" for msg in current_messages)
+    user_message = None  # ✅ Initialize user_message variable
+    
     if not has_user_message and user_text:
         user_message = {
             "role": "user",
@@ -209,7 +211,7 @@ def _add_immediate_ai_response(state: Dict[str, Any]) -> Dict[str, Any]:
     # CRITICAL: Store AI response in context to preserve it across nodes
     ctx = state.get("context", {})
     ctx["immediate_ai_response"] = ai_message
-    ctx["user_message"] = user_message if not has_user_message else None
+    ctx["user_message"] = user_message if not has_user_message else None  # ✅ Now user_message is always defined
     state["context"] = ctx
     
     # Add AI response to messages array

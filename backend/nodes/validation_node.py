@@ -4,6 +4,8 @@ import ast
 from typing import Dict, Any, List, Tuple
 from pathlib import Path
 
+from graph_types import GraphState
+
 def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Comprehensive validation of generated code files.
@@ -32,14 +34,16 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # Import the global sandbox to validate actual files
     try:
-        from nodes.apply_to_Sandbox_node import _global_sandbox
         
-        if _global_sandbox:
+        from nodes.apply_to_Sandbox_node import _get_session_sandbox
+        session_id = state.get("session_id", "default")
+        sandbox = _get_session_sandbox(session_id)
+        if sandbox:
             print("📋 Validating actual files from sandbox...")
             
             # Validate App.jsx content
             try:
-                app_content = _global_sandbox.files.read("my-app/src/App.jsx")
+                app_content = sandbox.files.read("my-app/src/App.jsx")
                 if app_content:
                     jsx_errors = _validate_jsx_content(app_content)
                     validation_errors.extend(jsx_errors)
@@ -67,7 +71,7 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
                 css_files = ["my-app/src/App.css", "my-app/src/index.css"]
                 for css_file in css_files:
                     try:
-                        css_content = _global_sandbox.files.read(css_file)
+                        css_content = sandbox.files.read(css_file)
                         if not css_content:
                             validation_errors.append({
                                 "type": "missing_css",
@@ -87,10 +91,10 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
 
             # Validate ALL JSX files for JSX/structure issues
             try:
-                jsx_files = _list_src_jsx_files(_global_sandbox)
+                jsx_files = _list_src_jsx_files(sandbox)
                 for rel in jsx_files:
                     try:
-                        content = _global_sandbox.files.read(f"my-app/{rel}")
+                        content = sandbox.files.read(f"my-app/{rel}")
                         if content:
                             validation_errors.extend(_validate_jsx_content(content))
                             validation_errors.extend(_validate_react_component_content(content))
@@ -123,9 +127,12 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # NEW: Parse build errors from the running dev server log
     try:
-        from nodes.apply_to_Sandbox_node import _global_sandbox as _gs
-        if _gs:
-            build_errors = _parse_build_errors_from_devlog(_gs)
+        from nodes.apply_to_Sandbox_node import _get_session_sandbox
+        session_id = state.get("session_id", "default")
+        sandbox = _get_session_sandbox(session_id)
+        # if sandbox:
+        if sandbox:
+            build_errors = _parse_build_errors_from_devlog(sandbox)
             if build_errors:
                 validation_errors.extend(build_errors)
     except Exception as _e:
@@ -138,7 +145,7 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
             print(f"   {i}. {error['message']} (Type: {error['type']})")
         
         # Capture the actual generated files for correction
-        file_content_for_correction = _capture_generated_files_for_correction(ctx)
+        file_content_for_correction = _capture_generated_files_for_correction(state, ctx)
         
         ctx["validation_result"] = {
             "success": False,
@@ -585,12 +592,13 @@ def _parse_build_errors_from_devlog(sandbox) -> List[Dict[str, Any]]:
 
     return errors
 
-def _capture_generated_files_for_correction(ctx: Dict[str, Any]) -> Dict[str, Any]:
+def _capture_generated_files_for_correction(state:GraphState, ctx: Dict[str, Any]) -> Dict[str, Any]:
     """Capture ALL generated files for comprehensive correction."""
     try:
-        from nodes.apply_to_Sandbox_node import _global_sandbox
-        
-        if _global_sandbox:
+        from nodes.apply_to_Sandbox_node import _get_session_sandbox
+        session_id = state.get("session_id", "default")
+        sandbox = _get_session_sandbox(session_id)
+        if sandbox:
             print("📁 Capturing ALL generated files from persistent sandbox for correction...")
             
             files_content: Dict[str, str] = {}
@@ -603,7 +611,7 @@ def _capture_generated_files_for_correction(ctx: Dict[str, Any]) -> Dict[str, An
             for file_path in critical_files:
                 try:
                     full_path = f"my-app/{file_path}"
-                    content = _global_sandbox.files.read(full_path)
+                    content = sandbox.files.read(full_path)
                     if content:
                         files_content[file_path] = content
                         print(f"   ✅ Captured critical: {file_path}")
@@ -613,14 +621,14 @@ def _capture_generated_files_for_correction(ctx: Dict[str, Any]) -> Dict[str, An
             
             # CAPTURE ALL COMPONENT FILES
             try:
-                ls_result = _global_sandbox.commands.run("find my-app/src/components -name '*.jsx' -o -name '*.js'", timeout=10)
+                ls_result = sandbox.commands.run("find my-app/src/components -name '*.jsx' -o -name '*.js'", timeout=10)
                 if ls_result.stdout:
                     component_files = ls_result.stdout.strip().split('\n')
                     for file_path in component_files:
                         if file_path and "my-app/" in file_path:
                             relative_path = file_path.replace("my-app/", "")
                             try:
-                                content = _global_sandbox.files.read(file_path)
+                                content = sandbox.files.read(file_path)
                                 if content:
                                     files_content[relative_path] = content
                                     print(f"   ✅ Captured component: {relative_path}")
@@ -637,7 +645,7 @@ def _capture_generated_files_for_correction(ctx: Dict[str, Any]) -> Dict[str, An
             for file_path in config_files:
                 try:
                     full_path = f"my-app/{file_path}"
-                    content = _global_sandbox.files.read(full_path)
+                    content = sandbox.files.read(full_path)
                     if content:
                         files_content[file_path] = content
                         print(f"   ✅ Captured config: {file_path}")
@@ -646,7 +654,7 @@ def _capture_generated_files_for_correction(ctx: Dict[str, Any]) -> Dict[str, An
             
             # CAPTURE PACKAGE.JSON (CRITICAL)
             try:
-                package_content = _global_sandbox.files.read("my-app/package.json")
+                package_content = sandbox.files.read("my-app/package.json")
                 if package_content:
                     files_content["package.json"] = package_content
                     print(f"   ✅ Captured: package.json")

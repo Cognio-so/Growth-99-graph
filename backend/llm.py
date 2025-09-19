@@ -95,7 +95,7 @@ def _make_anthropic(model_id: str, **kwargs) -> ChatAnthropic:
         timeout=kwargs.get("timeout", 60),
     )
 
-def _get_k2_model_with_fallback(**kwargs) -> Any:
+async def _get_k2_model_with_fallback(**kwargs) -> Any:
     """
     Get K2 model with intelligent fallback that remembers the working provider.
     """
@@ -113,7 +113,7 @@ def _get_k2_model_with_fallback(**kwargs) -> Any:
             groq_model = _make_groq("moonshotai/kimi-k2-instruct-0905", **kwargs)
             # Test the model with a simple call
             test_messages = [HumanMessage(content="Hello")]
-            groq_model.invoke(test_messages)
+            await groq_model.ainvoke(test_messages)
             print("✅ Using Groq K2 model")
             return groq_model
         except Exception as e:
@@ -137,7 +137,7 @@ def _get_k2_model_with_fallback(**kwargs) -> Any:
     raise RuntimeError("No available LLM API keys for K2 fallback. Set GROQ_API_KEY and/or OPENROUTER_API_KEY.")
 
 @traceable(name="get_chat_model", run_type="tool")
-def get_chat_model(model_name: Optional[str] = None, **kwargs) -> Any:
+async def get_chat_model(model_name: Optional[str] = None, **kwargs) -> Any:
     """
     Get the appropriate chat model based on model name.
     For K2 models, automatically fallback from Groq to OpenRouter if needed.
@@ -148,19 +148,19 @@ def get_chat_model(model_name: Optional[str] = None, **kwargs) -> Any:
 
     # Special handling for K2 with automatic fallback
     if provider == "k2-fallback":
-        return _get_k2_model_with_fallback(**kwargs)
+        return await _get_k2_model_with_fallback(**kwargs)
 
     if provider == "openai":
         if _has_key("OPENAI_API_KEY"):
             return _make_openai(model_id, **kwargs)
         print("⚠️ OPENAI_API_KEY missing; falling back to K2.")
-        return _get_k2_model_with_fallback(**kwargs)
+        return await _get_k2_model_with_fallback(**kwargs)
 
     if provider == "anthropic":
         if _has_key("ANTHROPIC_API_KEY"):
             return _make_anthropic(model_id, **kwargs)
         print("⚠️ ANTHROPIC_API_KEY missing; falling back to K2.")
-        return _get_k2_model_with_fallback(**kwargs)
+        return await _get_k2_model_with_fallback(**kwargs)
 
     # ✅ ADDED: OpenRouter provider handler
     if provider == "openrouter":
@@ -168,18 +168,18 @@ def get_chat_model(model_name: Optional[str] = None, **kwargs) -> Any:
             print(f"✅ Using OpenRouter model: {model_id}")
             return _make_openrouter(model_id, **kwargs)
         print("⚠️ OPENROUTER_API_KEY missing; falling back to K2.")
-        return _get_k2_model_with_fallback(**kwargs)
+        return await _get_k2_model_with_fallback(**kwargs)
 
     if provider == "groq":
         if _has_key("GROQ_API_KEY"):
             return _make_groq(model_id, **kwargs)
         print("⚠️ GROQ_API_KEY missing; falling back to K2.")
-        return _get_k2_model_with_fallback(**kwargs)
+        return await _get_k2_model_with_fallback(**kwargs)
 
     raise RuntimeError("No available LLM API keys. Set GROQ_API_KEY or OPENROUTER_API_KEY or OPENAI_API_KEY or ANTHROPIC_API_KEY.")
 
 @traceable(name="llm_json_call", run_type="llm")
-def call_llm_json(
+async def call_llm_json(
     chat_model: Any, 
     system_prompt: str, 
     user_prompt: str
@@ -190,7 +190,7 @@ def call_llm_json(
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt)
         ]
-        response = chat_model.invoke(messages)
+        response = await chat_model.ainvoke(messages)
         content = response.content
 
         # Try to find JSON in the response first

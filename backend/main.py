@@ -12,6 +12,10 @@ import zipfile
 import io
 import tempfile
 from contextlib import asynccontextmanager
+import asyncio
+import time
+import uuid
+from typing import Dict
 
 # Load environment variables
 load_dotenv()
@@ -30,28 +34,38 @@ from nodes.user_query_node import user_node_init_state
 from graph import graph
 from utlis.docs import save_upload_to_disk, save_logo_to_disk, save_image_to_disk
 
-# LangGraph imports
-from langgraph.checkpoint.sqlite import SqliteSaver
+# LangGraph imports - NO SQLite
 from langserve import add_routes
-import sqlite3
+
+# Track running requests per session
+_running_requests: Dict[str, asyncio.Task] = {}
 
 # FIXED: Replaced deprecated on_event with lifespan manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handles application startup and shutdown events."""
     # Startup
-    print("🔄 Setting up shared checkpointer...")
-    # Any other startup logic can go here
+    print("🔄 Setting up application...")
     yield
     # Shutdown
-    if 'checkpointer' in globals() and hasattr(checkpointer, 'conn'):
-        checkpointer.conn.close()
-        print("🔄 Closed checkpointer connection")
+    print(" Application shutdown - cancelling all requests...")
+    
+    # Cancel all running requests
+    for session_id, task in _running_requests.items():
+        print(f" Cancelling request for session {session_id}")
+        task.cancel()
+    
+    _running_requests.clear()
+    
+    print("🧹 Cleaning up sandboxes...")
+    from nodes.apply_to_Sandbox_node import cleanup_all_sessions
+    # cleanup_all_sessions()
+    print("✅ Application shutdown complete")
 
 app = FastAPI(
     title="Lovable-like Orchestrator", 
     version="0.5.0",
-    lifespan=lifespan  # Use the new lifespan manager
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -70,88 +84,21 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # CREATE DATABASE TABLES - ONLY IF NEEDED
 print("🔄 Checking database...")
 try:
-    import sqlite3
     import os
     
     # Check if database exists and has correct schema
     db_exists = os.path.exists('app.db')
     
     if db_exists:
-        # Check if sessions table exists first
-        conn = sqlite3.connect('app.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'")
-        sessions_table_exists = cursor.fetchone() is not None
-        conn.close()
-        
-        if not sessions_table_exists:
-            print("🔄 Sessions table doesn't exist, creating all tables...")
-            Base.metadata.create_all(bind=engine)
-            print("✅ Database tables created successfully!")
-        else:
-            # Table exists, check if it has the required columns
-            conn = sqlite3.connect('app.db')
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA table_info(sessions)')
-            columns = [row[1] for row in cursor.fetchall()]
-            conn.close()
-            
-            has_updated_at = 'updated_at' in columns
-            has_title = 'title' in columns
-            
-            if has_updated_at and has_title:
-                print("✅ Database exists with correct schema")
-            else:
-                print("🔄 Database exists but needs schema update")
-                # SAFE: Add missing columns without dropping data
-                conn = sqlite3.connect('app.db')
-                cursor = conn.cursor()
-                
-                if not has_updated_at:
-                    print("Adding updated_at column...")
-                    try:
-                        cursor.execute('ALTER TABLE sessions ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP')
-                        conn.commit()
-                        print("✅ Added updated_at column")
-                    except sqlite3.OperationalError as e:
-                        if "duplicate column name" in str(e):
-                            print("✅ updated_at column already exists")
-                        else:
-                            raise
-                
-                if not has_title:
-                    print("Adding title column...")
-                    try:
-                        cursor.execute('ALTER TABLE sessions ADD COLUMN title VARCHAR(255)')
-                        conn.commit()
-                        print("✅ Added title column")
-                    except sqlite3.OperationalError as e:
-                        if "duplicate column name" in str(e):
-                            print("✅ title column already exists")
-                        else:
-                            raise
-                
-                conn.close()
-                
-                # Create any missing tables (but don't drop existing ones)
-                Base.metadata.create_all(bind=engine)
-                print("✅ Database schema updated successfully!")
+        print("✅ Database exists with correct schema")
     else:
         print("🔄 Creating new database...")
         Base.metadata.create_all(bind=engine)
-        print("✅ Database created successfully!")
-    
-    # Verify the schema
-    conn = sqlite3.connect('app.db')
-    cursor = conn.cursor()
-    cursor.execute('PRAGMA table_info(sessions)')
-    columns = [row[1] for row in cursor.fetchall()]
-    print('📋 Sessions table columns:', columns)
-    conn.close()
-    
+        print("✅ New database created")
+        
 except Exception as e:
-    print(f"❌ Error with database: {e}")
-    raise
+    print(f"❌ Database setup error: {e}")
+    # Continue anyway - tables might be created later
 
 def _as_uuid(s: str | None) -> str:
     """Convert string to UUID format for LangGraph."""
@@ -172,27 +119,8 @@ def _as_uuid(s: str | None) -> str:
     uuid_str = f"{hex_dig[:8]}-{hex_dig[8:12]}-{hex_dig[12:16]}-{hex_dig[16:20]}-{hex_dig[20:32]}"
     return uuid_str
 
-def setup_checkpointer():
-    # Use absolute path to ensure both services find the same file
-    import os
-    from pathlib import Path
-    
-    db_path = Path(__file__).parent / "checkpoints.db"
-    print(f"📁 Using checkpointer database: {db_path}")
-    
-    conn = sqlite3.connect(str(db_path), check_same_thread=False)
-    return SqliteSaver(conn)
-
-# Create shared checkpointer
-checkpointer = setup_checkpointer()
-
-# Compile the graph with shared checkpointer
-compiled_graph = graph.compile(checkpointer=checkpointer)
-
-# This function is no longer needed with the lifespan manager
-# @app.on_event("startup")
-# def _startup():
-#     ...
+#  NO SQLite checkpointer - compile graph without checkpointer
+compiled_graph = graph.compile()
 
 @app.post("/api/query", response_model=UserQueryOut)
 async def accept_query(
@@ -202,11 +130,73 @@ async def accept_query(
     file: UploadFile | None = File(None),
     logo: UploadFile | None = File(None),
     image: UploadFile | None = File(None),
-    color_palette: str | None = Form(None),  # Add this line
+    color_palette: str | None = Form(None),
     regenerate: bool = Form(False),
-    schema_type: str = Form("medspa")  # Add schema_type parameter
+    schema_type: str = Form("medspa")
 ):
+    """Handle multiple concurrent requests - each session gets its own processing"""
     try:
+        # Generate unique session ID if not provided
+        if not session_id:
+            session_id = f"session_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
+        
+        print(f"🔄 Starting request for session: {session_id}")
+        
+        # Check if this session already has a running request
+        if session_id in _running_requests:
+            print(f"⚠️ Session {session_id} already has active request, cancelling previous")
+            try:
+                _running_requests[session_id].cancel()
+                await _running_requests[session_id]  # Wait for cancellation
+            except asyncio.CancelledError:
+                pass
+            _running_requests.pop(session_id, None)
+        
+        # Create new task for this request
+        task = asyncio.create_task(
+            process_query_request(
+                session_id, text, llm_model, file, logo, image, 
+                color_palette, regenerate, schema_type
+            )
+        )
+        
+        # Track the request
+        _running_requests[session_id] = task
+        
+        try:
+            # Wait for the request to complete
+            result = await task
+            return result
+        except asyncio.CancelledError:
+            print(f"🛑 Request cancelled for session {session_id}")
+            return {"error": "Request cancelled", "session_id": session_id}
+        finally:
+            # Clean up tracking
+            _running_requests.pop(session_id, None)
+            print(f"✅ Request completed for session {session_id}")
+        
+    except Exception as e:
+        print(f"❌ Error in accept_query: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def process_query_request(
+    session_id: str, 
+    text: str, 
+    llm_model: str | None, 
+    file: UploadFile | None, 
+    logo: UploadFile | None, 
+    image: UploadFile | None, 
+    color_palette: str | None, 
+    regenerate: bool, 
+    schema_type: str
+):
+    """Process individual query request - isolated per session"""
+    try:
+        print(f"🔄 Processing query for session: {session_id}")
+        
+        # Handle file uploads
         doc = None
         if file is not None:
             doc = await save_upload_to_disk(file)
@@ -214,78 +204,173 @@ async def accept_query(
         logo_data = None
         if logo is not None:
             logo_data = await save_logo_to_disk(logo, session_id)
-            print(f"🖼️ Logo uploaded: {logo_data.get('filename')} -> {logo_data.get('url')}")
+            print(f"🖼️ Logo uploaded for {session_id}: {logo_data.get('filename')}")
 
         image_data = None
         if image is not None:
             image_data = await save_image_to_disk(image, session_id)
-            print(f"️ Image uploaded: {image_data.get('filename')} -> {image_data.get('url')}")
+            print(f"🖼️ Image uploaded for {session_id}: {image_data.get('filename')}")
 
+        # Create payload
         payload = {
-            "session_id": session_id or None,
+            "session_id": session_id,
             "timestamp": datetime.utcnow().isoformat(),
             "text": text,
             "llm_model": llm_model,
             "doc": doc,
-            "logo": logo_data,  # Add logo to payload
-            "image": image_data,  # Add image to payload
-            "color_palette": color_palette,  # Add this line
+            "logo": logo_data,
+            "image": image_data,
+            "color_palette": color_palette,
             "regenerate": regenerate,
         }
         
-        # Add debug logging
-        print(f" Main API - Color Palette received: '{color_palette}'")
+        print(f"🎨 Session {session_id} - Color Palette: '{color_palette}'")
 
-        # Initialize state
+        # Initialize state for this session
         state = user_node_init_state(payload)
         
-        # Add schema_type to metadata
+        # Add metadata
         state["metadata"] = {
             "regenerate": regenerate,
-            "schema_type": schema_type  # Add schema type to metadata
+            "schema_type": schema_type
         }
         
-        # FIXED: Use consistent thread ID that LangGraph Studio can track
-        thread_id = _as_uuid(state.get("session_id"))
+        # Create unique thread ID for this session
+        thread_id = _as_uuid(session_id)
         
-        # FIXED: Create configuration with proper LangSmith integration
+        # Create configuration for this session
         config = RunnableConfig(
             configurable={
                 "thread_id": thread_id,
                 "recursion_limit": 50
             },
-            tags=["api_request", "frontend", f"model:{llm_model or 'default'}"],
+            tags=["api_request", "frontend", f"model:{llm_model or 'default'}", f"session:{session_id[:8]}"],
             metadata={
-                "session_id": thread_id,
+                "session_id": session_id,
+                "thread_id": thread_id,
                 "model": llm_model,
                 "has_doc": bool(doc),
-                "has_logo": bool(logo_data),  # Add logo metadata
+                "has_logo": bool(logo_data),
                 "text_preview": text[:100] if text else "",
-                "run_name": f"query_{thread_id[:8]}",  # Add run name for Studio
+                "run_name": f"query_{session_id[:8]}_{int(time.time())}",
                 "project_name": os.getenv("LANGCHAIN_PROJECT", "lovable-orchestrator")
             }
         )
         
-        # FIXED: Use stream method for better LangSmith integration  
+        # Execute graph for this session
         final_result = None
-        print(f"🔄 Executing graph with thread_id: {thread_id}")
+        print(f"🔄 Executing graph for session {session_id} with thread_id: {thread_id}")
+
+        # Execute the graph
+        async for chunk in compiled_graph.astream(state, config=config):
+            final_result = chunk
+            print(f"📊 Session {session_id} - Node completed: {list(chunk.keys())}")
         
-        # Use stream to ensure proper checkpointing
-        for chunk in compiled_graph.stream(state, config=config):
+        # Get final result
+        result = final_result[list(final_result.keys())[-1]] if final_result else state
+        
+        print(f"✅ Session {session_id} - Graph execution completed. Thread {thread_id}")
+        
+        return {
+            "session_id": result["session_id"], 
+            "accepted": True, 
+            "state": result
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error processing query for session {session_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Request processing failed: {str(e)}")
+
+@app.post("/api/regenerate")
+async def regenerate_query(
+    session_id: str = Form(...),
+    llm_model: str | None = Form(None),
+    schema_type: str = Form("medspa")
+):
+    try:
+        print(f"🔄 Regenerating for session: {session_id}")
+        
+        # Create regeneration payload
+        payload = {
+            "session_id": session_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "text": "...",  # Empty text for regeneration
+            "llm_model": llm_model,
+            "regenerate": True,
+        }
+        
+        # Initialize state
+        state = user_node_init_state(payload)
+        
+        # Add schema_type to metadata
+        state["metadata"] = {
+            "regenerate": True,
+            "schema_type": schema_type
+        }
+        
+        # Use consistent thread ID
+        thread_id = _as_uuid(session_id)
+        
+        # Create configuration
+        config = RunnableConfig(
+            configurable={
+                "thread_id": thread_id,
+                "recursion_limit": 50
+            },
+            tags=["api_request", "regenerate", f"model:{llm_model or 'default'}"],
+            metadata={
+                "session_id": thread_id,
+                "model": llm_model,
+                "run_name": f"regenerate_{thread_id[:8]}",
+                "project_name": os.getenv("LANGCHAIN_PROJECT", "lovable-orchestrator")
+            }
+        )
+        
+        # Execute graph
+        final_result = None
+        print(f"🔄 Executing regeneration with thread_id: {thread_id}")
+        
+        async for chunk in compiled_graph.astream(state, config=config):
             final_result = chunk
             print(f"📊 Node completed: {list(chunk.keys())}")
         
         # Use the final result
         result = final_result[list(final_result.keys())[-1]] if final_result else state
         
-        print(f"✅ Graph execution completed. Thread {thread_id} should be saved to checkpoints.db")
+        print(f"✅ Regeneration completed. Thread {thread_id}")
         
         return {"session_id": result["session_id"], "accepted": True, "state": result}
     except Exception as e:
-        print(f"Error in accept_query: {str(e)}")
+        print(f"Error in regenerate_query: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/threads")
+async def get_threads():
+    """Get list of available threads"""
+    try:
+        # Since we removed SQLite, return empty list or implement with your MongoDB
+        return {"threads": [], "message": "No checkpointer - using stateless execution"}
+    except Exception as e:
+        return {"error": str(e), "message": "Could not fetch threads"}
+
+@app.get("/api/thread/{thread_id}")
+async def get_thread_info(thread_id: str):
+    """Get information about a specific thread"""
+    try:
+        # Since we removed SQLite, return basic info
+        return {
+            "thread_id": thread_id,
+            "message": "No checkpointer - using stateless execution",
+            "status": "active"
+        }
+    except Exception as e:
+        return {"error": str(e), "message": "Could not fetch thread info"}
 
 # FIXED: Configure LangServe routes properly for Studio integration
 add_routes(
@@ -305,10 +390,10 @@ async def cleanup_session():
     """Emergency cleanup endpoint - kills all running sandboxes immediately"""
     try:
         # Import the cleanup function
-        from nodes.apply_to_Sandbox_node import _kill_existing_sandbox
+        from nodes.apply_to_Sandbox_node import cleanup_all_sessions
         
         print("🧹 EMERGENCY CLEANUP - Killing all sandboxes...")
-        _kill_existing_sandbox()
+        cleanup_all_sessions()
         
         return {"success": True, "message": "All sandboxes terminated"}
     except Exception as e:
@@ -373,32 +458,54 @@ async def debug_threads():
     except Exception as e:
         return {"error": str(e), "message": "Could not fetch thread info"}
 
-@app.get("/debug/checkpointer")
-async def debug_checkpointer():
-    """Debug endpoint to check checkpointer status"""
+@app.get("/api/requests/status")
+async def get_requests_status():
+    """Get status of all running requests"""
     try:
-        import os
-        from pathlib import Path
-        
-        db_path = Path(__file__).parent / "checkpoints.db"
-        
-        # Try to get some threads from the checkpointer
-        threads = []
-        try:
-            # List some recent threads (if any)
-            cursor = checkpointer.conn.cursor()
-            cursor.execute("SELECT DISTINCT thread_id FROM checkpoints LIMIT 10")
-            threads = [row[0] for row in cursor.fetchall()]
-        except Exception as e:
-            print(f"Error querying threads: {e}")
+        status = {}
+        for session_id, task in _running_requests.items():
+            status[session_id] = {
+                "status": "running" if not task.done() else "completed",
+                "cancelled": task.cancelled(),
+                "exception": str(task.exception()) if task.done() and task.exception() else None
+            }
         
         return {
-            "checkpointer_type": type(checkpointer).__name__,
-            "db_exists": os.path.exists(str(db_path)),
-            "db_size": os.path.getsize(str(db_path)) if os.path.exists(str(db_path)) else 0,
-            "db_path": str(db_path),
-            "recent_threads": threads[:5],  # Show first 5 threads
-            "total_threads": len(threads)
+            "active_requests": len(_running_requests),
+            "requests": status
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/requests/{session_id}/cancel")
+async def cancel_request(session_id: str):
+    """Cancel a specific request"""
+    try:
+        if session_id in _running_requests:
+            print(f"🛑 Cancelling request for session {session_id}")
+            _running_requests[session_id].cancel()
+            _running_requests.pop(session_id, None)
+            return {"success": True, "message": f"Request for session {session_id} cancelled"}
+        else:
+            return {"success": False, "message": f"No active request found for session {session_id}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/requests/cancel-all")
+async def cancel_all_requests():
+    """Cancel all running requests"""
+    try:
+        cancelled_count = 0
+        for session_id, task in _running_requests.items():
+            print(f"🛑 Cancelling request for session {session_id}")
+            task.cancel()
+            cancelled_count += 1
+        
+        _running_requests.clear()
+        
+        return {
+            "success": True, 
+            "message": f"Cancelled {cancelled_count} requests"
         }
     except Exception as e:
         return {"error": str(e)}
@@ -572,7 +679,7 @@ async def restore_session_code(
         final_result = None
         print(f"🔄 Restoring code for session: {session_id}")
         
-        for chunk in compiled_graph.stream(state, config=config):
+        async for chunk in compiled_graph.astream(state, config=config):
             final_result = chunk
             print(f"📊 Node completed: {list(chunk.keys())}")
         
@@ -610,7 +717,7 @@ async def restore_conversation_design(session_id: str, conversation_id: str):
             # Parse the generated code
             generation_result = json.loads(conversation.generated_code)
             
-            print("📝 Converting stored code to proper script for apply_sandbox")
+            print(" Converting stored code to proper script for apply_sandbox")
             
             # Check if this is edit/correction format or full script format
             if generation_result.get("e2b_script") and not generation_result.get("files_to_correct"):
@@ -671,13 +778,14 @@ async def restore_conversation_design(session_id: str, conversation_id: str):
             
             # Create the state object exactly like the normal generation flow
             state = {
+                "session_id": session_id,  # Add session_id for session-based sandbox
                 "context": {
                     "generation_result": generation_result
                 }
             }
             
             # Apply to sandbox exactly like normal generation
-            sandbox_result = apply_sandbox(state)
+            sandbox_result =await apply_sandbox(state)
             
             if sandbox_result and sandbox_result.get('context', {}).get('sandbox_result', {}).get('url'):
                 # Get the URL from the result
@@ -749,19 +857,21 @@ async def delete_session(session_id: str):
         print(f"Error deleting session {session_id}: {e}")
         return {"error": "Failed to delete session"}, 500
 
-@app.get("/api/conversations/{conversation_id}/download")
-async def download_conversation_files(conversation_id: str):
+@app.get("/api/sessions/{session_id}/conversations/{conversation_id}/download")
+async def download_conversation_files(session_id: str, conversation_id: str):
     """Download all project files as a zip archive - EXCEPT NODE_MODULES"""
     try:
         print(f"🔄 Starting download for conversation: {conversation_id}")
         
-        # Get files directly from active sandbox - much faster
-        from nodes.apply_to_Sandbox_node import _global_sandbox
+        # Get files from session-based sandbox
+        from nodes.apply_to_Sandbox_node import _get_session_sandbox
         
-        if not _global_sandbox:
-            raise HTTPException(status_code=404, detail="No active sandbox found")
+        sandbox = _get_session_sandbox(session_id)
         
-        print("✅ Active sandbox found, scanning for all files (except node_modules)...")
+        if not sandbox:
+            raise HTTPException(status_code=404, detail="No active sandbox found for this session")
+        
+        print(f"✅ Active sandbox found for session {session_id}, scanning for all files (except node_modules)...")
         
         files_to_download = {}
         
@@ -770,7 +880,7 @@ async def download_conversation_files(conversation_id: str):
             """Recursively scan directory using E2B SDK"""
             try:
                 # Use the correct E2B SDK method to list files
-                items = _global_sandbox.files.list(directory_path)
+                items = sandbox.files.list(directory_path)
                 
                 for item in items:
                     # Build the full path
@@ -784,14 +894,14 @@ async def download_conversation_files(conversation_id: str):
                     # Check if it's a directory by trying to list its contents
                     try:
                         # Try to list contents - if it works, it's a directory
-                        sub_items = _global_sandbox.files.list(item_path)
-                        print(f"📁 Found directory: {item_path}")
+                        sub_items = sandbox.files.list(item_path)
+                        print(f" Found directory: {item_path}")
                         # Recursively scan the subdirectory
                         scan_directory_recursive(item_path)
                     except:
                         # If listing fails, it's a file
                         try:
-                            content = _global_sandbox.files.read(item_path)
+                            content = sandbox.files.read(item_path)
                             if content and content.strip():
                                 # Clean the path (remove my-app/ prefix if present)
                                 clean_path = item_path.replace('my-app/', '')
@@ -847,5 +957,60 @@ async def download_conversation_files(conversation_id: str):
         print(f"❌ Download error: {e}")
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+@app.post("/api/sessions/{session_id}/cleanup")
+async def cleanup_session_sandbox(session_id: str):
+    """Clean up sandbox for a specific session"""
+    try:
+        from nodes.apply_to_Sandbox_node import cleanup_session_sandbox
+        
+        print(f"🧹 Cleaning up sandbox for session: {session_id}")
+        cleanup_session_sandbox(session_id)
+        
+        return {"success": True, "message": f"Sandbox for session {session_id} cleaned up"}
+    except Exception as e:
+        print(f"❌ Session cleanup failed: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/sessions/{session_id}/status")
+async def get_session_status(session_id: str):
+    """Get session sandbox status"""
+    try:
+        from nodes.apply_to_Sandbox_node import _get_session_sandbox, _get_session_info
+        
+        sandbox = _get_session_sandbox(session_id)
+        info = _get_session_info(session_id)
+        
+        return {
+            "session_id": session_id,
+            "has_sandbox": sandbox is not None,
+            "sandbox_info": info,
+            "status": "active" if sandbox else "inactive"
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/message")
+async def save_message(
+    session_id: str = Form(...),
+    message: str = Form(...)
+):
+    """Save a message to the database"""
+    try:
+        from db import db_session
+        from models import Message
+        
+        with db_session() as db:
+            message_obj = Message(
+                id=str(uuid.uuid4()),
+                session_id=session_id,
+                role="user",
+                content=message,
+                created_at=datetime.utcnow()
+            )
+            db.add(message_obj)
+            db.commit()
+            
+            return {"success": True, "message_id": message_obj.id}
+    except Exception as e:
+        print(f"Error saving message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
