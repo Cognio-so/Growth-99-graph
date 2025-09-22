@@ -38,8 +38,19 @@ export default function ResultView() {
   const [conversation, setConversation] = useState(null)
 
   const [selectedPracticeType, setSelectedPracticeType] = useState("Medical Aesthetics")
-  const [selectedModel, setSelectedModel] = useState(initialModel || "gpt-oss-120b")
+  const [selectedModel, setSelectedModel] = useState(initialModel || "k2-openrouter")
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || "medical-aesthetics")
+  
+  // Add available models array
+  const availableModels = [
+    { value: "k2", label: "K2 (Kimi)" },
+    { value: "k2-openrouter", label: "K2 (OpenRouter)" },
+    { value: "claude", label: "Claude 3.5 Sonnet" },
+    { value: "claude-haiku", label: "Claude 3.5 Haiku" },
+    { value: "gpt-4o", label: "GPT-4o" },
+    { value: "gpt-5", label: "gpt-5" },
+    { value: "groq-default", label: "Groq Default" }
+  ]
   
   const [session, setSession] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -765,6 +776,19 @@ export default function ResultView() {
                   conversationId={messages.find(m => m.id === selectedMessageId)?.conversation_id}
                   disabled={!selectedMessageId}
                 />
+                {/* Add model selector beside deploy button */}
+                <Select value={selectedModel} onValueChange={setSelectedModel} disabled={sendingMessage}>
+                  <SelectTrigger className="w-[140px] h-6 text-xs rounded-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs rounded-xl">
+                    {availableModels.map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </>
             )}
           </div>

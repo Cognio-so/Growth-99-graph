@@ -16,6 +16,8 @@ _sandbox_lock = threading.Lock()
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from collections import defaultdict
+_session_exec_locks: Dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 # Add at the top after imports
 _executor = ThreadPoolExecutor(max_workers=10)
@@ -287,7 +289,7 @@ async def _wait_for_http(sandbox, port: int, max_attempts: int = 5) -> bool:  # 
             print(f"   Attempt {attempt}: Error checking server: {e}")
         
         if attempt < max_attempts:
-            time.sleep(3)
+            await asyncio.sleep(3)
     
     print(f"❌ Server not ready after {max_attempts} attempts")
     return False
@@ -497,80 +499,90 @@ def _kill_sandbox_for_session(session_id: str):
             del _session_sandboxes[session_id]
 
 # Replace the entire function with:
+# at top of file:
+import asyncio, time
+
+# keep your existing: _sandbox_lock = threading.Lock()
+# keep your existing _session_sandboxes dict
+
 async def _get_or_create_persistent_sandbox(ctx: Dict[str, Any], sandbox_timeout: int):
-    """Get or create sandbox with session-based management."""
+    """Get or create sandbox for this session WITHOUT awaiting inside the global lock."""
     session_id = ctx.get("session_id", "default")
-    
+
+    # ---- QUICK LOOKUP (no await) ----
     with _sandbox_lock:
-        # Check if we have a sandbox for this session
-        if session_id in _session_sandboxes:
-            sandbox_info = _session_sandboxes[session_id]
-            sandbox = sandbox_info.get("sandbox")
-            
-            if sandbox:
-                try:
-                    # Health check
-                    test_result = await _async_sandbox_command(sandbox, "echo 'test'", 10)
-                    if test_result and test_result.stdout:
-                        # Additional health checks
-                        project_check = await _async_sandbox_command(sandbox, "ls my-app/package.json", 5)
-                        if project_check.exit_code == 0:
-                            sandbox_id = getattr(sandbox, "id", "unknown")
-                            print(f"✅ Reusing existing sandbox for session {session_id}: {sandbox_id}")
-                            ctx["existing_sandbox_id"] = sandbox_id
-                            return sandbox, False
-                except Exception as e:
-                    print(f"⚠️ Sandbox health check failed for session {session_id}: {e}")
-                    # Remove dead sandbox
-                    del _session_sandboxes[session_id]
-        
-        # Create new sandbox for this session
-        print(f"�� Creating NEW sandbox for session: {session_id}")
-        new_sandbox = await _create_sandbox_with_timeout(sandbox_timeout)
-        
-        sandbox_id = getattr(new_sandbox, "id", "unknown")
-        sandbox_info = {
-            "id": sandbox_id,
-            "created_at": time.time(),
-            "project_setup": False,
-            "session_id": session_id
-        }
-        
-        _session_sandboxes[session_id] = {"sandbox": new_sandbox, "info": sandbox_info}
-        
-        ctx["existing_sandbox_id"] = sandbox_id
-        print(f"✅ Created fresh sandbox for session {session_id}: {sandbox_id}")
-        return new_sandbox, True
+        entry = _session_sandboxes.get(session_id)
+        sandbox = entry.get("sandbox") if entry else None
+
+    # ---- HEALTH CHECK OUTSIDE LOCK ----
+    if sandbox:
+        try:
+            ping = await _async_sandbox_command(sandbox, "echo ok", 5)
+            proj = await _async_sandbox_command(sandbox, "ls my-app/package.json", 5)
+            if getattr(ping, "exit_code", 1) == 0 and getattr(proj, "exit_code", 1) == 0:
+                ctx["existing_sandbox_id"] = getattr(sandbox, "id", "unknown")
+                return sandbox, False
+        except Exception:
+            pass
+        # unregister broken sandbox
+        with _sandbox_lock:
+            _session_sandboxes.pop(session_id, None)
+
+    # ---- CREATE NEW OUTSIDE LOCK ----
+    new_sandbox = await _create_sandbox_with_timeout(sandbox_timeout)
+    info = {
+        "id": getattr(new_sandbox, "id", "unknown"),
+        "created_at": time.time(),
+        "project_setup": False,
+        "session_id": session_id,
+    }
+
+    # ---- REGISTER ATOMICALLY ----
+    with _sandbox_lock:
+        _session_sandboxes[session_id] = {"sandbox": new_sandbox, "info": info}
+
+    ctx["existing_sandbox_id"] = info["id"]
+    print(f"✅ Created fresh sandbox for session {session_id}: {info['id']}")
+    return new_sandbox, True
+
 
 # Replace the entire function with:
 async def _is_project_setup(session_id: str) -> bool:
-    """Check if the Vite project is already set up for a session."""
+    """Check if project is set up for this session without awaiting under the lock."""
+    # read pointers quickly under lock
     with _sandbox_lock:
-        if session_id not in _session_sandboxes:
+        entry = _session_sandboxes.get(session_id)
+        if not entry:
             return False
-            
-        sandbox_info = _session_sandboxes[session_id]
-        if sandbox_info.get("info", {}).get("project_setup", False):
+        sandbox = entry.get("sandbox")
+        info = entry.get("info", {})
+        if info.get("project_setup"):
             return True
-            
-        sandbox = sandbox_info.get("sandbox")
-        if not sandbox:
-            return False
-            
-        # Check project structure
-        try:
-            dir_check = await _async_sandbox_command(sandbox, "ls -la", 10)
-            if dir_check.exit_code == 0 and "my-app" in dir_check.stdout:
-                package_json = await _async_sandbox_file_read(sandbox, "my-app/package.json")
-                if package_json and "vite" in package_json:
-                    node_modules_check = await _async_sandbox_command(sandbox, "ls -la my-app/", 10)
-                    if node_modules_check.exit_code == 0 and "node_modules" in node_modules_check.stdout:
-                        sandbox_info["info"]["project_setup"] = True
-                        return True
-        except Exception as e:
-            print(f"⚠️ Error checking project setup for session {session_id}: {e}")
-            
+
+    if not sandbox:
         return False
+
+    # do checks outside lock
+    try:
+        dir_check = await _async_sandbox_command(sandbox, "ls -la", 10)
+        if getattr(dir_check, "exit_code", 1) != 0:
+            return False
+        pkg = await _async_sandbox_file_read(sandbox, "my-app/package.json")
+        if not pkg or "vite" not in pkg:
+            return False
+        nm = await _async_sandbox_command(sandbox, "ls -la my-app/", 10)
+        if getattr(nm, "exit_code", 1) != 0 or "node_modules" not in nm.stdout:
+            return False
+
+        # mark setup true under lock
+        with _sandbox_lock:
+            if session_id in _session_sandboxes:
+                _session_sandboxes[session_id]["info"]["project_setup"] = True
+        return True
+    except Exception as e:
+        print(f"⚠️ Error checking project setup for session {session_id}: {e}")
+        return False
+
 
 
 async def _apply_file_corrections_only(correction_data: Dict[str, Any], session_id: str) -> bool:
@@ -703,7 +715,7 @@ async def _restart_dev_server_only(session_id: str) -> Optional[str]:
         await _async_sandbox_command(sandbox, "bash -lc \"pkill -f 'vite' || true\"", 10)
 
         import time as _t
-        _t.sleep(2)
+        await asyncio.sleep(2)
 
         # STEP 4: Clear caches
         await _async_sandbox_command(sandbox, "bash -lc \"cd my-app && rm -rf .vite node_modules/.vite dev.log || true\"", 10)
@@ -941,195 +953,230 @@ async def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
     print("--- Running Apply Sandbox Node (Enhanced with Edit Support) ---")
 
     ctx = state.get("context", {}) or {}
-    gen_result = ctx.get("generation_result", {}) or {}
-    script_to_run = gen_result.get("e2b_script")
-    is_correction = gen_result.get("is_correction", False)
-    is_edit = gen_result.get("is_edit", False)
+    # gen_result = ctx.get("generation_result", {}) or {}
+    # script_to_run = gen_result.get("e2b_script")
+    # is_correction = gen_result.get("is_correction", False)
+    # is_edit = gen_result.get("is_edit", False)
 
     session_id = state.get("session_id") or state.get("metadata", {}).get("session_id", "default")
     ctx["session_id"] = session_id
-
-    port = int(os.getenv("E2B_VITE_PORT", "5173"))
-    sandbox_timeout = int(os.getenv("E2B_SANDBOX_TIMEOUT", "3600"))
+    state["context"] = ctx
+    # port = int(os.getenv("E2B_VITE_PORT", "5173"))
+    # sandbox_timeout = int(os.getenv("E2B_SANDBOX_TIMEOUT", "3600"))
 
     # ---------------------------------------------------------------------
     # 1️⃣ EDIT MODE HANDLING (PATCHES EXISTING APP)
     # ---------------------------------------------------------------------
-    if is_edit:
-        print("🔄 EDIT MODE - Applying targeted changes to existing application...")
-        sandbox = await _get_existing_sandbox_only(ctx)
-        if not sandbox:
-            msg = "No existing sandbox found during edit - cannot apply changes"
+    lock = _session_exec_locks[session_id]
+    async with lock:
+        gen_result = ctx.get("generation_result", {}) or {}
+        script_to_run = gen_result.get("e2b_script")
+        is_correction = gen_result.get("is_correction", False)
+        is_edit = gen_result.get("is_edit", False)
+        port = int(os.getenv("E2B_VITE_PORT", "5173"))
+        sandbox_timeout = int(os.getenv("E2B_SANDBOX_TIMEOUT", "3600"))
+        if is_edit:
+            print("🔄 EDIT MODE - Applying targeted changes to existing application...")
+            sandbox = await _get_existing_sandbox_only(ctx)
+            if not sandbox:
+                msg = "No existing sandbox found during edit - cannot apply changes"
+                print(f"❌ {msg}")
+                return {"error": msg}
+
+            correction_data = ctx.get("correction_data", {})
+            if not correction_data:
+                msg = "No correction data found for edit mode"
+                print(f"❌ {msg}")
+                return {"error": msg}
+
+            if not await _apply_edit_changes(correction_data, session_id):
+                raise RuntimeError("Failed to apply edit changes")
+
+            # Restart dev server (or full start if needed)
+            final_url = await _restart_dev_server_only(session_id)
+            if not final_url:
+                print("⚠️ Restart failed, trying full start...")
+                public_host = sandbox.get_host(port)
+                await _write_vite_config(sandbox, public_host, port)
+                try:
+    # ⏱️ 3-minute hard limit for dev-server + preview start
+                    async with asyncio.timeout(180):
+                        final_url = await _start_dev_server(sandbox, port=port)
+                        if not final_url:
+                            final_url = await _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
+                except TimeoutError:
+                    print(f"⏱️ Dev server start timed out for session {session_id}")
+                    _kill_sandbox_for_session(session_id)
+                    ctx["sandbox_failed"] = True
+                    ctx["sandbox_error"] = "Timeout waiting for dev server"
+                    state["context"] = ctx
+                    return state
+
+                if not final_url:
+                    print(f"❌ Failed to start dev server for session {session_id}")
+                    _kill_sandbox_for_session(session_id)
+                    ctx["sandbox_failed"] = True
+                    ctx["sandbox_error"] = "Dev server failed"
+                    state["context"] = ctx
+                    return state
+
+
+            # Store full app state after edits
+            sandbox_id = getattr(sandbox, "id", "unknown")
+            complete_state =await _capture_complete_application_state(sandbox)
+            if complete_state:
+                ctx["generation_result"] = complete_state
+                print("✅ Captured complete application state after edit")
+
+            ctx["sandbox_result"] = {
+                "success": True,
+                "url": final_url,
+                "port": port,
+                "sandbox_id": sandbox_id,
+                "message": "Edit changes applied successfully and server restarted"
+            }
+            state["context"] = ctx
+            return state
+
+        # ---------------------------------------------------------------------
+        # 2️⃣ CORRECTION MODE (REUSES SANDBOX, RESTARTS SERVER)
+        # ---------------------------------------------------------------------
+        if is_correction:
+            print("🔄 CORRECTION MODE - Restarting Vite server with corrections...")
+            sandbox = await _get_existing_sandbox_only(ctx)
+            if not sandbox:
+                return {"error": "Correction failed - no existing sandbox found"}
+            try:
+                restart_result = await _restart_dev_server_only(session_id)
+                if restart_result:
+                    print("✅ Vite server restarted successfully with corrections")
+                    return {"success": True, "message": "Corrections applied and server restarted"}
+                else:
+                    print("❌ Failed to restart server, attempting full start...")
+                    public_host = sandbox.get_host(port)
+                    await _write_vite_config(sandbox, public_host, port)
+                    final_url = await _start_dev_server(sandbox, port=port)
+                    if not final_url:
+                        final_url = await _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
+                    return {"success": bool(final_url), "url": final_url}
+            except Exception as e:
+                print(f"❌ Error restarting Vite server: {e}")
+                return {"error": str(e)}
+
+        # ---------------------------------------------------------------------
+        # 3️⃣ INITIAL GENERATION (FULL APP CREATION)
+        # ---------------------------------------------------------------------
+        if not script_to_run:
+            msg = "No script to run in generation result"
             print(f"❌ {msg}")
             return {"error": msg}
 
-        correction_data = ctx.get("correction_data", {})
-        if not correction_data:
-            msg = "No correction data found for edit mode"
+        if not os.getenv("E2B_API_KEY"):
+            msg = "E2B_API_KEY is not set; please configure your environment."
             print(f"❌ {msg}")
-            return {"error": msg}
+            ctx["sandbox_result"] = {"success": False, "error": msg}
+            state["context"] = ctx
+            return state
 
-        if not await _apply_edit_changes(correction_data, session_id):
-            raise RuntimeError("Failed to apply edit changes")
+        try:
+            sandbox, newly_created = await _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
+            print(f"✅ Using sandbox: {getattr(sandbox, 'id', 'unknown')} (newly_created={newly_created})")
 
-        # Restart dev server (or full start if needed)
-        final_url = await _restart_dev_server_only(session_id)
-        if not final_url:
-            print("⚠️ Restart failed, trying full start...")
+            # Ensure project setup
+            if not await _is_project_setup(session_id):
+                print("📦 Setting up base Vite project...")
+                if not await _create_fast_vite_project(sandbox):
+                    raise RuntimeError("Failed to create base Vite project")
+                with _sandbox_lock:
+                    if session_id in _session_sandboxes:
+                        _session_sandboxes[session_id]["info"]["project_setup"] = True
+            else:
+                print("✅ Project already set up")
+
+            # Dependency installation
+            normalized = _normalize_e2b_api(script_to_run)
+            print("🔍 Analyzing script for dependencies...")
+            try:
+                installed_packages = await _detect_and_install_dependencies(sandbox, normalized)
+                if installed_packages:
+                    print(f"✅ Installed packages: {', '.join(installed_packages)}")
+                    await asyncio.sleep(2)  # let npm settle
+                else:
+                    print("✅ No additional packages required")
+            except Exception as dep_error:
+                print(f"⚠️ Dependency detection failed: {dep_error}")
+
+            # Execute generator script
+            script_execution_success = False
+            try:
+                ns: Dict[str, Any] = {"Sandbox": Sandbox, "sandbox": sandbox}
+                exec(normalized, ns)
+                print(f"🔍 Namespace keys: {list(ns.keys())}")
+
+                main_function = None
+                for key in ns:
+                    if key.startswith("create_") and key.endswith("_app") and callable(ns[key]):
+                        main_function = ns[key]
+                        print(f"✅ Found main generator function: {key}")
+                        break
+
+                if main_function:
+                    result = main_function(sandbox)
+                    print(f"✅ Script executed successfully: {result}")
+                    script_execution_success = True
+                else:
+                    print("❌ No generator function found in script output")
+
+            except Exception as e:
+                import traceback
+                print(f"❌ Script execution failed: {e}")
+                print(traceback.format_exc())
+
+            if not script_execution_success:
+                print("🔧 Falling back to creating a fresh React app...")
+                await _create_fallback_react_app(sandbox)
+                print("✅ Fallback React app created successfully")
+
+            # Ensure CSS setup
+            await _ensure_css_files(sandbox)
+            await _fix_vite_css_processing(sandbox)
+            await _ensure_tailwind_cdn_in_index_html(sandbox)
+
+            # Clear vite cache before starting server
+            await _async_sandbox_command(sandbox, "cd my-app && rm -rf node_modules/.vite", 10)
+            await _async_sandbox_command(sandbox, "cd my-app && rm -rf .vite", 10)
+
+            # Start dev server (or fallback to preview)
             public_host = sandbox.get_host(port)
             await _write_vite_config(sandbox, public_host, port)
             final_url = await _start_dev_server(sandbox, port=port)
             if not final_url:
                 final_url = await _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
 
-        # Store full app state after edits
-        sandbox_id = getattr(sandbox, "id", "unknown")
-        complete_state =await _capture_complete_application_state(sandbox)
-        if complete_state:
-            ctx["generation_result"] = complete_state
-            print("✅ Captured complete application state after edit")
+            if not final_url:
+                raise RuntimeError("Dev server not accessible after generation")
 
-        ctx["sandbox_result"] = {
-            "success": True,
-            "url": final_url,
-            "port": port,
-            "sandbox_id": sandbox_id,
-            "message": "Edit changes applied successfully and server restarted"
-        }
-        state["context"] = ctx
-        return state
-
-    # ---------------------------------------------------------------------
-    # 2️⃣ CORRECTION MODE (REUSES SANDBOX, RESTARTS SERVER)
-    # ---------------------------------------------------------------------
-    if is_correction:
-        print("🔄 CORRECTION MODE - Restarting Vite server with corrections...")
-        sandbox = await _get_existing_sandbox_only(ctx)
-        if not sandbox:
-            return {"error": "Correction failed - no existing sandbox found"}
-        try:
-            restart_result = await _restart_dev_server_only(session_id)
-            if restart_result:
-                print("✅ Vite server restarted successfully with corrections")
-                return {"success": True, "message": "Corrections applied and server restarted"}
-            else:
-                print("❌ Failed to restart server, attempting full start...")
-                public_host = sandbox.get_host(port)
-                await _write_vite_config(sandbox, public_host, port)
-                final_url = await _start_dev_server(sandbox, port=port)
-                if not final_url:
-                    final_url = await _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
-                return {"success": bool(final_url), "url": final_url}
-        except Exception as e:
-            print(f"❌ Error restarting Vite server: {e}")
-            return {"error": str(e)}
-
-    # ---------------------------------------------------------------------
-    # 3️⃣ INITIAL GENERATION (FULL APP CREATION)
-    # ---------------------------------------------------------------------
-    if not script_to_run:
-        msg = "No script to run in generation result"
-        print(f"❌ {msg}")
-        return {"error": msg}
-
-    if not os.getenv("E2B_API_KEY"):
-        msg = "E2B_API_KEY is not set; please configure your environment."
-        print(f"❌ {msg}")
-        ctx["sandbox_result"] = {"success": False, "error": msg}
-        state["context"] = ctx
-        return state
-
-    try:
-        sandbox, newly_created = await _get_or_create_persistent_sandbox(ctx, sandbox_timeout)
-        print(f"✅ Using sandbox: {getattr(sandbox, 'id', 'unknown')} (newly_created={newly_created})")
-
-        # Ensure project setup
-        if not await _is_project_setup(session_id):
-            print("📦 Setting up base Vite project...")
-            if not await _create_fast_vite_project(sandbox):
-                raise RuntimeError("Failed to create base Vite project")
-            with _sandbox_lock:
-                if session_id in _session_sandboxes:
-                    _session_sandboxes[session_id]["info"]["project_setup"] = True
-        else:
-            print("✅ Project already set up")
-
-        # Dependency installation
-        normalized = _normalize_e2b_api(script_to_run)
-        print("🔍 Analyzing script for dependencies...")
-        try:
-            installed_packages = await _detect_and_install_dependencies(sandbox, normalized)
-            if installed_packages:
-                print(f"✅ Installed packages: {', '.join(installed_packages)}")
-                time.sleep(2)  # let npm settle
-            else:
-                print("✅ No additional packages required")
-        except Exception as dep_error:
-            print(f"⚠️ Dependency detection failed: {dep_error}")
-
-        # Execute generator script
-        script_execution_success = False
-        try:
-            ns: Dict[str, Any] = {"Sandbox": Sandbox, "sandbox": sandbox}
-            exec(normalized, ns)
-            print(f"🔍 Namespace keys: {list(ns.keys())}")
-
-            main_function = None
-            for key in ns:
-                if key.startswith("create_") and key.endswith("_app") and callable(ns[key]):
-                    main_function = ns[key]
-                    print(f"✅ Found main generator function: {key}")
-                    break
-
-            if main_function:
-                result = main_function(sandbox)
-                print(f"✅ Script executed successfully: {result}")
-                script_execution_success = True
-            else:
-                print("❌ No generator function found in script output")
+            ctx["sandbox_result"] = {
+                "success": True,
+                "url": final_url,
+                "port": port,
+                "sandbox_id": getattr(sandbox, "id", "unknown"),
+                "message": "Application deployed successfully"
+            }
 
         except Exception as e:
             import traceback
-            print(f"❌ Script execution failed: {e}")
+            print(f"❌ Sandbox application failed: {e}")
             print(traceback.format_exc())
+            
+            # 🔥 ADD THIS LINE
+            _kill_sandbox_for_session(session_id)
 
-        if not script_execution_success:
-            print("🔧 Falling back to creating a fresh React app...")
-            await _create_fallback_react_app(sandbox)
-            print("✅ Fallback React app created successfully")
-
-        # Ensure CSS setup
-        await _ensure_css_files(sandbox)
-        await _fix_vite_css_processing(sandbox)
-        await _ensure_tailwind_cdn_in_index_html(sandbox)
-
-        # Clear vite cache before starting server
-        await _async_sandbox_command(sandbox, "cd my-app && rm -rf node_modules/.vite", 10)
-        await _async_sandbox_command(sandbox, "cd my-app && rm -rf .vite", 10)
-
-        # Start dev server (or fallback to preview)
-        public_host = sandbox.get_host(port)
-        await _write_vite_config(sandbox, public_host, port)
-        final_url = await _start_dev_server(sandbox, port=port)
-        if not final_url:
-            final_url = await _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
-
-        if not final_url:
-            raise RuntimeError("Dev server not accessible after generation")
-
-        ctx["sandbox_result"] = {
-            "success": True,
-            "url": final_url,
-            "port": port,
-            "sandbox_id": getattr(sandbox, "id", "unknown"),
-            "message": "Application deployed successfully"
-        }
-
-    except Exception as e:
-        import traceback
-        print(f"❌ Sandbox application failed: {e}")
-        print(traceback.format_exc())
-        ctx["sandbox_result"] = {"success": False, "error": str(e)}
+            ctx["sandbox_result"] = {"success": False, "error": str(e)}
+            ctx["sandbox_failed"] = True
+            ctx["sandbox_error"] = str(e)
+            state["context"] = ctx
+            return state
 
     state["context"] = ctx
     return state
@@ -1479,7 +1526,7 @@ async def _apply_edit_changes(correction_data: Dict[str, Any], session_id: str) 
                 if installed_packages:
                     print(f"✅ Successfully installed {len(installed_packages)} new packages: {', '.join(installed_packages)}")
                     # Give npm a moment to update package.json and node_modules
-                    time.sleep(2)
+                    await asyncio.sleep(2)
                 else:
                     print("ℹ️ No new dependencies detected in edited files")
             except Exception as e:

@@ -68,6 +68,14 @@ def route_after_restore(state: GraphState) -> str:
         return "apply_sandbox"
     else:
         return "output"  # If restore failed, end the flow
+
+def route_after_apply(state: GraphState) -> str:
+    """Route after apply_sandbox - stop if sandbox failed"""
+    ctx = state.get("context", {})
+    if ctx.get("sandbox_failed"):
+        print("🛑 Sandbox failed — stopping graph and going to output")
+        return "output"
+    return "validation"        
 async def analyze_intent_node(state):
     return await analyze_intent(state)
 def build_graph():
@@ -128,7 +136,10 @@ def build_graph():
     
     # Validation loop implementation
     g.add_edge("generator", "apply_sandbox")
-    g.add_edge("apply_sandbox", "validation")
+    g.add_conditional_edges("apply_sandbox", route_after_apply, {
+    "validation": "validation",
+    "output": "output"
+})
     
     # Validation routing: success -> output, failure -> code_analysis
     g.add_edge("validation", "output")

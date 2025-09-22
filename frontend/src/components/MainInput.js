@@ -10,12 +10,13 @@ export default function MainInput() {
   const [input, setInput] = useState("")
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [selectedModel, setSelectedModel] = useState("k2")
+  const [selectedModel, setSelectedModel] = useState("k2-openrouter")
   const [selectedCategory, setSelectedCategory] = useState("medical-aesthetics")
   const router = useRouter()
 
   const availableModels = [
     { value: "k2", label: "K2 (Kimi)" },
+    { value: "k2-openrouter", label: "K2 (OpenRouter)" },
     { value: "claude", label: "Claude 3.5 Sonnet" },
     { value: "claude-haiku", label: "Claude 3.5 Haiku" },
     { value: "gpt-4o", label: "GPT-4o" },

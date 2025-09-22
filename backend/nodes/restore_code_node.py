@@ -5,7 +5,7 @@ from db import db_session
 from models import SessionGeneratedLinks
 from sqlalchemy import select, desc
 
-def restore_code_from_session(state: Dict[str, Any]) -> Dict[str, Any]:
+async def restore_code_from_session(state: Dict[str, Any]) -> Dict[str, Any]:
     """Restore code from a previous session to current sandbox"""
     print("--- Running Restore Code Node ---")
     
@@ -66,7 +66,29 @@ def restore_code_from_session(state: Dict[str, Any]) -> Dict[str, Any]:
                 "is_restore": True,
                 "restore_from": link_id or "latest"
             }
-            
+            from nodes.apply_to_Sandbox_node import _ensure_sandbox_for_session, _capture_all_files, _write_files_to_sandbox
+            session_id = state.get("session_id")
+
+            sandbox = await _ensure_sandbox_for_session(session_id)
+
+            # write restored code to sandbox
+            await _write_files_to_sandbox(sandbox, link.generated_code)
+
+            # capture sandbox state so edit_analyzer & generator have correct base
+            captured_files = await _capture_all_files(sandbox)
+            ctx["restored_session"] = True
+            ctx["active_sandbox_id"] = sandbox.id
+            ctx["existing_code_context"] = {
+                "files": captured_files,
+                "source": "restored_snapshot"
+            }
+
+            # optional: store per-conversation snapshot
+            conv_id = state.get("conversation_id")
+            ctx.setdefault("history_snapshots", {})[conv_id] = captured_files
+
+            state["context"] = ctx
+            return state
             print(f"✅ Restored code from session {session_id}, generation {link.generation_number}")
             
     except Exception as e:
