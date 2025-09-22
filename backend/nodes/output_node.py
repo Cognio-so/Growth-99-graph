@@ -74,7 +74,15 @@ def output_result(state: Dict[str, Any]) -> Dict[str, Any]:
         ctx = state.get("context", {})
         session_id = state.get("session_id")
         user_query = state.get("text", "")
-        
+        if ctx.get("sandbox_failed"):
+            print(f"🛑 Sandbox failed for session {session_id} - returning error result")
+            ctx["final_result"] = {
+                "url": None,
+                "message": ctx.get("sandbox_error", "Sandbox failed due to code error. Please try again."),
+                "success": False
+            }
+            state["context"] = ctx
+            return state
         # CRITICAL: Restore both user and AI messages if they were lost during processing
         immediate_ai_response = ctx.get("immediate_ai_response")
         user_message = ctx.get("user_message")

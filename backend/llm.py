@@ -18,6 +18,7 @@ _FALLBACK_STATE = {
 MODEL_ALIASES: Dict[str, Dict[str, str]] = {
     "k2": {"provider": "k2-fallback", "model": "moonshotai/kimi-k2-instruct"},
     "k2-fallback": {"provider": "k2-fallback", "model": "moonshotai/kimi-k2-instruct"},
+    "k2-openrouter": {"provider": "openrouter", "model": "moonshotai/kimi-k2"},  # Direct OpenRouter K2 option
     "claude": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240229"},
     "claude-haiku": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
     "gpt-4": {"provider": "openai", "model": "gpt-4o"},
