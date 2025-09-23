@@ -72,7 +72,7 @@ _client = OpenAI()
 import os
 import os, base64, mimetypes
 
-def _prepare_image_for_responses(image_url: str) -> str:
+async def _prepare_image_for_responses(image_url: str) -> str:
     """
     Prepares an image reference for OpenAI Responses API.
     ✅ Production: uses the public image URL directly.
@@ -134,12 +134,12 @@ def _prepare_image_for_responses(image_url: str) -> str:
         return image_url  # fallback to original path
 
 
-def _call_openai_vision_responses(image_url: str, prompt: str) -> str:
+async def _call_openai_vision_responses(image_url: str, prompt: str) -> str:
     """
     Official Responses API call (gpt-4.1) using input_text + input_image.
     Returns resp.output_text (string).
     """
-    img = _prepare_image_for_responses(image_url)
+    img = await _prepare_image_for_responses(image_url)
     resp = _client.responses.create(
         model="gpt-4o",
         input=[{
@@ -153,7 +153,7 @@ def _call_openai_vision_responses(image_url: str, prompt: str) -> str:
     # Unified access to the text body
     return getattr(resp, "output_text", "") or ""
 
-def _extract_vision_design_specs(image_url: str, user_query: str) -> Dict[str, Any]:
+async def _extract_vision_design_specs(image_url: str, user_query: str) -> Dict[str, Any]:
     """
     Analyze the image and extract extremely detailed, actionable design specs as raw text.
     """
@@ -213,7 +213,7 @@ RULES:
 - Output as detailed text description — no JSON formatting
 """
 
-    raw = _call_openai_vision_responses(image_url, vision_prompt)
+    raw = await _call_openai_vision_responses(image_url, vision_prompt)
 
     # Return the raw text analysis directly
     return {"raw_analysis": raw}
@@ -252,7 +252,7 @@ User Query: "{user_text}"
                 print(f"🤖 LLM Intent Analysis: {intent} ({llm_result.get('reason', '')})")
 
                 if intent == "vision_analysis":
-                    analysis = _extract_vision_design_specs(image_url, user_text)
+                    analysis = await _extract_vision_design_specs(image_url, user_text)
                     return {
                         "intent": "vision_analysis",
                         "use_for_vision": True,
@@ -281,7 +281,7 @@ User Query: "{user_text}"
 
         if is_vision:
             print("🔍 Keyword fallback: Vision analysis intent detected")
-            analysis = _extract_vision_design_specs(image_url, user_text)
+            analysis = await _extract_vision_design_specs(image_url, user_text)
             return {
                 "intent": "vision_analysis",
                 "use_for_vision": True,
@@ -308,7 +308,7 @@ User Query: "{user_text}"
         }
 
 
-def _capture_existing_code_context(state: GraphState) -> str:
+async def _capture_existing_code_context(state: GraphState) -> str:
     """Capture the existing code context from the current sandbox."""
     try:
         # Import here to avoid circular imports
@@ -376,7 +376,7 @@ def _capture_existing_code_context(state: GraphState) -> str:
         traceback.print_exc()
         return f"Error capturing context: {str(e)}"
 
-def _build_enhanced_edit_analysis_prompt(state: GraphState) -> str:
+async def _build_enhanced_edit_analysis_prompt(state: GraphState) -> str:
     """Build the enhanced prompt for analyzing edit requests with better theme and image handling."""
     text = state.get("text", "")
     ctx = state.get("context", {})
@@ -384,7 +384,7 @@ def _build_enhanced_edit_analysis_prompt(state: GraphState) -> str:
     doc = state.get("doc")
     
     # CRITICAL: Capture the existing code context
-    existing_code = _capture_existing_code_context(state)
+    existing_code = await _capture_existing_code_context(state)
     
     # Check if document information is available
     has_document_info = doc and extraction.get("has_business_info")
@@ -514,7 +514,7 @@ If no images are needed, return empty array: []
         print(f"❌ Error detecting image requirements: {e}")
         return []
 
-def _generate_images_for_edit(image_requirements: List[Dict[str, Any]], state: GraphState) -> List[Dict[str, Any]]:
+async def _generate_images_for_edit(image_requirements: List[Dict[str, Any]], state: GraphState) -> List[Dict[str, Any]]:
     """
     Generate images for edit requirements using photo generator functions.
     """
@@ -606,7 +606,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
         chat = await get_chat_model(model, temperature=0.1)
         
         # Build ENHANCED prompt with existing code context
-        user_prompt = _build_enhanced_edit_analysis_prompt(state)
+        user_prompt =await _build_enhanced_edit_analysis_prompt(state)
         
         # ENHANCED: Include document extraction information if available
         extraction = ctx.get("extraction", {})
@@ -625,7 +625,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
         # CRITICAL: Process logo upload if available for editing
         if logo:
             print("🖼️ Processing uploaded logo for edit...")
-            logo_url = _process_uploaded_logo_for_edit(logo)
+            logo_url = await _process_uploaded_logo_for_edit(logo)
             if logo_url:
                 user_prompt += f"\n\nUploaded Logo Information:\n"
                 user_prompt += f"- Logo URL: {logo_url}\n"
@@ -666,7 +666,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
         }
         
         # CRITICAL: Store the existing code context for the generator
-        existing_code = _capture_existing_code_context(state)
+        existing_code = await _capture_existing_code_context(state)
         ctx["existing_code"] = existing_code
         
         # SMART IMAGE HANDLING: Only generate images if user hasn't uploaded one
@@ -682,7 +682,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
             if asyncio.iscoroutine(image_requirements):
                 image_requirements = await image_requirements
             print(f"🖼️ No uploaded image detected, generating {len(image_requirements)} images for edit request")
-            generated_images = _generate_images_for_edit(image_requirements, state)
+            generated_images = await _generate_images_for_edit(image_requirements, state)
             edit_analysis["image_requirements"] = image_requirements
             edit_analysis["generated_images"] = generated_images
         elif image_requirements and image:
@@ -705,7 +705,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
         
         # CRITICAL: Include uploaded logo in generator input for editing
         if logo:
-            logo_url = _process_uploaded_logo_for_edit(logo)
+            logo_url =await _process_uploaded_logo_for_edit(logo)
             if logo_url:
                 gi.update({
                     "uploaded_logo_url": logo_url,
@@ -720,11 +720,11 @@ async def edit_analyzer(state: GraphState) -> GraphState:
         # CRITICAL: Include uploaded image in generator input for editing
         if image:
             print("🖼️ Processing uploaded image with intent analysis.")
-            image_url = _process_uploaded_image_for_edit(image)
+            image_url = await _process_uploaded_image_for_edit(image)
 
             if image_url:
                 # Decide: add image to UI vs. recreate UI like the image
-                intent_analysis = _analyze_image_intent(user_text, image_url)
+                intent_analysis = await _analyze_image_intent(user_text, image_url)
 
                 if intent_analysis["use_for_vision"]:
                     vision_data = intent_analysis["vision_analysis"]
@@ -744,7 +744,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
                     """
 
                     chat = await get_chat_model("groq-default", temperature=0.1)
-                    edit_text = chat.ainvoke([{"role": "user", "content": edit_prompt}]).content
+                    edit_text = (await chat.ainvoke([{"role": "user", "content": edit_prompt}])).content
 
                     # ✅ Instead of hardcoding, merge with normal edit_analysis:
                     edit_analysis["changes_description"] = (
@@ -760,7 +760,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
                     generated_images_from_vision = []
                     if image_requirements_from_vision:
                         print(f"🖼️ Detected {len(image_requirements_from_vision)} image requirements from vision analysis")
-                        generated_images_from_vision = _generate_images_for_edit(image_requirements_from_vision, state)
+                        generated_images_from_vision =await _generate_images_for_edit(image_requirements_from_vision, state)
 
                     # Attach generated images to edit_analysis so code_generator can use them
                     edit_analysis["image_requirements"] = image_requirements_from_vision
@@ -867,7 +867,7 @@ async def edit_analyzer(state: GraphState) -> GraphState:
     state["context"] = ctx
     return state
 
-def _process_uploaded_logo_for_edit(logo: Dict[str, Any]) -> str:
+async def _process_uploaded_logo_for_edit(logo: Dict[str, Any]) -> str:
     """Process uploaded logo for edit mode and return its URL."""
     try:
         # Get the logo URL from the saved file
@@ -883,7 +883,7 @@ def _process_uploaded_logo_for_edit(logo: Dict[str, Any]) -> str:
         print(f"❌ Error processing logo for edit: {e}")
         return None
 
-def _process_uploaded_image_for_edit(image: Dict[str, Any]) -> str:
+async def _process_uploaded_image_for_edit(image: Dict[str, Any]) -> str:
     """Process uploaded image for edit mode and return its URL."""
     try:
         # Get the image URL from the saved file

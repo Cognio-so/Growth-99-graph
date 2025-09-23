@@ -71,29 +71,16 @@ long_jsx = '''<div className="container">
 3. **APPLY UI GUIDELINES** - Use design principles for layout and styling
 4. **SYNTHESIZE ALL THREE** - Create cohesive design satisfying all requirements
 
-##  COMPONENT EXTRACTION REQUIREMENTS - CREATE COMPONENTS FROM SCHEMA:
-
-**APPROACH: Analyze the extracted JSON schema and create as many of these components as possible:**
-
-**TARGET COMPONENTS (in priority order):**
-1. Header - Navigation bar with logo, menu items, and call-to-action
-2. Breadcrumbs - Navigation path indicator  
-3. HERO - Main banner section with headline, subheadline, and CTA button
-4. About - Company/website information section
-5. Services - What you offer or main features
-6. Testimonials - Customer/client feedback and reviews
-7. Team - Team members or key personnel
-8. Form - Contact or inquiry form
-9. Products - Product showcase or offerings
-10. CTA - Call-to-action section
-11. Membership - Membership options or signup
-12. Social Media - Social media links and integration
-13. Gallery - Image or content gallery
-14. Why Us - Reasons to choose your service/product
-15. Footer - Bottom section with links and information
 
 ## CORE DIRECTIVE
-Your output MUST be a single Python script wrapped in a ```python ... ``` block. This script will be executed in an environment where the `e2b` Python package is installed.
+Your output MUST be a single Python script ONLY.  
+- No markdown formatting (no ```python or ```).  
+- No explanations or comments anywhere.  
+- Output must start with: def create_react_app(sandbox):  
+- Output must end after the last line of Python code.  
+
+This script will be executed in an environment where the `e2b` Python package is installed.
+
 
 ---
 

@@ -18,7 +18,7 @@ from luxury_design_enhancements import (
 PROMPT_TEMPLATE_PATH = Path(__file__).parent.parent / "prompts.md"
 UI_DESIGN_MD_PATH = Path(__file__).parent.parent / "UI_design.md"
 
-def _load_prompt_template_and_context() -> str:
+async def _load_prompt_template_and_context() -> str:
     """
     Loads the main prompt template and injects the content from the UI design file.
     """
@@ -41,7 +41,7 @@ def _extract_python_code(markdown_text: str) -> str:
         return match.group(1).strip()
     return markdown_text
 
-def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
+async def _build_generator_user_prompt(gi: Dict[str, Any]) -> str:
     """Constructs the detailed user-facing prompt for the generator LLM."""
     user_text = gi.get("user_text", "No user text provided.")
     json_schema = gi.get("json_schema")
@@ -816,7 +816,7 @@ def _extract_existing_components_inventory(existing_code: str) -> str:
     inventory.append("**CRITICAL**: Only ADD the new component, do NOT remove any existing ones!")
 
     return "\n".join(inventory)
-def _build_edit_prompt(ctx: Dict[str, Any]) -> str:    
+async def _build_edit_prompt(ctx: Dict[str, Any]) -> str:    
     """Build a targeted edit prompt when in editing mode."""
     edit_analysis = ctx.get("edit_analysis", {})
     user_text = ctx.get("user_text", "")
@@ -887,7 +887,7 @@ DO NOT regenerate the entire application. Make ONLY the requested changes.
 {existing_code}
 
 ###  OUTPUT FORMAT - EXACT STRUCTURE REQUIRED:
-You MUST return ONLY a Python dictionary with this EXACT structure:
+Return ONLY a Python dictionary with this EXACT structure:
 
 ```python
 {{
@@ -908,7 +908,9 @@ You MUST return ONLY a Python dictionary with this EXACT structure:
         }}
     ]
 }}
+
 ```
+**DO NOT include explanations, comments, or extra text outside the dictionary.**
 
 ### 🔧 IMPORTANT EDITING RULES:
 - **MODIFY EXISTING FILES**: Take the existing code above and make ONLY the requested changes
@@ -968,11 +970,11 @@ async def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # print(f"📁 Using existing code context: {len(existing_code.split('```')) // 2} files")
         
-        system_prompt = _load_prompt_template_and_context()
-        edit_prompt = _build_edit_prompt(ctx)
+        system_prompt = await _load_prompt_template_and_context()
+        edit_prompt = await _build_edit_prompt(ctx)
         
         # CRITICAL: Include generator input with logo information for edit mode
-        generator_prompt = _build_generator_user_prompt(gi)
+        generator_prompt = await _build_generator_user_prompt(gi)
         
         # Combine edit prompt with generator input (including logo info)
         user_prompt = f"{edit_prompt}\n\n{generator_prompt}"
@@ -988,7 +990,7 @@ async def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         ])
         
         # Extract edit data
-        edit_data = _extract_correction_data(response.content)
+        edit_data = await _extract_correction_data(response.content)
         if edit_data:
             ctx["correction_data"] = edit_data
             ctx["generation_result"] = {
@@ -1014,9 +1016,9 @@ async def generator(state: Dict[str, Any]) -> Dict[str, Any]:
     # Check if this is a correction attempt
     elif ctx.get("code_analysis", {}).get("correction_needed", False):
         print("🔄 Running generator for targeted code correction...")
-        system_prompt = _load_prompt_template_and_context()
+        system_prompt = await _load_prompt_template_and_context()
         correction_prompt = _build_correction_prompt(ctx)
-        user_prompt = f"{_build_generator_user_prompt(gi)}\n\n{correction_prompt}"
+        user_prompt = f"{await _build_generator_user_prompt(gi)}\n\n{correction_prompt}"
         
         # Use lower temperature for corrections
         model = state.get("llm_model", "groq-default")
@@ -1029,7 +1031,7 @@ async def generator(state: Dict[str, Any]) -> Dict[str, Any]:
         ])
         
         # Extract correction data
-        correction_data = _extract_correction_data(response.content)
+        correction_data =await _extract_correction_data(response.content)
         if correction_data:
             ctx["correction_data"] = correction_data
             ctx["generation_result"] = {
@@ -1049,8 +1051,8 @@ async def generator(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         # Initial generation mode
         print("🆕 Running generator for initial code generation...")
-        system_prompt = _load_prompt_template_and_context()
-        user_prompt = _build_generator_user_prompt(gi)
+        system_prompt = await _load_prompt_template_and_context()
+        user_prompt = await _build_generator_user_prompt(gi)
         
         # Use normal temperature for initial generation
         model = state.get("llm_model", "groq-default")
@@ -1071,82 +1073,73 @@ async def generator(state: Dict[str, Any]) -> Dict[str, Any]:
 
     state["context"] = ctx
     return state
-def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:   
-    """Extract correction data from LLM response with enhanced parsing."""
+async def _extract_correction_data(response_content: str) -> Optional[Dict[str, Any]]:
+    import re, json, ast
+
     try:
-    # print(f"🔍 Extracting correction data from response...")
-    # print(f" Response length: {len(response_content)} characters")
-    # print(f" Response preview: {response_content[:200]}...")
-        import re
-        import ast
-        import json
-        
-        # Method 1: Find Python dictionary pattern with ```python blocks
-        dict_match = re.search(r'```python\s*(\{.*?\})\s*```', response_content, re.DOTALL)
-        if dict_match:
-            dict_str = dict_match.group(1)
-            #   print(f"   ✅ Found Python dictionary in code block")
+        # --- STEP 1: Try JSON fenced block first ---
+        m = re.search(r"```json\s*(\{.*?\})\s*```", response_content, re.DOTALL)
+        if m:
+            dict_str = m.group(1)
             try:
-                correction_data = ast.literal_eval(dict_str)
-                #   print(f"   ✅ Successfully parsed Python dictionary")
-                return correction_data
-            except Exception as parse_error:
-                print(f"   ❌ Failed to parse Python dictionary: {parse_error}")
-        
-        # Method 2: Find COMPLETE dictionary structure (ENHANCED)
-        # Look for the opening brace and find its matching closing brace
-        start_idx = response_content.find('{')
-        if start_idx != -1:
-            brace_count = 0
-            end_idx = start_idx
-            
-            for i in range(start_idx, len(response_content)):
-                char = response_content[i]
-                if char == '{':
-                    brace_count += 1
-                elif char == '}':
+                return json.loads(dict_str)
+            except Exception as e:
+                print(f"❌ JSON block parse failed: {e}")
+
+        # --- STEP 2: Try Python fenced block ---
+        m = re.search(r"```python\s*(\{.*?\})\s*```", response_content, re.DOTALL)
+        if m:
+            dict_str = m.group(1)
+            try:
+                return ast.literal_eval(dict_str)
+            except Exception as e:
+                print(f"❌ Python block parse failed: {e}")
+
+        # --- STEP 3: Extract first top-level { ... } blob ---
+        start = response_content.find("{")
+        if start != -1:
+            brace_count, end = 0, start
+            for i, ch in enumerate(response_content[start:], start=start):
+                if ch == "{": brace_count += 1
+                elif ch == "}":
                     brace_count -= 1
                     if brace_count == 0:
-                        end_idx = i + 1
+                        end = i + 1
                         break
-            
-            if brace_count == 0:  # Found complete dictionary
-                dict_str = response_content[start_idx:end_idx]
-                print(f"   ✅ Found complete dictionary structure ({len(dict_str)} chars)")
-                try:
-                    correction_data = ast.literal_eval(dict_str)
-                    print(f"   ✅ Successfully parsed complete dictionary")
-                    return correction_data
-                except Exception as parse_error:
-                    print(f"   ❌ Failed to parse complete dictionary: {parse_error}")
-                    # Try JSON parsing as fallback
-                    try:
-                        correction_data = json.loads(dict_str)
-                        print(f"   ✅ Successfully parsed as JSON")
-                        return correction_data
-                    except Exception as json_error:
-                        print(f"   ❌ JSON parsing also failed: {json_error}")
-        
-        # Method 3: Manual extraction fallback
+            dict_str = response_content[start:end]
+
+            # Clean up common issues:
+            #   - line continuation backslashes
+            #   - stray triple backticks
+            dict_str = re.sub(r"\\\r?\n", "\\n", dict_str)
+            dict_str = dict_str.replace("```", "").strip()
+
+            # Try JSON first
+            try:
+                return json.loads(dict_str)
+            except Exception:
+                pass
+
+            # Fall back to Python literal
+            try:
+                return ast.literal_eval(dict_str)
+            except Exception as e:
+                print(f"❌ literal_eval failed: {e}")
+
+        # --- STEP 4: Manual fallback ---
         if "files_to_correct" in response_content or "corrected_content" in response_content:
-            print(f"   ⚠️ Found edit-related keywords but couldn't extract structured data")
-            print(f"   🔧 Attempting manual extraction...")
-            
-            manual_data = _manual_extract_edit_data(response_content)
-            if manual_data:
-                print(f"   ✅ Manual extraction successful")
-                return manual_data
-        
-        print(f"   ❌ No structured data found in response")
-        return None
-        
-    except Exception as e:
-        print(f"⚠️ Error extracting correction data: {e}")
-        import traceback
-        traceback.print_exc()
+            return await _manual_extract_edit_data(response_content)
+
+        print("❌ No structured data found in response")
         return None
 
-def _manual_extract_edit_data(response_content: str) -> Optional[Dict[str, Any]]:
+    except Exception as e:
+        print(f"⚠️ Error extracting correction data: {e}")
+        import traceback; traceback.print_exc()
+        return None
+
+
+async def _manual_extract_edit_data(response_content: str) -> Optional[Dict[str, Any]]:
     """Manually extract edit data when automatic extraction fails."""
     try:
         print(f" 🔧 Attempting manual extraction...")

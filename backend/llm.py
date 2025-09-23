@@ -25,7 +25,7 @@ MODEL_ALIASES: Dict[str, Dict[str, str]] = {
     "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
     "gpt-4o-mini": {"provider": "openai", "model": "gpt-4o-mini"},
     "gpt-4-turbo": {"provider": "openai", "model": "gpt-4-turbo"},
-    "gpt-5": {"provider": "openai", "model": "gpt-5-nano"},
+    "gpt-5": {"provider": "openai", "model": "gpt-5"},
     "claude-3-sonnet-20240229": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240229"},
     "claude-3-5-sonnet-20240620": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
     "sonnet-4": {"provider": "anthropic", "model": "claude-3-5-sonnet-20240620"},
@@ -136,16 +136,46 @@ async def _get_k2_model_with_fallback(**kwargs) -> Any:
         return _make_anthropic("claude-3-5-sonnet-20240620", **kwargs)
     
     raise RuntimeError("No available LLM API keys for K2 fallback. Set GROQ_API_KEY and/or OPENROUTER_API_KEY.")
-
 @traceable(name="get_chat_model", run_type="tool")
 async def get_chat_model(model_name: Optional[str] = None, **kwargs) -> Any:
     """
     Get the appropriate chat model based on model name.
     For K2 models, automatically fallback from Groq to OpenRouter if needed.
+    Special handling: If GPT-5 is selected, use Responses API with minimal reasoning & low verbosity.
     """
     resolved = _resolve_model(model_name)
     provider = resolved["provider"]
     model_id = resolved["model"]
+
+    # ✅ Special handling for GPT-5
+    if model_id.startswith("gpt-5"):
+        print(f"⚡ Using GPT-5 with minimal reasoning + low verbosity")
+        
+        class GPT5Wrapper:
+            async def ainvoke(self, messages):
+                system_msg = ""
+                user_msg = ""
+
+                for m in messages:
+                    #  Handle both dicts and LangChain messages
+                    if isinstance(m, dict):
+                        role = m.get("role")
+                        content = m.get("content", "")
+                    else:
+                        role = getattr(m, "type", None)
+                        content = getattr(m, "content", "")
+
+                    if role in ("system", "system_message"):
+                        system_msg = content
+                    elif role in ("human", "user"):
+                        user_msg = content
+
+                return type("Response", (), {
+                    "content": await call_gpt5_fast(user_msg, system_msg, model=model_id)
+                })
+
+        return GPT5Wrapper()
+
 
     # Special handling for K2 with automatic fallback
     if provider == "k2-fallback":
@@ -163,7 +193,6 @@ async def get_chat_model(model_name: Optional[str] = None, **kwargs) -> Any:
         print("⚠️ ANTHROPIC_API_KEY missing; falling back to K2.")
         return await _get_k2_model_with_fallback(**kwargs)
 
-    # ✅ ADDED: OpenRouter provider handler
     if provider == "openrouter":
         if _has_key("OPENROUTER_API_KEY"):
             print(f"✅ Using OpenRouter model: {model_id}")
@@ -205,3 +234,33 @@ async def call_llm_json(
     except Exception as e:
         print(f"Error parsing JSON from LLM response: {e}")
         return None
+from openai import OpenAI
+import asyncio, os, time
+
+_openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+async def call_gpt5_fast(prompt: str, system: str, model: str = "gpt-5") -> str:
+    """
+    Fast GPT-5 call using Responses API with minimal reasoning and low verbosity.
+    Falls back to gpt-5-mini if main model times out.
+    """
+    async def _once(active_model: str):
+        resp = _openai_client.responses.create(
+            model=active_model,
+            input=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt}
+            ],
+            reasoning={"effort": "minimal"},
+            text={"verbosity": "low"},
+    
+        )
+        return getattr(resp, "output_text", "")
+
+    start = time.time()
+    try:
+        return await asyncio.to_thread(await _once, model)
+    except Exception as e:
+        if (time.time() - start) > 50 or "timeout" in str(e).lower():
+            return await asyncio.to_thread(_once, "gpt-5-mini")
+        raise

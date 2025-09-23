@@ -39,3 +39,4 @@ python-dotenv>=1.0.1
 e2b-code-interpreter
 websockets
 langgraph-checkpoint-sqlite>=1.0.0
+aiohttp>=3.9.0
