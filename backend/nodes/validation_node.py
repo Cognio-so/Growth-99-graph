@@ -6,7 +6,7 @@ from pathlib import Path
 
 from graph_types import GraphState
 
-def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
+async def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Comprehensive validation of generated code files.
     Now validates actual files from the sandbox instead of just the script.
@@ -45,10 +45,10 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 app_content = sandbox.files.read("my-app/src/App.jsx")
                 if app_content:
-                    jsx_errors = _validate_jsx_content(app_content)
+                    jsx_errors = await _validate_jsx_content(app_content)
                     validation_errors.extend(jsx_errors)
                     
-                    component_errors = _validate_react_component_content(app_content)
+                    component_errors = await _validate_react_component_content(app_content)
                     validation_errors.extend(component_errors)
                 else:
                     validation_errors.append({
@@ -91,13 +91,13 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
 
             # Validate ALL JSX files for JSX/structure issues
             try:
-                jsx_files = _list_src_jsx_files(sandbox)
+                jsx_files =await _list_src_jsx_files(sandbox)
                 for rel in jsx_files:
                     try:
                         content = sandbox.files.read(f"my-app/{rel}")
                         if content:
-                            validation_errors.extend(_validate_jsx_content(content))
-                            validation_errors.extend(_validate_react_component_content(content))
+                            validation_errors.extend(await _validate_jsx_content(content))
+                            validation_errors.extend(await _validate_react_component_content(content))
                     except Exception:
                         pass
             except Exception:
@@ -110,10 +110,10 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
             generated_script = gen_result.get("e2b_script", "")
             
             if generated_script:
-                python_errors = _validate_python_syntax(generated_script)
+                python_errors =await _validate_python_syntax(generated_script)
                 validation_errors.extend(python_errors)
                 
-                jsx_errors = _validate_jsx_patterns(generated_script)
+                jsx_errors =await _validate_jsx_patterns(generated_script)
                 validation_errors.extend(jsx_errors)
 
     except Exception as e:
@@ -132,7 +132,7 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
         sandbox = _get_session_sandbox(session_id)
         # if sandbox:
         if sandbox:
-            build_errors = _parse_build_errors_from_devlog(sandbox)
+            build_errors = await _parse_build_errors_from_devlog(sandbox)
             if build_errors:
                 validation_errors.extend(build_errors)
     except Exception as _e:
@@ -145,7 +145,7 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
             print(f"   {i}. {error['message']} (Type: {error['type']})")
         
         # Capture the actual generated files for correction
-        file_content_for_correction = _capture_generated_files_for_correction(state, ctx)
+        file_content_for_correction =await _capture_generated_files_for_correction(state, ctx)
         
         ctx["validation_result"] = {
             "success": False,
@@ -166,7 +166,7 @@ def validate_generated_code(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 
-def _validate_jsx_content(content: str) -> List[Dict[str, str]]:
+async def _validate_jsx_content(content: str) -> List[Dict[str, str]]:
     """Validate JSX content from actual file. SIMPLIFIED - removed problematic checks."""
     errors: List[Dict[str, str]] = []
     
@@ -186,7 +186,7 @@ def _validate_jsx_content(content: str) -> List[Dict[str, str]]:
     return errors
 
 
-def _validate_react_component_content(content: str) -> List[Dict[str, str]]:
+async def _validate_react_component_content(content: str) -> List[Dict[str, str]]:
     """Validate React component structure from actual file."""
     errors: List[Dict[str, str]] = []
     
@@ -223,7 +223,7 @@ def _validate_react_component_content(content: str) -> List[Dict[str, str]]:
     return errors
 
 
-def _validate_python_syntax(script: str) -> List[Dict[str, str]]:
+async def _validate_python_syntax(script: str) -> List[Dict[str, str]]:
     """Validate Python syntax in the generated script."""
     errors: List[Dict[str, str]] = []
     try:
@@ -245,7 +245,7 @@ def _validate_python_syntax(script: str) -> List[Dict[str, str]]:
     return errors
 
 
-def _validate_jsx_patterns(script: str) -> List[Dict[str, str]]:
+async def _validate_jsx_patterns(script: str) -> List[Dict[str, str]]:
     """Check for common JSX syntax errors that AI often makes."""
     errors: List[Dict[str, str]] = []
     
@@ -300,9 +300,7 @@ def _validate_imports(script: str) -> List[Dict[str, str]]:
     
     # Common packages that shouldn't be used (not installed by default)
     forbidden_packages = [
-        'lucide-react', 'react-icons', 'heroicons', 'feather-icons',
-        'styled-components', 'emotion', 'framer-motion', 'react-spring',
-        'lodash', 'moment', 'date-fns', 'axios', 'fetch'
+        
     ]
     
     for pattern in external_package_patterns:
@@ -469,7 +467,7 @@ def _validate_server_startup(sandbox) -> List[Dict[str, str]]:
     return errors
 
 
-def _list_src_jsx_files(sandbox) -> List[str]:
+async def _list_src_jsx_files(sandbox) -> List[str]:
     """List all JSX files under src/ to validate each file, not just App.jsx."""
     try:
         res = sandbox.commands.run("bash -lc \"ls -1 my-app/src/**/*.jsx 2>/dev/null || true\"")
@@ -482,7 +480,7 @@ def _list_src_jsx_files(sandbox) -> List[str]:
         return ["src/App.jsx"]
 
 
-def _parse_build_errors_from_devlog(sandbox) -> List[Dict[str, Any]]:
+async def _parse_build_errors_from_devlog(sandbox) -> List[Dict[str, Any]]:
     """Parse Vite/esbuild errors from dev.log into structured validation errors."""
     errors: List[Dict[str, Any]] = []
     try:
@@ -592,7 +590,7 @@ def _parse_build_errors_from_devlog(sandbox) -> List[Dict[str, Any]]:
 
     return errors
 
-def _capture_generated_files_for_correction(state:GraphState, ctx: Dict[str, Any]) -> Dict[str, Any]:
+async def _capture_generated_files_for_correction(state:GraphState, ctx: Dict[str, Any]) -> Dict[str, Any]:
     """Capture ALL generated files for comprehensive correction."""
     try:
         from nodes.apply_to_Sandbox_node import _get_session_sandbox
@@ -678,7 +676,7 @@ def _capture_generated_files_for_correction(state:GraphState, ctx: Dict[str, Any
         print(f"⚠️ Could not capture files for correction: {e}")
         return {}
 
-def route_after_validation_local(state: Dict[str, Any]) -> str:
+async def route_after_validation_local(state: Dict[str, Any]) -> str:
     ctx = state.get("context", {})
     vr = ctx.get("validation_result", {})
     

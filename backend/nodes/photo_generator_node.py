@@ -132,7 +132,14 @@ DO NOT include any logo requirements.
 """
     
     try:
-        model =await get_chat_model(state.get("llm_model"))
+        selected_model = state.get("llm_model")
+
+        if selected_model and selected_model.startswith("gpt-5"):
+            print("🖼️ GPT-5 selected → forcing OpenRouter K2 for Photo Generator")
+            model = await get_chat_model("k2-openrouter")
+        else:
+            model = await get_chat_model(selected_model)
+
         # print(f"model--- {model}")    
         response = await model.ainvoke(analysis_prompt)
         
@@ -389,7 +396,14 @@ Example:
 """
     
     try:
-        model = await get_chat_model(state.get("llm_model"))
+        selected_model = state.get("llm_model")
+
+        if selected_model and selected_model.startswith("gpt-5"):
+            print("🖼️ GPT-5 selected → forcing OpenRouter K2 for Photo Generator")
+            model = await get_chat_model("k2-openrouter")
+        else:
+            model = await get_chat_model(selected_model)
+
         response =await model.ainvoke(batch_prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
         
@@ -1012,7 +1026,14 @@ Example:
 """
     
     try:
-        model =await get_chat_model(state.get("llm_model"))
+        selected_model = state.get("llm_model")
+
+        if selected_model and selected_model.startswith("gpt-5"):
+            print("🖼️ GPT-5 selected → forcing OpenRouter K2 for Photo Generator")
+            model = await get_chat_model("k2-openrouter")
+        else:
+            model = await get_chat_model(selected_model)
+
         response =await model.ainvoke(batch_prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
         

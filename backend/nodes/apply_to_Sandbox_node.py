@@ -778,12 +778,105 @@ async def _detect_and_install_dependencies(sandbox: Sandbox, script_content: str
     print("🔍 Analyzing generated React code for dependencies...")
     
     # WHITELIST of allowed packages - ONLY these will be installed
+    # WHITELIST of allowed packages - ONLY these will be installed
     ALLOWED_PACKAGES = {
-        'react-dom', 'lucide-react', 'react-icons', '@heroicons/react',
-        'framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-slot',
-        'class-variance-authority', 'clsx', 'tailwind-merge', 'react-router-dom', 'react-router'
-        # Expanded list to include common UI libraries
-    }
+    # Core React packages
+    'react-dom', 'react-router-dom', 'react-router',
+    
+    # Icon Libraries (Multiple options for better UI)
+    'lucide-react', 'react-icons', '@heroicons/react', '@tabler/icons-react',
+    'feather-react', 'react-feather',
+    
+    # Animation & Motion Libraries
+    'framer-motion', 'react-spring', 'react-transition-group',
+    'lottie-react', 'react-spring-web',
+    
+    # UI Component Libraries
+    '@radix-ui/react-dialog', '@radix-ui/react-slot', '@radix-ui/react-dropdown-menu',
+    '@radix-ui/react-tooltip', '@radix-ui/react-popover', '@radix-ui/react-select',
+    '@radix-ui/react-checkbox', '@radix-ui/react-radio-group', '@radix-ui/react-switch',
+    '@radix-ui/react-tabs', '@radix-ui/react-accordion', '@radix-ui/react-alert-dialog',
+    '@radix-ui/react-avatar', '@radix-ui/react-badge', '@radix-ui/react-button',
+    '@radix-ui/react-card', '@radix-ui/react-carousel', '@radix-ui/react-collapsible',
+    '@radix-ui/react-context-menu', '@radix-ui/react-hover-card', '@radix-ui/react-label',
+    '@radix-ui/react-menubar', '@radix-ui/react-navigation-menu', '@radix-ui/react-progress',
+    '@radix-ui/react-scroll-area', '@radix-ui/react-separator', '@radix-ui/react-sheet',
+    '@radix-ui/react-slider', '@radix-ui/react-toast', '@radix-ui/react-toggle',
+    '@radix-ui/react-toggle-group',
+    
+    # Styling & CSS Utilities
+    'class-variance-authority', 'clsx', 'tailwind-merge', 'classnames',
+    'styled-components', '@emotion/react', '@emotion/styled',
+    'stitches', 'vanilla-extract',
+    
+    # Form Libraries
+    'react-hook-form', '@hookform/resolvers', 'zod', 'yup',
+    'formik', 'react-final-form',
+    
+    # State Management
+    'zustand', 'jotai', 'recoil', 'redux', '@reduxjs/toolkit',
+    'react-query', '@tanstack/react-query', 'swr',
+    
+    # Data & API
+    'axios', 'ky', 'fetch-retry', 'react-query',
+    
+    # Date & Time
+    'date-fns', 'dayjs', 'moment', 'react-datepicker',
+    'react-day-picker', 'react-calendar',
+    
+    # Charts & Data Visualization
+    'recharts', 'chart.js', 'react-chartjs-2', 'victory',
+    'd3', 'react-d3-tree', 'react-vis',
+    
+    # Utility Libraries
+    'lodash', 'lodash-es', 'ramda', 'immer',
+    'uuid', 'nanoid', 'crypto-js',
+    
+    # Media & File Handling
+    'react-dropzone', 'react-image-crop', 'react-image-gallery',
+    'react-player', 'react-audio-player',
+    
+    # Layout & Grid
+    'react-grid-layout', 'react-masonry-css', 'react-virtualized',
+    'react-window', 'react-virtual',
+    
+    # Notifications & Feedback
+    'react-hot-toast', 'react-toastify', 'react-notifications',
+    'react-alert', 'react-confirm-alert',
+    
+    # Accessibility
+    'react-aria', 'react-spectrum', 'react-focus-lock',
+    'react-remove-scroll', 'react-modal',
+    
+    # Development & Debugging
+    'react-error-boundary', 'react-helmet', 'react-helmet-async',
+    'react-intersection-observer', 'react-use',
+    
+    # Mobile & Touch
+    'react-swipeable', 'react-touch-dnd', 'react-gesture-responder',
+    
+    # Maps & Location
+    'react-leaflet', 'react-map-gl', 'google-map-react',
+    
+    # Code & Syntax Highlighting
+    'react-syntax-highlighter', 'prism-react-renderer', 'highlight.js',
+    
+    # PDF & Document
+    'react-pdf', 'react-file-viewer', 'react-document-viewer',
+    
+    # Social & Sharing
+    'react-share', 'react-social-sharing', 'react-facebook-pixel',
+    
+    # Analytics & Tracking
+    'react-ga', 'react-ga4', 'react-gtm',
+    
+    # Testing Utilities (for development)
+    '@testing-library/react', '@testing-library/jest-dom',
+    'react-testing-library',
+    
+    # Build & Bundle
+    'react-refresh', 'react-fast-refresh'
+}
     
     potential_packages = set()
     

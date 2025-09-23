@@ -30,7 +30,7 @@ Rules:
 - Do not add other keys beyond the specified ones.
 """
 
-def _check_existing_application(state: GraphState) -> bool:
+async def _check_existing_application(state: GraphState) -> bool:
     """Check if there's an existing application/sandbox available for editing."""
     try:
         # Import here to avoid circular imports
@@ -54,7 +54,7 @@ def _check_existing_application(state: GraphState) -> bool:
         print(f"⚠️ Error checking existing application: {e}")
         return False
 
-def _build_enhanced_user_prompt(state: GraphState) -> str:
+async def _build_enhanced_user_prompt(state: GraphState) -> str:
     text = state.get("text","")
     ex = (state.get("context") or {}).get("extraction") or {}
     doc_meta = {
@@ -64,7 +64,7 @@ def _build_enhanced_user_prompt(state: GraphState) -> str:
     }
     
     # Check if there's an existing application
-    has_existing_app = _check_existing_application(state)
+    has_existing_app = await _check_existing_application(state)
     
     prompt = (
         "USER REQUEST:\n"
@@ -107,7 +107,7 @@ async def analyze_intent(state: GraphState) -> GraphState:
     chat = await get_chat_model(model, temperature=0.0)
     
     # Use enhanced prompt
-    user_prompt = _build_enhanced_user_prompt(state)
+    user_prompt = await _build_enhanced_user_prompt(state)
     result = await call_llm_json(chat, ENHANCED_SYSTEM_PROMPT, user_prompt) or {}
 
     is_edit = bool(result.get("is_edit"))
@@ -153,14 +153,14 @@ async def analyze_intent(state: GraphState) -> GraphState:
         "route": route,
         "model_used": model,
         "reasoning": reasoning,  # Add reasoning for debugging
-        "has_existing_app": _check_existing_application(state),  # Track existing app status
+        "has_existing_app":await _check_existing_application(state),  # Track existing app status
     }
     state["context"] = ctx
     
     # Enhanced logging
     print(f"🎯 LLM Intent Analysis Results:")
     print(f"   - User text: '{state.get('text', '')}'")
-    print(f"   - Has existing app: {_check_existing_application(state)}")
+    print(f"   - Has existing app: {await _check_existing_application(state)}")
     print(f"   - Is edit: {is_edit}")
     print(f"   - Is new design: {is_new}")
     print(f"   - Is URL: {is_url}")
