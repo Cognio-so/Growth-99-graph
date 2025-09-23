@@ -244,7 +244,7 @@ async def call_gpt5_fast(prompt: str, system: str, model: str = "gpt-5") -> str:
     Fast GPT-5 call using Responses API with minimal reasoning and low verbosity.
     Falls back to gpt-5-mini if main model times out.
     """
-    async def _once(active_model: str):
+    def _once(active_model: str):
         resp = _openai_client.responses.create(
             model=active_model,
             input=[
@@ -259,7 +259,7 @@ async def call_gpt5_fast(prompt: str, system: str, model: str = "gpt-5") -> str:
 
     start = time.time()
     try:
-        return await asyncio.to_thread(await _once, model)
+        return await asyncio.to_thread(_once, model)
     except Exception as e:
         if (time.time() - start) > 50 or "timeout" in str(e).lower():
             return await asyncio.to_thread(_once, "gpt-5-mini")
