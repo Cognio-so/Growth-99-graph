@@ -37,7 +37,7 @@ export default function ResultView() {
   const [sandboxUrl, setSandboxUrl] = useState(null)
   const [selectedMessageId, setSelectedMessageId] = useState(null)
   const [conversation, setConversation] = useState(null)
-
+  
   const [selectedModel, setSelectedModel] = useState(initialModel || "k2-openrouter")
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || "medical-aesthetics")
   
@@ -66,7 +66,7 @@ export default function ResultView() {
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [downloading, setDownloading] = useState(false)
-  
+  const [downloadingHtml, setDownloadingHtml] = useState(false)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const documentInputRef = useRef(null)
@@ -737,7 +737,54 @@ export default function ResultView() {
       setDownloading(false)
     }
   }
-
+  const handleDownloadHtml = async () => {
+    if (!selectedMessageId || downloadingHtml) return
+    
+    const message = messages.find(m => m.id === selectedMessageId)
+    if (!message || !message.conversation_id) {
+      alert('No conversation found to download')
+      return
+    }
+    
+    setDownloadingHtml(true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/download-html`, {
+        method: 'GET'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTML download failed: ${response.status}`)
+      }
+      
+      // Get filename from response headers or create one
+      const contentDisposition = response.headers.get('Content-Disposition')
+      let filename = `app_${message.conversation_id.slice(-8)}.txt`
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+      
+      // Create blob and download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+    } catch (error) {
+      console.error('HTML download error:', error)
+      alert('Failed to download HTML file. Please try again.')
+    } finally {
+      setDownloadingHtml(false)
+    }
+  }
   if (authChecked && !isAuthenticated) {
     return <SignInForm />
   }
@@ -799,6 +846,17 @@ export default function ResultView() {
                 >
                   <Download className="h-3 w-3" />
                   {downloading ? 'Downloading...' : 'Download'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadHtml}
+                  disabled={downloadingHtml}
+                  className="flex items-center gap-2 text-xs h-6 px-2"
+                  title="Download as single HTML file"
+                >
+                  <FileText className="h-3 w-3" />
+                  {downloadingHtml ? 'Generating...' : 'HTML'}
                 </Button>
                 <GitHubDeploy 
                   sessionId={currentSessionId}
