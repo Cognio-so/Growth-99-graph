@@ -368,7 +368,7 @@ export default function ProjectHistory() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Project</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete "{project.name}"? This action cannot be undone and will permanently remove the project and all its data.
+                                Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone and will permanently remove the project and all its data.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
