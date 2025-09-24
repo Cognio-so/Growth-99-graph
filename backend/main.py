@@ -957,6 +957,182 @@ async def download_conversation_files(session_id: str, conversation_id: str):
         print(f"❌ Download error: {e}")
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
+
+import os
+from fastapi.responses import StreamingResponse
+import io
+
+
+from nodes.apply_to_Sandbox_node import _get_session_sandbox, _async_sandbox_command, _async_sandbox_file_read
+import re
+
+import re
+
+async def build_single_file_html_from_sandbox(sandbox, dist_dir: str = "my-app/dist") -> str:
+    index_html = await _async_sandbox_file_read(sandbox, f"{dist_dir}/index.html")
+    html = index_html
+
+    assets_dir = f"{dist_dir}/assets"
+    # List all asset files from sandbox
+    asset_files = await _async_sandbox_command(sandbox, f"ls {assets_dir}", 30)
+    if asset_files.exit_code != 0:
+        return html
+
+    for fname in asset_files.stdout.splitlines():
+        if fname.endswith(".css"):
+            css_content = await _async_sandbox_file_read(sandbox, f"{assets_dir}/{fname}")
+            html = re.sub(
+                rf'<link[^>]+{fname}[^>]*>',
+                f"<style>{css_content}</style>",
+                html
+            )
+        elif fname.endswith(".js"):
+            js_content = await _async_sandbox_file_read(sandbox, f"{assets_dir}/{fname}")
+            html = re.sub(
+                rf'<script[^>]+{fname}[^>]*></script>',
+                f"<script type=\"module\">{js_content}</script>",
+                html
+            )
+
+    return html
+
+
+
+
+from nodes.apply_to_Sandbox_node import (
+    _get_session_sandbox,
+    _async_sandbox_command,
+    _async_sandbox_file_read,
+    _create_fast_vite_project,
+    _is_project_setup,
+)
+
+@app.get("/api/sessions/{session_id}/conversations/{conversation_id}/download-html")
+async def download_single_html(session_id: str, conversation_id: str):
+    """Return single self-contained HTML file with bundled CSS/JS inlined."""
+    sandbox = _get_session_sandbox(session_id)
+    if not sandbox:
+        raise HTTPException(status_code=404, detail="Sandbox not found")
+
+    try:
+        print(f"📄 Creating single HTML file for conversation: {conversation_id}")
+        
+        # Step 1: Check if dist already exists, if not build it
+        print("🔨 Rebuilding project from active sandbox...")
+        # Always rebuild before reading
+        await _async_sandbox_command(sandbox, "rm -rf my-app/dist", 30)
+        build_result = await _async_sandbox_command(sandbox, "cd my-app && npm run build", 300)
+        if build_result.exit_code != 0:
+            raise HTTPException(status_code=500, detail="Build failed")
+
+        print("📖 Reading built HTML file...")
+        
+        # Step 2: Read the built index.html
+        try:
+            html = await _async_sandbox_file_read(sandbox, "my-app/dist/index.html")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Could not read index.html: {str(e)}")
+        
+        # Step 3: Get list of asset files
+        print("📦 Processing asset files...")
+        assets_result = await _async_sandbox_command(sandbox, "ls my-app/dist/assets/", 30)
+        
+        if assets_result.exit_code == 0 and assets_result.stdout.strip():
+            asset_files = [f.strip() for f in assets_result.stdout.strip().split('\n') if f.strip()]
+            
+            print(f"Found {len(asset_files)} asset files: {asset_files}")
+            
+            # Step 4: Inline CSS files
+            for fname in asset_files:
+                if fname.endswith(".css"):
+                    try:
+                        css_content = await _async_sandbox_file_read(sandbox, f"my-app/dist/assets/{fname}")
+                        if css_content:
+                            # Find and replace the CSS link tag
+                            import re
+                            css_pattern = rf'<link[^>]*href="[^"]*{re.escape(fname)}"[^>]*>'
+                            replacement = f"<style>{css_content}</style>"
+                            html = re.sub(css_pattern, replacement, html)
+                            print(f"✅ Inlined CSS: {fname}")
+                    except Exception as e:
+                        print(f"⚠️ Could not inline CSS {fname}: {e}")
+            
+            # Step 5: Inline JS files
+            # Step 5: Inline JS files
+            for fname in asset_files:
+                if fname.endswith(".js"):
+                    try:
+                        js_content = await _async_sandbox_file_read(sandbox, f"my-app/dist/assets/{fname}")
+                        if js_content:
+                            # FIXED: Escape the JS content properly to handle Unicode escapes
+                            try:
+                                # First, try to safely escape problematic characters
+                                js_content_escaped = js_content.replace('\\', '\\\\').replace('</script>', '<\/script>')
+                                
+                                # Find and replace the JS script tag
+                                import re
+                                js_pattern = rf'<script[^>]*src="[^"]*{re.escape(fname)}"[^>]*></script>'
+                                replacement = f'<script type="module">{js_content_escaped}</script>'
+                                html = re.sub(js_pattern, replacement, html)
+                                print(f"✅ Inlined JS: {fname}")
+                            except Exception as escape_error:
+                                # If escaping fails, try a different approach - encode as base64
+                                print(f"⚠️ Unicode escape issue with {fname}, trying base64 approach...")
+                                import base64
+                                js_b64 = base64.b64encode(js_content.encode('utf-8')).decode('ascii')
+                                
+                                js_pattern = rf'<script[^>]*src="[^"]*{re.escape(fname)}"[^>]*></script>'
+                                replacement = f'''<script type="module">
+                                // Decoded from base64 due to Unicode escape issues
+                                (function() {{
+                                    const jsCode = atob("{js_b64}");
+                                    const script = document.createElement('script');
+                                    script.type = 'module';
+                                    script.text = jsCode;
+                                    document.head.appendChild(script);
+                                }})();
+                                </script>'''
+                                html = re.sub(js_pattern, replacement, html)
+                                print(f"✅ Inlined JS with base64: {fname}")
+                    except Exception as e:
+                        print(f"⚠️ Could not inline JS {fname}: {e}")
+                        # Leave the original script tag if inlining fails
+        
+        # Step 6: Generate filename and return
+        from datetime import datetime
+        from datetime import datetime
+        import zipfile
+        import io
+
+        # Step 6: Generate filename
+        # ... (code to build the html string) ...
+
+        # Step 6: Generate filename and return the HTML content directly
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"index_{conversation_id[:8]}_{timestamp}.txt"
+
+        print(f"✅ Single HTML file ready for download: {filename}")
+
+        # Return the HTML string directly as a streaming response
+        return StreamingResponse(
+            io.BytesIO(html.encode("utf-8")),  # Encode the string to bytes
+            media_type="text/plain",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ HTML download error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create HTML: {str(e)}")
+# ... existing code ...
+
+
+
 @app.post("/api/sessions/{session_id}/cleanup")
 async def cleanup_session_sandbox(session_id: str):
     """Clean up sandbox for a specific session"""
