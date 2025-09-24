@@ -27,7 +27,6 @@ export default function MainInput() {
   const availableCategories = [
     { value: "medical-aesthetics", label: "Medical Aesthetics" },
     { value: "dental", label: "Dental" },
-    { value: "functional-medicine", label: "Functional Medicine" }
   ]
 
   const handleSubmit = async (e) => {
@@ -71,11 +70,10 @@ export default function MainInput() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
-      {/* Main Content - perfectly centered */}
       <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
         <div className="text-center mb-12">
           <h1 className="text-6xl md:text-7xl font-bold text-foreground mb-4">
-            Build something{" "}
+            Build Something With{" "}
             <span className="text-primary">Growth-AI</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -83,7 +81,6 @@ export default function MainInput() {
           </p>
         </div>
 
-        {/* Input Box */}
         <div className="w-full max-w-4xl">
           <form onSubmit={handleSubmit} className="relative">
             <div className="relative bg-card/50 backdrop-blur-sm rounded-4xl border border-border p-3 shadow-2xl shadow-primary/20 hover:shadow-[0_0_30px_rgba(217,119,87,0.4)] hover:border-[#d97757] transition-all duration-300">
@@ -96,7 +93,6 @@ export default function MainInput() {
                 rows={2}
               />
               
-              {/* Bottom controls */}
               <div className="flex items-center justify-between mt-4">
                 <div className="flex items-center gap-3">
                   <Button
@@ -119,7 +115,6 @@ export default function MainInput() {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  {/* Category Selector */}
                   <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled={loading}>
                     <SelectTrigger className="w-[160px] h-8 text-xs rounded-full cursor-pointer">
                       <SelectValue />
@@ -133,7 +128,6 @@ export default function MainInput() {
                     </SelectContent>
                   </Select>
 
-                  {/* Model Selector */}
                   <Select value={selectedModel} onValueChange={setSelectedModel} disabled={loading}>
                     <SelectTrigger className="w-[140px] h-8 text-xs rounded-full cursor-pointer">
                       <SelectValue />

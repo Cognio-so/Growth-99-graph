@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getUserConversations } from '@/lib/actions/conversation-actions'
+import { getUserConversations, deleteConversation } from '@/lib/actions/conversation-actions'
 import { getServerSession } from '@/lib/get-session'
 
 export async function GET(request) {
@@ -41,6 +41,34 @@ export async function GET(request) {
     return NextResponse.json({ projects })
   } catch (error) {
     console.error('Error fetching conversations:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const session = await getServerSession()
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const sessionId = searchParams.get('sessionId')
+    
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 })
+    }
+
+    const result = await deleteConversation(sessionId)
+    
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || 'Failed to delete conversation' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting conversation:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

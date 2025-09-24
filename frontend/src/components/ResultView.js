@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, RefreshCw, Heart, Lightbulb, ArrowUp, Brain, Code2, ExternalLink, Image, Upload, Download, Plus, FileText, ImagePlus } from "lucide-react"
+import { Loader2, RefreshCw, Heart, Lightbulb, ArrowUp, Download, Plus, FileText, ImagePlus, ExternalLink } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import SignInForm from "@/app/(auth)/sign-in/sign-in-form"
 import { ModeToggle } from "@/components/ui/theme-toggle"
@@ -18,6 +18,7 @@ import {
   getConversation 
 } from '@/lib/actions/conversation-actions'
 import GitHubDeploy from "./GithubDeploy.jsx"
+import AppPreview from "./AppPreview.js"
 
 export default function ResultView() {
   const searchParams = useSearchParams()
@@ -27,7 +28,7 @@ export default function ResultView() {
   const initialCategory = searchParams.get('category')
   
   const [messages, setMessages] = useState([])
-  const [previewLoading, setPreviewLoading] = useState(false) // Fix: Start with false instead of true
+  const [previewLoading, setPreviewLoading] = useState(false) 
   const [newMessage, setNewMessage] = useState("")
   const [sendingMessage, setSendingMessage] = useState(false)
   const [loadingStage, setLoadingStage] = useState("Initializing...")
@@ -37,11 +38,9 @@ export default function ResultView() {
   const [selectedMessageId, setSelectedMessageId] = useState(null)
   const [conversation, setConversation] = useState(null)
 
-  const [selectedPracticeType, setSelectedPracticeType] = useState("Medical Aesthetics")
   const [selectedModel, setSelectedModel] = useState(initialModel || "k2-openrouter")
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || "medical-aesthetics")
   
-  // Add available models array
   const availableModels = [
     { value: "k2", label: "K2 (Kimi)" },
     { value: "k2-openrouter", label: "K2 (OpenRouter)" },
@@ -50,6 +49,11 @@ export default function ResultView() {
     { value: "gpt-4o", label: "GPT-4o" },
     { value: "gpt-5", label: "gpt-5" },
     { value: "groq-default", label: "Groq Default" }
+  ]
+
+  const availableCategories = [
+    { value: "medical-aesthetics", label: "Medical Aesthetics" },
+    { value: "dental", label: "Dental" },
   ]
   
   const [session, setSession] = useState(null)
@@ -62,7 +66,6 @@ export default function ResultView() {
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [downloading, setDownloading] = useState(false)
-  const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false)
   
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -99,17 +102,18 @@ export default function ResultView() {
   }, [currentSessionId, isAuthenticated, authChecked])
 
   useEffect(() => {
-    // Fix: Only process initial message if there's an initial message AND no existing messages
-    if (initialUserMessage && currentSessionId && isAuthenticated && authChecked && messages.length === 0 && !hasProcessedInitialMessage) {
-      setHasProcessedInitialMessage(true)
+    // Check if initial message has already been processed for this session
+    const processedKey = `processed_${currentSessionId}`
+    const hasBeenProcessed = sessionStorage.getItem(processedKey)
+    
+    if (initialUserMessage && currentSessionId && isAuthenticated && authChecked && messages.length === 0 && !hasBeenProcessed) {
+      sessionStorage.setItem(processedKey, 'true')
       handleInitialMessage()
     }
-    // Fix: If no initial message but we have a session, just load the conversation
     else if (!initialUserMessage && currentSessionId && isAuthenticated && authChecked && messages.length === 0) {
-      // Conversation will be loaded by the first useEffect, just ensure preview loading is false
       setPreviewLoading(false)
     }
-  }, [initialUserMessage, currentSessionId, isAuthenticated, authChecked, messages.length, hasProcessedInitialMessage])
+  }, [initialUserMessage, currentSessionId, isAuthenticated, authChecked, messages.length])
 
   const loadConversation = async () => {
     try {
@@ -125,15 +129,12 @@ export default function ResultView() {
           setSandboxUrl(latestMessage.sandbox_url)
           setSelectedMessageId(latestMessage.id)
         }
-        // Fix: Always set preview loading to false after loading conversation
         setPreviewLoading(false)
       } else {
-        // Fix: Set preview loading to false even if no conversation found
         setPreviewLoading(false)
       }
     } catch (error) {
       console.error('Error loading conversation:', error)
-      // Fix: Set preview loading to false on error
       setPreviewLoading(false)
     }
   }
@@ -153,7 +154,6 @@ export default function ResultView() {
       created_at: new Date().toISOString()
     }
 
-    // Ensure conversation exists before adding messages
     let conv = conversation
     if (!conv) {
       try {
@@ -176,7 +176,6 @@ export default function ResultView() {
       }
     }
 
-    // Add user message to conversation
     try {
       const result = await addMessage(currentSessionId, userMsg)
       
@@ -192,7 +191,7 @@ export default function ResultView() {
     }
 
     setLastUserQuery(initialUserMessage)
-    setPreviewLoading(true) // Fix: Only set to true when actually processing
+    setPreviewLoading(true)
     setLoadingStage("Processing your request...")
 
     try {
@@ -208,7 +207,7 @@ export default function ResultView() {
 
       const response = await fetch('/api/query', {
         method: 'POST',
-        body: formData,
+        body: formData
       })
 
       if (!response.ok) {
@@ -241,12 +240,10 @@ export default function ResultView() {
         created_at: new Date().toISOString()
       }
 
-      // Add assistant message to conversation
       try {
         const addResult = await addMessage(currentSessionId, assistantMsg)
         
         if (addResult.success && addResult.data.id) {
-          // Update assistant message with backend data
           const updateResult = await updateAssistantMessage(currentSessionId, addResult.data.id, {
             conversation_id: conversationId,
             sandbox_url: sandboxUrl,
@@ -270,21 +267,23 @@ export default function ResultView() {
             if (sandboxUrl) {
               setSandboxUrl(sandboxUrl)
               setSelectedMessageId(addResult.data.id)
+              setPreviewLoading(false)
             }
           } else {
             console.error('Failed to update assistant message:', updateResult.error)
             setMessages(prev => [...prev, assistantMsg])
+            setPreviewLoading(false)
           }
         } else {
           console.error('Failed to add assistant message:', addResult.error)
           setMessages(prev => [...prev, assistantMsg])
+          setPreviewLoading(false)
         }
       } catch (dbError) {
         console.error('Database error:', dbError)
         setMessages(prev => [...prev, assistantMsg])
+        setPreviewLoading(false)
       }
-
-      setPreviewLoading(false) // Fix: Set to false after processing
 
     } catch (error) {
       console.error('API error:', error)
@@ -294,7 +293,7 @@ export default function ResultView() {
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMsg])
-      setPreviewLoading(false) // Fix: Set to false on error
+      setPreviewLoading(false)
     }
   }
 
@@ -302,7 +301,6 @@ export default function ResultView() {
     const message = messages.find(m => m.id === messageId)
     if (!message || !message.conversation_id) return
     
-    // Fix: Set loading state when clicking on a message
     setPreviewLoading(true)
     setLoadingStage("Loading previous version...")
     
@@ -316,19 +314,15 @@ export default function ResultView() {
         if (data.sandbox_url) {
           setSandboxUrl(data.sandbox_url)
           setSelectedMessageId(messageId)
-          // Fix: Set preview loading to false when we get the URL
           setPreviewLoading(false)
         } else {
-          // Fix: Set preview loading to false even if no URL
           setPreviewLoading(false)
         }
       } else {
-        // Fix: Set preview loading to false on error
         setPreviewLoading(false)
       }
     } catch (error) {
       console.error('Error restoring conversation:', error)
-      // Fix: Set preview loading to false on error
       setPreviewLoading(false)
     }
   }
@@ -343,7 +337,6 @@ export default function ResultView() {
       created_at: new Date().toISOString()
     }
 
-    // Ensure conversation exists
     let conv = conversation
     if (!conv) {
       try {
@@ -366,7 +359,6 @@ export default function ResultView() {
       }
     }
 
-    // Add user message
     try {
       const result = await addMessage(currentSessionId, userMsg)
       
@@ -386,7 +378,7 @@ export default function ResultView() {
     setNewMessage("")
     clearAllUploads()
     setSendingMessage(true)
-    setPreviewLoading(true) // Fix: Only set to true when actually processing
+    setPreviewLoading(true)
     setLoadingStage("Processing your request...")
 
     try {
@@ -397,7 +389,6 @@ export default function ResultView() {
       formData.append('schema_type', selectedCategory)
       formData.append('regenerate', 'false')
       
-      // Add file uploads
       if (selectedLogo) {
         formData.append('logo', selectedLogo)
       }
@@ -410,7 +401,7 @@ export default function ResultView() {
 
       const response = await fetch('/api/query', {
         method: 'POST',
-        body: formData,
+        body: formData
       })
 
       if (!response.ok) {
@@ -443,7 +434,6 @@ export default function ResultView() {
         created_at: new Date().toISOString()
       }
 
-      // Add assistant message
       try {
         const addResult = await addMessage(currentSessionId, assistantMsg)
         
@@ -471,21 +461,23 @@ export default function ResultView() {
             if (sandboxUrl) {
               setSandboxUrl(sandboxUrl)
               setSelectedMessageId(addResult.data.id)
+              setPreviewLoading(false)
             }
           } else {
             console.error('Failed to update assistant message:', updateResult.error)
             setMessages(prev => [...prev, assistantMsg])
+            setPreviewLoading(false)
           }
         } else {
           console.error('Failed to add assistant message:', addResult.error)
           setMessages(prev => [...prev, assistantMsg])
+          setPreviewLoading(false)
         }
       } catch (dbError) {
         console.error('Database error:', dbError)
         setMessages(prev => [...prev, assistantMsg])
+        setPreviewLoading(false)
       }
-
-      setPreviewLoading(false) // Fix: Set to false after processing
 
     } catch (error) {
       console.error('API error:', error)
@@ -495,7 +487,7 @@ export default function ResultView() {
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMsg])
-      setPreviewLoading(false) // Fix: Set to false on error
+      setPreviewLoading(false)
     } finally {
       setSendingMessage(false)
     }
@@ -504,12 +496,33 @@ export default function ResultView() {
   const handleRegenerate = async () => {
     if (!lastUserQuery || sendingMessage || !currentSessionId) return
 
+    // Add a user message showing "Regenerating..."
+    const regenerateUserMsg = {
+      role: "user",
+      content: "🔄 Regenerating...",
+      created_at: new Date().toISOString()
+    }
+
+    // Add the regenerate message to the conversation
+    try {
+      const result = await addMessage(currentSessionId, regenerateUserMsg)
+      
+      if (result.success) {
+        setMessages(prev => [...prev, result.data])
+      } else {
+        console.error('Failed to add regenerate user message:', result.error)
+        setMessages(prev => [...prev, regenerateUserMsg])
+      }
+    } catch (error) {
+      console.error('Error adding regenerate user message:', error)
+      setMessages(prev => [...prev, regenerateUserMsg])
+    }
+
     setSendingMessage(true)
-    setPreviewLoading(true) // Fix: Only set to true when actually processing
+    setPreviewLoading(true)
     setLoadingStage("Regenerating your request...")
 
     try {
-      // Ensure we have a valid session before making the API call
       if (!currentSessionId) {
         throw new Error('No active session found')
       }
@@ -526,7 +539,7 @@ export default function ResultView() {
 
       const response = await fetch('/api/query', {
         method: 'POST',
-        body: formData,
+        body: formData
       })
 
       if (!response.ok) {
@@ -585,15 +598,16 @@ export default function ResultView() {
           if (sandboxUrl) {
             setSandboxUrl(sandboxUrl)
             setSelectedMessageId(addResult.data.id)
+            setPreviewLoading(false)
           }
         } else {
           setMessages(prev => [...prev, assistantMsg])
+          setPreviewLoading(false)
         }
       } catch (dbError) {
         setMessages(prev => [...prev, assistantMsg])
+        setPreviewLoading(false)
       }
-
-      setPreviewLoading(false) // Fix: Set to false after processing
 
     } catch (error) {
       const errorMsg = {
@@ -602,7 +616,7 @@ export default function ResultView() {
         created_at: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMsg])
-      setPreviewLoading(false) // Fix: Set to false on error
+      setPreviewLoading(false)
     } finally {
       setSendingMessage(false)
     }
@@ -612,7 +626,6 @@ export default function ResultView() {
     const file = event.target.files[0]
     if (file) {
       setSelectedLogo(file)
-      // Create preview URL
       const previewUrl = URL.createObjectURL(file)
       setLogoPreview(previewUrl)
     }
@@ -622,7 +635,6 @@ export default function ResultView() {
     const file = event.target.files[0]
     if (file) {
       setSelectedFile(file)
-      // Create preview for document
       setFilePreview({
         name: file.name,
         size: file.size,
@@ -635,7 +647,6 @@ export default function ResultView() {
     const file = event.target.files[0]
     if (file) {
       setSelectedImage(file)
-      // Create preview URL
       const previewUrl = URL.createObjectURL(file)
       setImagePreview(previewUrl)
     }
@@ -699,7 +710,6 @@ export default function ResultView() {
         throw new Error(`Download failed: ${response.status}`)
       }
       
-      // Get filename from response headers or create one
       const contentDisposition = response.headers.get('Content-Disposition')
       let filename = `project_${message.conversation_id.slice(-8)}.zip`
       
@@ -710,7 +720,6 @@ export default function ResultView() {
         }
       }
       
-      // Create blob and download
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -748,35 +757,20 @@ export default function ResultView() {
               </div>
               <span className="text-sm font-medium text-foreground">spa-sparkle-studio</span>
             </div>
-            <Select value={selectedPracticeType} onValueChange={setSelectedPracticeType}>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger className="w-[180px] h-6 text-xs rounded-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="text-xs rounded-xl">
-                <SelectItem value="Medical Aesthetics">Medical Aesthetics</SelectItem>
-                <SelectItem value="Dental">Dental</SelectItem>
-                <SelectItem value="Functional Medicine">Functional Medicine</SelectItem>
+                {availableCategories.map((category) => (
+                  <SelectItem key={category.value} value={category.value}>
+                    {category.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {selectedMessageId && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="flex items-center gap-2 text-xs h-6 px-2"
-                  title="Download project files"
-                >
-                  <Download className="h-3 w-3" />
-                  {downloading ? 'Downloading...' : 'Download'}
-                </Button>
-                <GitHubDeploy 
-                  sessionId={currentSessionId}
-                  conversationId={messages.find(m => m.id === selectedMessageId)?.conversation_id}
-                  disabled={!selectedMessageId}
-                />
-                {/* Add model selector beside deploy button */}
                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={sendingMessage}>
                   <SelectTrigger className="w-[140px] h-6 text-xs rounded-full">
                     <SelectValue />
@@ -795,6 +789,22 @@ export default function ResultView() {
           
           {sandboxUrl && (
             <div className="flex items-center gap-2">
+              <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 text-xs h-6 px-2"
+                  title="Download project files"
+                >
+                  <Download className="h-3 w-3" />
+                  {downloading ? 'Downloading...' : 'Download'}
+                </Button>
+                <GitHubDeploy 
+                  sessionId={currentSessionId}
+                  conversationId={messages.find(m => m.id === selectedMessageId)?.conversation_id}
+                  disabled={!selectedMessageId}
+                />
               <Button
                 variant="outline"
                 size="sm"
@@ -880,7 +890,6 @@ export default function ResultView() {
 
               <div className="flex-shrink-0 p-4">
                 <form onSubmit={handleSendMessage}>
-                  {/* File previews above textarea */}
                   {(logoPreview || filePreview || imagePreview) && (
                     <div className="mb-3 space-y-2">
                       {logoPreview && (
@@ -956,7 +965,6 @@ export default function ResultView() {
                     />
                     
                     <div className="absolute bottom-2 flex items-center justify-between w-full">
-                      {/* Upload buttons on the left */}
                       <div className="flex items-center gap-2 ml-2">
                         <input
                           ref={fileInputRef}
@@ -1005,7 +1013,6 @@ export default function ResultView() {
                         </Button>
                       </div>
                       
-                      {/* Action buttons on the right */}
                       <div className="flex items-center gap-2 mr-2">
                         <Button 
                           type="button" 
@@ -1055,60 +1062,12 @@ export default function ResultView() {
           <ResizablePanel defaultSize={70} minSize={40}>
             <div className="h-full flex flex-col bg-background">
               <div className="flex-1 p-1">
-                {previewLoading ? (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                    <div className="text-center space-y-6">
-                      <div className="relative">
-                        <Heart className="h-16 w-16 mx-auto text-muted-foreground animate-pulse" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <h2 className="text-xl font-semibold text-foreground">
-                          Building your app...
-                        </h2>
-                        <p className="text-sm text-muted-foreground">{loadingStage}</p>
-                      </div>
-                      
-                      <div className="space-y-3 text-left max-w-sm">
-                        <div className="flex items-center gap-3 text-sm">
-                          <div className="w-4 h-4 border border-border rounded flex items-center justify-center">
-                            <Brain className="h-2 w-2 text-primary animate-pulse" />
-                          </div>
-                          <span>Processing your request...</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : sandboxUrl ? (
-                  <div className="h-full relative">
-                    <iframe
-                      key={`${selectedMessageId}-${sandboxUrl}`}
-                      src={sandboxUrl}
-                      className="w-full h-full rounded-lg border border-border shadow-sm"
-                      title="App Preview"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground">
-                    <div className="text-center space-y-4">
-                      <Code2 className="h-16 w-16 mx-auto text-muted-foreground" />
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-foreground">
-                          App Preview
-                        </h3>
-                        <p className="text-sm text-muted-foreground max-w-md">
-                          Your generated app will appear here once the backend processing is complete.
-                        </p>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        The preview will show your live application
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <AppPreview 
+                  previewLoading={previewLoading}
+                  loadingStage={loadingStage}
+                  sandboxUrl={sandboxUrl}
+                  selectedMessageId={selectedMessageId}
+                />
               </div>
             </div>
           </ResizablePanel>

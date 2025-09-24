@@ -2,27 +2,25 @@
 import { connectToDatabase } from '@/lib/db';
 import { getServerSession } from '@/lib/get-session';
 
-// Get current user data
 export async function getCurrentUser() {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user) {
       return { success: false, error: 'User not authenticated' };
     }
 
     const { db } = await connectToDatabase();
-    const user = await db.collection('users').findOne({ 
-      id: session.user.id 
+    const user = await db.collection('users').findOne({
+      id: session.user.id
     });
 
     if (!user) {
       return { success: false, error: 'User not found' };
     }
 
-    // Remove sensitive data
     const { password, ...userWithoutPassword } = user;
-    
+
     return { success: true, user: userWithoutPassword };
   } catch (error) {
     console.error('Error getting current user:', error);
@@ -30,18 +28,16 @@ export async function getCurrentUser() {
   }
 }
 
-// Update current user data
 export async function updateCurrentUser(updateData) {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user) {
       return { success: false, error: 'User not authenticated' };
     }
 
     const { db } = await connectToDatabase();
-    
-    // Add updatedAt timestamp
+
     const dataToUpdate = {
       ...updateData,
       updatedAt: new Date()
@@ -63,18 +59,17 @@ export async function updateCurrentUser(updateData) {
   }
 }
 
-// Get user statistics
 export async function getUserStats() {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user) {
       return { success: false, error: 'User not authenticated' };
     }
 
     const { db } = await connectToDatabase();
-    const user = await db.collection('users').findOne({ 
-      id: session.user.id 
+    const user = await db.collection('users').findOne({
+      id: session.user.id
     });
 
     if (!user) {
@@ -94,20 +89,19 @@ export async function getUserStats() {
   }
 }
 
-// Increment user query count
 export async function incrementUserQueries() {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user) {
       return { success: false, error: 'User not authenticated' };
     }
 
     const { db } = await connectToDatabase();
-    
+
     const result = await db.collection('users').updateOne(
       { id: session.user.id },
-      { 
+      {
         $inc: { totalQueries: 1 },
         $set: { lastActiveAt: new Date() }
       }
@@ -124,20 +118,18 @@ export async function incrementUserQueries() {
   }
 }
 
-// Delete user account
 export async function deleteUserAccount() {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user) {
       return { success: false, error: 'User not authenticated' };
     }
 
     const { db } = await connectToDatabase();
-    
-    // Delete user data
-    const result = await db.collection('users').deleteOne({ 
-      id: session.user.id 
+
+    const result = await db.collection('users').deleteOne({
+      id: session.user.id
     });
 
     if (result.deletedCount === 0) {

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, ExternalLink, Calendar, Eye, Star, MoreHorizontal, Code2, Loader2 } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Search, ExternalLink, Calendar, Eye, Star, MoreHorizontal, Code2, Loader2, Trash2, Image as ImageIcon, Globe, Smartphone, Wrench, Building2, Palette, Zap, Database, ShoppingCart, Users, BarChart3 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -19,6 +20,7 @@ export default function ProjectHistory() {
   const [sortBy, setSortBy] = useState("newest")
   const [filterBy, setFilterBy] = useState("all")
   const [session, setSession] = useState(null)
+  const [deletingProjectId, setDeletingProjectId] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -61,6 +63,95 @@ export default function ProjectHistory() {
       setProjects([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteProject = async (projectId) => {
+    try {
+      setDeletingProjectId(projectId)
+      const response = await fetch(`/api/conversations?sessionId=${projectId}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete project')
+      }
+      
+      // Remove the project from the local state
+      setProjects(prevProjects => prevProjects.filter(project => project.id !== projectId))
+    } catch (error) {
+      console.error("Error deleting project:", error)
+      alert('Failed to delete project. Please try again.')
+    } finally {
+      setDeletingProjectId(null)
+    }
+  }
+
+  // Generate different types of images based on project type and name
+  const getProjectImage = (project) => {
+    const projectType = project.type?.toLowerCase() || 'website'
+    const projectName = project.name || 'Project'
+    const firstLetter = projectName.charAt(0).toUpperCase()
+    
+    // Color schemes for different project types
+    const colorSchemes = {
+      website: {
+        gradient: 'from-blue-500/20 to-purple-600/20',
+        icon: Globe,
+        bgColor: 'bg-blue-500/10',
+        iconColor: 'text-blue-600'
+      },
+      app: {
+        gradient: 'from-green-500/20 to-emerald-600/20',
+        icon: Smartphone,
+        bgColor: 'bg-green-500/10',
+        iconColor: 'text-green-600'
+      },
+      tools: {
+        gradient: 'from-orange-500/20 to-red-600/20',
+        icon: Wrench,
+        bgColor: 'bg-orange-500/10',
+        iconColor: 'text-orange-600'
+      },
+      b2b: {
+        gradient: 'from-indigo-500/20 to-blue-600/20',
+        icon: Building2,
+        bgColor: 'bg-indigo-500/10',
+        iconColor: 'text-indigo-600'
+      },
+      ecommerce: {
+        gradient: 'from-pink-500/20 to-rose-600/20',
+        icon: ShoppingCart,
+        bgColor: 'bg-pink-500/10',
+        iconColor: 'text-pink-600'
+      },
+      dashboard: {
+        gradient: 'from-cyan-500/20 to-teal-600/20',
+        icon: BarChart3,
+        bgColor: 'bg-cyan-500/10',
+        iconColor: 'text-cyan-600'
+      },
+      portfolio: {
+        gradient: 'from-purple-500/20 to-violet-600/20',
+        icon: Palette,
+        bgColor: 'bg-purple-500/10',
+        iconColor: 'text-purple-600'
+      },
+      default: {
+        gradient: 'from-gray-500/20 to-slate-600/20',
+        icon: Code2,
+        bgColor: 'bg-gray-500/10',
+        iconColor: 'text-gray-600'
+      }
+    }
+
+    const scheme = colorSchemes[projectType] || colorSchemes.default
+    const IconComponent = scheme.icon
+
+    return {
+      scheme,
+      IconComponent,
+      firstLetter
     }
   }
 
@@ -178,64 +269,139 @@ export default function ProjectHistory() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {sortedProjects.map((project) => (
-              <Card 
-                key={project.id} 
-                className="group hover:shadow-lg transition-all duration-200 cursor-pointer"
-                onClick={() => handleProjectClick(project)}
-              >
-                <div className="aspect-video bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-4xl font-bold text-primary/50">
-                      {project.name.charAt(0).toUpperCase()}
+            {sortedProjects.map((project) => {
+              const { scheme, IconComponent, firstLetter } = getProjectImage(project)
+              
+              return (
+                <Card 
+                  key={project.id} 
+                  className="group hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden"
+                  onClick={() => handleProjectClick(project)}
+                >
+                  <div className={`aspect-video bg-gradient-to-br ${scheme.gradient} relative overflow-hidden`}>
+                    {/* Main background pattern */}
+                    <div className="absolute inset-0">
+                      <div className={`absolute inset-0 ${scheme.bgColor}`} />
+                      
+                      {/* Geometric pattern overlay */}
+                      <div className="absolute inset-0 opacity-20">
+                        <div className="absolute top-4 left-4 w-8 h-8 border-2 border-current rounded-full" />
+                        <div className="absolute top-8 right-8 w-4 h-4 bg-current rounded-full" />
+                        <div className="absolute bottom-6 left-8 w-6 h-6 border-2 border-current rotate-45" />
+                        <div className="absolute bottom-4 right-4 w-3 h-3 bg-current rounded-full" />
+                      </div>
+                    </div>
+
+                    {/* Central icon and letter */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className={`w-16 h-16 ${scheme.bgColor} rounded-full flex items-center justify-center mb-2 mx-auto`}>
+                          <IconComponent className={`h-8 w-8 ${scheme.iconColor}`} />
+                        </div>
+                        <div className={`text-2xl font-bold ${scheme.iconColor} opacity-80`}>
+                          {firstLetter}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Animated elements */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="absolute top-2 left-2 w-2 h-2 bg-current rounded-full animate-pulse" />
+                      <div className="absolute top-4 right-4 w-1 h-1 bg-current rounded-full animate-pulse delay-100" />
+                      <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-current rounded-full animate-pulse delay-200" />
+                    </div>
+                    
+                    {/* Badge */}
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="secondary" className="text-xs bg-background/90 backdrop-blur-sm">
+                        {project.type}
+                      </Badge>
+                    </div>
+                    
+                    {/* Live preview indicator */}
+                    {project.sandboxUrl && (
+                      <div className="absolute top-2 left-2">
+                        <Badge variant="outline" className="text-xs bg-background/90 backdrop-blur-sm">
+                          <Zap className="h-3 w-3 mr-1" />
+                          Live
+                        </Badge>
+                      </div>
+                    )}
+                    
+                    {/* Open button */}
+                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="h-8 w-8 p-0 bg-background/90 backdrop-blur-sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleProjectClick(project)
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {project.type}
-                    </Badge>
-                  </div>
-                  <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button 
-                      size="sm" 
-                      variant="secondary" 
-                      className="h-8 w-8 p-0"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleProjectClick(project)
-                      }}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-sm truncate flex-1">{project.name}</h3>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{project.description}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{project.lastEdited}</span>
+                  
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold text-sm truncate flex-1">{project.name}</h3>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={deletingProjectId === project.id}
+                            >
+                              {deletingProjectId === project.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{project.name}"? This action cannot be undone and will permanently remove the project and all its data.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteProject(project.id)
+                                }}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Code2 className="h-3 w-3" />
-                      <span>{project.messageCount} messages</span>
+                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{project.description}</p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>{project.lastEdited}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Code2 className="h-3 w-3" />
+                        <span>{project.messageCount} messages</span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
 
