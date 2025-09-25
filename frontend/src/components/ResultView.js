@@ -317,32 +317,37 @@ export default function ResultView() {
   const handleMessageClick = async (messageId) => {
     const message = messages.find(m => m.id === messageId)
     if (!message || !message.conversation_id) return
-    
+  
     setPreviewLoading(true)
-    setLoadingStage("Loading previous version...")
-    
+    setLoadingStage("Restoring design...")
+  
     try {
-      const response = await fetch(`${BACKEND}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
+      // 1) Kick off restore
+      const res = await fetch(`${BACKEND}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
         method: 'POST'
       })
-      
-      if (response.ok) {
-        const data = await response.json()
-        if (data.sandbox_url) {
-          setSandboxUrl(data.sandbox_url)
-          setSelectedMessageId(messageId)
-          setPreviewLoading(false)
-        } else {
-          setPreviewLoading(false)
-        }
-      } else {
-        setPreviewLoading(false)
-      }
-    } catch (error) {
-      console.error('Error restoring conversation:', error)
+      const body = await res.json()
+      if (!res.ok) throw new Error(body?.error || 'Failed to start restore')
+  
+      // 2) Poll until backend writes the final_result/sandbox_result URL
+      const statusResult = await pollRequestStatus(currentSessionId)
+      const backendState = extractBackendState(statusResult)
+      const url = extractSandboxUrl(backendState)
+      if (!url) throw new Error('No sandbox URL available after restore')
+  
+      // 3) (Optional) warm the gateway a couple of times
+      try { await fetch(url, { method: 'GET', mode: 'no-cors' }) } catch {}
+      try { await fetch(url, { method: 'GET', mode: 'no-cors' }) } catch {}
+  
+      setSandboxUrl(url)
+      setSelectedMessageId(messageId)
+    } catch (e) {
+      console.error('Error restoring conversation:', e)
+    } finally {
       setPreviewLoading(false)
     }
   }
+  
 
   const handleSendMessage = async (e) => {
     e?.preventDefault()
