@@ -33,12 +33,12 @@ def url_extraction(state: Dict[str, Any]) -> Dict[str, Any]:
     result = _firecrawl_fetch(url)
     ctx["url_extraction"] = result
 
-    # Pipe into generator_input for downstream usage
+    
     gi = ctx.get("generator_input") or {}
     gi["user_text"] = url
     if result.get("ok") and result.get("content"):
         gi["extracted_content"] = result["content"]
-        gi["schema_source"] = "url_content"  # generator can use content and/or schemas
+        gi["schema_source"] = "url_content"  
     else:
         gi["schema_source"] = "url_failed"
 

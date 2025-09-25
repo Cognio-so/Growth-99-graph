@@ -317,33 +317,34 @@ export default function ResultView() {
   const handleMessageClick = async (messageId) => {
     const message = messages.find(m => m.id === messageId)
     if (!message || !message.conversation_id) return
-  
+    
+    // Fix: Set loading state when clicking on a message
     setPreviewLoading(true)
-    setLoadingStage("Restoring design...")
-  
+    setLoadingStage("Loading previous version...")
+    
     try {
-      // 1) Kick off restore
-      const res = await fetch(`${BACKEND}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
         method: 'POST'
       })
-      const body = await res.json()
-      if (!res.ok) throw new Error(body?.error || 'Failed to start restore')
-  
-      // 2) Poll until backend writes the final_result/sandbox_result URL
-      const statusResult = await pollRequestStatus(currentSessionId)
-      const backendState = extractBackendState(statusResult)
-      const url = extractSandboxUrl(backendState)
-      if (!url) throw new Error('No sandbox URL available after restore')
-  
-      // 3) (Optional) warm the gateway a couple of times
-      try { await fetch(url, { method: 'GET', mode: 'no-cors' }) } catch {}
-      try { await fetch(url, { method: 'GET', mode: 'no-cors' }) } catch {}
-  
-      setSandboxUrl(url)
-      setSelectedMessageId(messageId)
-    } catch (e) {
-      console.error('Error restoring conversation:', e)
-    } finally {
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.sandbox_url) {
+          setSandboxUrl(data.sandbox_url)
+          setSelectedMessageId(messageId)
+          // Fix: Set preview loading to false when we get the URL
+          setPreviewLoading(false)
+        } else {
+          // Fix: Set preview loading to false even if no URL
+          setPreviewLoading(false)
+        }
+      } else {
+        // Fix: Set preview loading to false on error
+        setPreviewLoading(false)
+      }
+    } catch (error) {
+      console.error('Error restoring conversation:', error)
+      // Fix: Set preview loading to false on error
       setPreviewLoading(false)
     }
   }
