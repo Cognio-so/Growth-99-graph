@@ -318,7 +318,6 @@ export default function ResultView() {
     const message = messages.find(m => m.id === messageId)
     if (!message || !message.conversation_id) return
     
-    // Fix: Set loading state when clicking on a message
     setPreviewLoading(true)
     setLoadingStage("Loading previous version...")
     
@@ -327,24 +326,30 @@ export default function ResultView() {
         method: 'POST'
       })
       
+      console.log('🔍 Restore response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log(' Restore response data:', data)
+        console.log('🔗 Sandbox URL from response:', data.sandbox_url)
+        
         if (data.sandbox_url) {
+          console.log('✅ Setting sandbox URL to:', data.sandbox_url)
           setSandboxUrl(data.sandbox_url)
           setSelectedMessageId(messageId)
-          // Fix: Set preview loading to false when we get the URL
           setPreviewLoading(false)
+          console.log('🎯 Sandbox URL state updated')
         } else {
-          // Fix: Set preview loading to false even if no URL
+          console.error('❌ No sandbox_url in response:', data)
           setPreviewLoading(false)
         }
       } else {
-        // Fix: Set preview loading to false on error
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Restore failed:', response.status, errorData)
         setPreviewLoading(false)
       }
     } catch (error) {
-      console.error('Error restoring conversation:', error)
-      // Fix: Set preview loading to false on error
+      console.error(' Error restoring conversation:', error)
       setPreviewLoading(false)
     }
   }
