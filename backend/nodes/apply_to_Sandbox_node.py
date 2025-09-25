@@ -270,7 +270,7 @@ export default defineConfig({{
         print(f"⚠️ Could not write vite config: {e}")
 
 
-async def _wait_for_http(sandbox, port: int, max_attempts: int = 5) -> bool:  # Reduced from 30 to 5
+async def _wait_for_http(sandbox, port: int, max_attempts: int = 30) -> bool:  # Reduced from 30 to 5
     """Wait for HTTP server to be ready - FIXED VERSION."""
     print(f"Checking if server is ready (attempt 1/{max_attempts})...")
     
@@ -1094,9 +1094,11 @@ async def apply_sandbox(state: Dict[str, Any]) -> Dict[str, Any]:
                 try:
     # ⏱️ 3-minute hard limit for dev-server + preview start
                     async with asyncio.timeout(180):
-                        final_url = await _start_dev_server(sandbox, port=port)
+                        # Prefer preview for stability behind gateways
+                        final_url = await _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
                         if not final_url:
-                            final_url = await _start_preview_server(sandbox, port_primary=port, port_fallback=4173)
+                            final_url = await _start_dev_server(sandbox, port=port)
+
                 except TimeoutError:
                     print(f"⏱️ Dev server start timed out for session {session_id}")
                     _kill_sandbox_for_session(session_id)
