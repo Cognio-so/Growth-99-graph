@@ -30,42 +30,42 @@ Rules:
 - Do not add other keys beyond the specified ones.
 """
 
+
 async def _check_existing_application(state: GraphState) -> bool:
     """Check if there's an existing application/sandbox available for editing."""
     try:
-        # Import here to avoid circular imports
+
         from nodes.apply_to_Sandbox_node import _get_session_sandbox
-        
+
         session_id = state.get("session_id", "default")
         sandbox = _get_session_sandbox(session_id)
         if not sandbox:
             return False
-        
-        # Quick health check
+
         test_result = sandbox.commands.run("echo 'test'", timeout=5)
         if test_result and test_result.stdout:
-            # Check if Vite project exists
+
             project_check = sandbox.commands.run("ls my-app/package.json", timeout=5)
             if project_check.exit_code == 0:
                 return True
-        
+
         return False
     except Exception as e:
-        print(f"⚠️ Error checking existing application: {e}")
+
         return False
 
+
 async def _build_enhanced_user_prompt(state: GraphState) -> str:
-    text = state.get("text","")
+    text = state.get("text", "")
     ex = (state.get("context") or {}).get("extraction") or {}
     doc_meta = {
         "mime": (state.get("doc") or {}).get("mime"),
         "name": (state.get("doc") or {}).get("name"),
         "size": (state.get("doc") or {}).get("size"),
     }
-    
-    # Check if there's an existing application
+
     has_existing_app = await _check_existing_application(state)
-    
+
     prompt = (
         "USER REQUEST:\n"
         f"{text}\n\n"
@@ -74,8 +74,7 @@ async def _build_enhanced_user_prompt(state: GraphState) -> str:
         f"Document text excerpt: {ex.get('text_excerpt','')}\n"
         f"JSON candidates: {ex.get('json_candidates',[])}\n\n"
     )
-    
-    # Add context about existing application
+
     if has_existing_app:
         prompt += (
             "CONTEXT:\n"
@@ -88,7 +87,7 @@ async def _build_enhanced_user_prompt(state: GraphState) -> str:
             "No existing application detected or this is the first request.\n"
             "The user may be requesting a new application to be created.\n\n"
         )
-    
+
     prompt += (
         "ANALYSIS TASK:\n"
         "Analyze the user's request and determine their intent:\n"
@@ -99,14 +98,14 @@ async def _build_enhanced_user_prompt(state: GraphState) -> str:
         "Consider the wording, context, and what the user is actually asking for.\n"
         "Provide clear reasoning for your decision.\n"
     )
-    
+
     return prompt
+
 
 async def analyze_intent(state: GraphState) -> GraphState:
     model = state.get("llm_model")
     chat = await get_chat_model(model, temperature=0.0)
-    
-    # Use enhanced prompt
+
     user_prompt = await _build_enhanced_user_prompt(state)
     result = await call_llm_json(chat, ENHANCED_SYSTEM_PROMPT, user_prompt) or {}
 
@@ -117,7 +116,6 @@ async def analyze_intent(state: GraphState) -> GraphState:
     json_schema = result.get("json_schema") if doc_kind == "json_schema" else None
     reasoning = result.get("reasoning", "")
 
-    # Compute route based on LLM decision
     if is_edit:
         route = "edit_analyzer"
     elif is_url:
@@ -125,23 +123,19 @@ async def analyze_intent(state: GraphState) -> GraphState:
     elif is_new:
         route = "new_design"
     else:
-        route = "schema_extraction"  # inline schema or fallback CSV
-
-    # Force regeneration path to schema_extraction
+        route = "schema_extraction"
     if (state.get("metadata") or {}).get("regenerate"):
         route = "schema_extraction"
         state["edit_history"] = None
         state["existing_code"] = None
 
-    # ENHANCED: Store original query when it's detected as "new design"
-    # Store the query for regeneration regardless of whether it's a regeneration or not
     if is_new:
         user_text = state.get("text", "")
         session_id = state.get("session_id")
         if user_text and session_id:
             from nodes.user_query_node import _store_original_new_design_query
+
             _store_original_new_design_query(session_id, user_text)
-            print(f"✅ Stored new design query for regeneration: '{user_text[:100]}...'")
 
     ctx = state.get("context") or {}
     ctx["intent"] = {
@@ -152,23 +146,15 @@ async def analyze_intent(state: GraphState) -> GraphState:
         "json_schema": json_schema,
         "route": route,
         "model_used": model,
-        "reasoning": reasoning,  # Add reasoning for debugging
-        "has_existing_app":await _check_existing_application(state),  # Track existing app status
+        "reasoning": reasoning,
+        "has_existing_app": await _check_existing_application(state),
     }
     state["context"] = ctx
-    
-    # Enhanced logging
-    print(f"🎯 LLM Intent Analysis Results:")
-    print(f"   - User text: '{state.get('text', '')}'")
-    print(f"   - Has existing app: {await _check_existing_application(state)}")
-    print(f"   - Is edit: {is_edit}")
-    print(f"   - Is new design: {is_new}")
-    print(f"   - Is URL: {is_url}")
-    print(f"   - Route: {route}")
-    print(f"   - LLM Reasoning: {reasoning}")
-    
+
     return state
 
-def route_from_intent(state: GraphState) -> str:
-    return ((state.get("context") or {}).get("intent") or {}).get("route", "schema_extraction")
 
+def route_from_intent(state: GraphState) -> str:
+    return ((state.get("context") or {}).get("intent") or {}).get(
+        "route", "schema_extraction"
+    )
