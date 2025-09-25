@@ -16,6 +16,7 @@ import asyncio
 import time
 import uuid
 from typing import Dict
+from utlis.docs import save_upload_to_disk, save_logo_to_disk, save_image_to_disk
 
 # Load environment variables
 load_dotenv()
@@ -152,13 +153,32 @@ async def accept_query(
             _running_requests.pop(session_id, None)
 
         # Launch background task (do NOT await)
+        # --- Persist uploads BEFORE starting background task ---
+        doc_meta = None
+        if file is not None:
+            # expected to return dict like {"path": "...", "filename": "...", ...}
+            doc_meta = await save_upload_to_disk(file)
+
+        logo_meta = None
+        if logo is not None:
+            logo_meta = await save_logo_to_disk(logo, session_id)
+
+        image_meta = None
+        if image is not None:
+            image_meta = await save_image_to_disk(image, session_id)
+
+        # Now launch the background task with SAFE metadata, not live UploadFile objects
         task = asyncio.create_task(
             process_query_request(
-                session_id, text, llm_model, file, logo, image,
+                session_id, text, llm_model,
+                doc_meta,          # persisted doc metadata or None
+                logo_meta,         # persisted logo metadata or None
+                image_meta,        # persisted image metadata or None
                 color_palette, regenerate, schema_type
             )
         )
         _running_requests[session_id] = task
+
 
         # Return immediately so the proxy doesn't time out
         return {
@@ -173,34 +193,23 @@ async def accept_query(
 
 
 async def process_query_request(
-    session_id: str, 
-    text: str, 
-    llm_model: str | None, 
-    file: UploadFile | None, 
-    logo: UploadFile | None, 
-    image: UploadFile | None, 
-    color_palette: str | None, 
-    regenerate: bool, 
+    session_id: str,
+    text: str,
+    llm_model: str | None,
+    doc: dict | None,           # persisted doc metadata saved earlier
+    logo_data: dict | None,     # persisted logo metadata saved earlier
+    image_data: dict | None,    # persisted image metadata saved earlier
+    color_palette: str | None,
+    regenerate: bool,
     schema_type: str
 ):
+
     """Process individual query request - isolated per session"""
     try:
         print(f"🔄 Processing query for session: {session_id}")
         
         # Handle file uploads
-        doc = None
-        if file is not None:
-            doc = await save_upload_to_disk(file)
-
-        logo_data = None
-        if logo is not None:
-            logo_data = await save_logo_to_disk(logo, session_id)
-            print(f"🖼️ Logo uploaded for {session_id}: {logo_data.get('filename')}")
-
-        image_data = None
-        if image is not None:
-            image_data = await save_image_to_disk(image, session_id)
-            print(f"🖼️ Image uploaded for {session_id}: {image_data.get('filename')}")
+        
 
         # Create payload
         payload = {
