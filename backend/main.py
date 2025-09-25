@@ -122,7 +122,8 @@ def _as_uuid(s: str | None) -> str:
 #  NO SQLite checkpointer - compile graph without checkpointer
 compiled_graph = graph.compile()
 
-@app.post("/api/query", response_model=UserQueryOut)
+# REPLACED: fire-and-return version (no response_model to avoid schema mismatch)
+@app.post("/api/query")
 async def accept_query(
     session_id: str | None = Form(None),
     text: str = Form(...),
@@ -134,52 +135,42 @@ async def accept_query(
     regenerate: bool = Form(False),
     schema_type: str = Form("medspa")
 ):
-    """Handle multiple concurrent requests - each session gets its own processing"""
+    """Accept query and start background processing without blocking (prevents 504)."""
     try:
         # Generate unique session ID if not provided
         if not session_id:
             session_id = f"session_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
-        
-        print(f"🔄 Starting request for session: {session_id}")
-        
-        # Check if this session already has a running request
+
+        print(f"⚡ Received request for session: {session_id}")
+
+        # If an older task exists for this session, cancel it
         if session_id in _running_requests:
-            print(f"⚠️ Session {session_id} already has active request, cancelling previous")
             try:
                 _running_requests[session_id].cancel()
-                await _running_requests[session_id]  # Wait for cancellation
-            except asyncio.CancelledError:
+            except Exception:
                 pass
             _running_requests.pop(session_id, None)
-        
-        # Create new task for this request
+
+        # Launch background task (do NOT await)
         task = asyncio.create_task(
             process_query_request(
-                session_id, text, llm_model, file, logo, image, 
+                session_id, text, llm_model, file, logo, image,
                 color_palette, regenerate, schema_type
             )
         )
-        
-        # Track the request
         _running_requests[session_id] = task
-        
-        try:
-            # Wait for the request to complete
-            result = await task
-            return result
-        except asyncio.CancelledError:
-            print(f"🛑 Request cancelled for session {session_id}")
-            return {"error": "Request cancelled", "session_id": session_id}
-        finally:
-            # Clean up tracking
-            _running_requests.pop(session_id, None)
-            print(f"✅ Request completed for session {session_id}")
-        
+
+        # Return immediately so the proxy doesn't time out
+        return {
+            "session_id": session_id,
+            "status": "processing",
+            "message": "Query accepted. Poll /api/requests/status/{session_id} for progress."
+        }
+
     except Exception as e:
         print(f"❌ Error in accept_query: {str(e)}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 async def process_query_request(
     session_id: str, 
@@ -270,7 +261,68 @@ async def process_query_request(
         result = final_result[list(final_result.keys())[-1]] if final_result else state
         
         print(f"✅ Session {session_id} - Graph execution completed. Thread {thread_id}")
-        
+                # ===== INSERT: Persist results to DB (Session, ConversationHistory, Message) =====
+        try:
+            from db import db_session
+            from models import Session, Message, ConversationHistory
+            import uuid
+
+            # Try to pick a sandbox URL if it exists in the result structure
+            sandbox_url = None
+            try:
+                sandbox_url = (
+                    result.get("sandbox_url")
+                    or result.get("context", {}).get("sandbox_result", {}).get("url")
+                )
+            except Exception:
+                sandbox_url = None
+
+            # Store everything (upsert Session, add ConversationHistory + assistant Message)
+            with db_session() as db:
+                session_obj = db.get(Session, session_id)
+                if not session_obj:
+                    session_obj = Session(id=session_id, title=(text or "")[:50], meta={})
+                    db.add(session_obj)
+
+                # Generate IDs up front (right before creating Message / ConversationHistory)
+                message_id = str(uuid.uuid4())
+                conv_id = str(uuid.uuid4())
+
+                # Assistant message preview
+                msg = Message(
+                    id=message_id,                         # <-- ADD THIS
+                    session_id=session_id,
+                    role="assistant",
+                    content=(json.dumps(result)[:500] if result else ""),
+                    created_at=datetime.utcnow()
+                )
+                db.add(msg)
+
+                # Conversation record
+                conv = ConversationHistory(
+                    id=conv_id,                            # <-- ADD THIS (REQUIRED)
+                    session_id=session_id,
+                    message_id=message_id,                 # <-- OPTIONAL but recommended
+                    user_query=text,
+                    ai_response=(json.dumps(result)[:1000] if result else None),
+                    generated_code=json.dumps(result) if result else None,
+                    sandbox_url=sandbox_url,
+                    generation_timestamp=datetime.utcnow(),
+                    is_edit=False,
+                    meta={}
+                )
+                db.add(conv)
+
+                # Touch updated_at
+                session_obj.updated_at = datetime.utcnow()
+
+                db.commit()
+
+            print(f"🗂️ Session {session_id} results persisted to DB")
+        except Exception as persist_err:
+            print(f"⚠️ Persist error (non-fatal) for session {session_id}: {persist_err}")
+        # ===== END INSERT =====
+
         return {
             "session_id": result["session_id"], 
             "accepted": True, 
@@ -476,6 +528,52 @@ async def get_requests_status():
         }
     except Exception as e:
         return {"error": str(e)}
+# NEW: Per-session status endpoint (frontend polls this to avoid 504s)
+@app.get("/api/requests/status/{session_id}")
+async def get_request_status(session_id: str):
+    """Return running/completed/failed status for a specific session, with result if done."""
+    try:
+        task = _running_requests.get(session_id)
+
+        # If we still track the task and it's running
+        if task and not task.done():
+            return {"session_id": session_id, "status": "running"}
+
+        # If we still track the task and it's completed
+        if task and task.done():
+            try:
+                result = task.result()
+                return {"session_id": session_id, "status": "completed", "result": result}
+            except Exception as e:
+                return {"session_id": session_id, "status": "failed", "error": str(e)}
+
+        # Fallback: check if DB has a recent conversation for this session (already persisted)
+        try:
+            from db import db_session
+            from models import ConversationHistory
+            with db_session() as db:
+                conv = (
+                    db.query(ConversationHistory)
+                    .filter(ConversationHistory.session_id == session_id)
+                    .order_by(ConversationHistory.generation_timestamp.desc())
+                    .first()
+                )
+                if conv:
+                    # We return generated_code as the result payload to keep it consistent
+                    return {
+                        "session_id": session_id,
+                        "status": "completed",
+                        "result": json.loads(conv.generated_code) if conv.generated_code else None
+                    }
+        except Exception as e:
+            # If DB lookup fails, still return a clear status
+            return {"session_id": session_id, "status": "unknown", "error": str(e)}
+
+        # Nothing known about this session
+        return {"session_id": session_id, "status": "not_found"}
+
+    except Exception as e:
+        return {"session_id": session_id, "status": "error", "error": str(e)}
 
 @app.post("/api/requests/{session_id}/cancel")
 async def cancel_request(session_id: str):

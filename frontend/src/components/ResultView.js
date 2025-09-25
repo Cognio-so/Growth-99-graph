@@ -20,6 +20,46 @@ import {
 import GitHubDeploy from "./GithubDeploy.jsx"
 import AppPreview from "./AppPreview.js"
 
+// === INSERT: backend base + status polling helper ===
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+async function pollRequestStatus(sessionId, { intervalMs = 2000, maxMs = 600000 } = {}) {
+  const start = Date.now();
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const res = await fetch(`${BACKEND}/api/requests/status/${sessionId}`, { method: 'GET' });
+    if (!res.ok) throw new Error(`Status check failed: ${res.status}`);
+    const data = await res.json();
+
+    if (data.status === 'completed') return data.result;
+    if (data.status === 'failed' || data.status === 'error') {
+      throw new Error(data.error || 'Processing failed');
+    }
+
+    if (Date.now() - start > maxMs) throw new Error('Status polling timed out');
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+}
+
+function extractBackendState(resultPayload) {
+  // When task is running: status endpoint returns { result: { session_id, state, saved } }
+  // DB fallback returns just the raw "state" object.
+  return resultPayload?.state ?? resultPayload ?? null;
+}
+
+function extractSandboxUrl(backendState) {
+  return (
+    backendState?.context?.final_result?.url ||
+    backendState?.context?.sandbox_result?.url ||
+    null
+  );
+}
+
+function extractGeneratedCode(backendState) {
+  return backendState?.context?.generation_result?.e2b_script || '';
+}
+// === /INSERT ===
+
 export default function ResultView() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session')
@@ -205,34 +245,19 @@ export default function ResultView() {
         formData.append('logo', selectedLogo)
       }
 
-      const response = await fetch('/api/query', {
-        method: 'POST',
-        body: formData
-      })
+      // 1) Fire-and-return: this returns { session_id, status: "processing" }
+      const resp = await fetch(`${BACKEND}/api/query`, { method: 'POST', body: formData })
+      if (!resp.ok) throw new Error(`HTTP error! status: ${resp.status}`)
+      const accepted = await resp.json()
+      const sid = accepted.session_id || currentSessionId
+      setCurrentSessionId(sid)
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-      const backendState = result.state
-      let sandboxUrl = null
-      let generatedCode = ''
-      let conversationId = null
-
-      if (backendState?.context?.final_result?.url) {
-        sandboxUrl = backendState.context.final_result.url
-      } else if (backendState?.context?.sandbox_result?.url) {
-        sandboxUrl = backendState.context.sandbox_result.url
-      }
-
-      if (backendState?.context?.generation_result?.e2b_script) {
-        generatedCode = backendState.context.generation_result.e2b_script
-      }
-
-      if (backendState?.context?.conversation_id) {
-        conversationId = backendState.context.conversation_id
-      }
+      // 2) Poll backend status until completed
+      const statusResult = await pollRequestStatus(sid)
+      const backendState = extractBackendState(statusResult)
+      const sandboxUrl = extractSandboxUrl(backendState)
+      const generatedCode = extractGeneratedCode(backendState)
+      const conversationId = backendState?.context?.conversation_id || null
 
       const assistantMsg = {
         role: "assistant",
@@ -242,7 +267,6 @@ export default function ResultView() {
 
       try {
         const addResult = await addMessage(currentSessionId, assistantMsg)
-        
         if (addResult.success && addResult.data.id) {
           const updateResult = await updateAssistantMessage(currentSessionId, addResult.data.id, {
             conversation_id: conversationId,
@@ -255,27 +279,20 @@ export default function ResultView() {
             }
           })
 
-          if (updateResult.success) {
-            const updatedMessage = {
-              ...addResult.data,
-              conversation_id: conversationId,
-              sandbox_url: sandboxUrl,
-              generated_code: generatedCode
-            }
-            setMessages(prev => [...prev, updatedMessage])
-
-            if (sandboxUrl) {
-              setSandboxUrl(sandboxUrl)
-              setSelectedMessageId(addResult.data.id)
-              setPreviewLoading(false)
-            }
-          } else {
-            console.error('Failed to update assistant message:', updateResult.error)
-            setMessages(prev => [...prev, assistantMsg])
-            setPreviewLoading(false)
+          const updatedMessage = {
+            ...(addResult.success ? addResult.data : assistantMsg),
+            conversation_id: conversationId,
+            sandbox_url: sandboxUrl,
+            generated_code: generatedCode
           }
+          setMessages(prev => [...prev, updatedMessage])
+
+          if (sandboxUrl) {
+            setSandboxUrl(sandboxUrl)
+          }
+          setSelectedMessageId((addResult.success && addResult.data.id) ? addResult.data.id : null)
+          setPreviewLoading(false)
         } else {
-          console.error('Failed to add assistant message:', addResult.error)
           setMessages(prev => [...prev, assistantMsg])
           setPreviewLoading(false)
         }
@@ -305,7 +322,7 @@ export default function ResultView() {
     setLoadingStage("Loading previous version...")
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
+      const response = await fetch(`${BACKEND}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/restore`, {
         method: 'POST'
       })
       
@@ -399,17 +416,17 @@ export default function ResultView() {
         formData.append('image', selectedImage)
       }
 
-      const response = await fetch('/api/query', {
-        method: 'POST',
-        body: formData
-      })
+      const resp = await fetch(`${BACKEND}/api/query`, { method: 'POST', body: formData })
+      if (!resp.ok) throw new Error(`Failed to send message: ${resp.status}`)
+      const accepted = await resp.json()
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      const sid = accepted.session_id || currentSessionId
+      setCurrentSessionId(sid)
+      setLoadingStage('Applying edits...')
 
-      const result = await response.json()
-      const backendState = result.state
+      // poll the backend until the edit finishes
+      const statusResult = await pollRequestStatus(sid)
+      const backendState = extractBackendState(statusResult)
       let sandboxUrl = null
       let generatedCode = ''
       let conversationId = null
@@ -523,48 +540,28 @@ export default function ResultView() {
     setLoadingStage("Regenerating your request...")
 
     try {
-      if (!currentSessionId) {
-        throw new Error('No active session found')
-      }
-      
+      if (!currentSessionId) throw new Error('No active session found')
+
       const formData = new FormData()
       formData.append('session_id', currentSessionId)
-      formData.append('text', '') 
+      formData.append('text', '')
       formData.append('llm_model', selectedModel)
       formData.append('schema_type', selectedCategory)
       formData.append('regenerate', true)
-      if (selectedLogo) {
-        formData.append('logo', selectedLogo)
-      }
+      if (selectedLogo) formData.append('logo', selectedLogo)
 
-      const response = await fetch('/api/query', {
-        method: 'POST',
-        body: formData
-      })
+      // 1) Fire-and-return
+      const resp = await fetch(`${BACKEND}/api/query`, { method: 'POST', body: formData })
+      if (!resp.ok) throw new Error(`HTTP error! status: ${resp.status}`)
+      const accepted = await resp.json()
+      const sid = accepted.session_id || currentSessionId
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-      const backendState = result.state
-      let sandboxUrl = null
-      let generatedCode = ''
-      let conversationId = null
-
-      if (backendState?.context?.final_result?.url) {
-        sandboxUrl = backendState.context.final_result.url
-      } else if (backendState?.context?.sandbox_result?.url) {
-        sandboxUrl = backendState.context.sandbox_result.url
-      }
-
-      if (backendState?.context?.generation_result?.e2b_script) {
-        generatedCode = backendState.context.generation_result.e2b_script
-      }
-
-      if (backendState?.context?.conversation_id) {
-        conversationId = backendState.context.conversation_id
-      }
+      // 2) Poll until completed
+      const statusResult = await pollRequestStatus(sid)
+      const backendState = extractBackendState(statusResult)
+      const sandboxUrl = extractSandboxUrl(backendState)
+      const generatedCode = extractGeneratedCode(backendState)
+      const conversationId = backendState?.context?.conversation_id || null
 
       const assistantMsg = {
         role: "assistant",
@@ -574,7 +571,6 @@ export default function ResultView() {
 
       try {
         const addResult = await addMessage(currentSessionId, assistantMsg)
-        
         if (addResult.success) {
           await updateAssistantMessage(currentSessionId, addResult.data.id, {
             conversation_id: conversationId,
@@ -597,9 +593,9 @@ export default function ResultView() {
 
           if (sandboxUrl) {
             setSandboxUrl(sandboxUrl)
-            setSelectedMessageId(addResult.data.id)
-            setPreviewLoading(false)
           }
+          setSelectedMessageId(addResult.data.id)
+          setPreviewLoading(false)
         } else {
           setMessages(prev => [...prev, assistantMsg])
           setPreviewLoading(false)
@@ -702,7 +698,7 @@ export default function ResultView() {
     
     setDownloading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/download`, {
+      const response = await fetch(`${BACKEND}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/download`, {
         method: 'GET'
       })
       
@@ -748,7 +744,7 @@ export default function ResultView() {
     
     setDownloadingHtml(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/download-html`, {
+      const response = await fetch(`${BACKEND}/api/sessions/${currentSessionId}/conversations/${message.conversation_id}/download-html`, {
         method: 'GET'
       })
       
@@ -914,13 +910,9 @@ export default function ResultView() {
                                   <Heart className="h-3 w-3 text-destructive" />
                                   <span>Growth-AI</span>
                                   <span>•</span>
-                                  {message.conversation_id ? (
+                                  {message.conversation_id && (
                                     <span className="text-xs bg-primary/20 px-1 rounded">
                                       v{message.conversation_id.slice(-8)}
-                                    </span>
-                                  ) : (
-                                    <span className="text-xs bg-red-500/20 px-1 rounded text-red-500">
-                                      no-id
                                     </span>
                                   )}
                                 </>
